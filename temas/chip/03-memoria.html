@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 3 · La memoria manda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/escenas-tomo.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="chip" data-nivel="3">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="03">nivel 03 · 14 min de lectura</span>
+  <h1>La memoria manda</h1>
+  <p class="bajada">En un microcontrolador, lo que limita a una red neuronal casi nunca es la velocidad de cálculo: es dónde están los datos y cuánto tarda en llegar cada byte.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Ordenar las memorias del ESP32-S3 por velocidad y tamaño, y explicar por qué.</li>
+    <li>Distinguir <strong>pesos</strong> de <strong>activaciones</strong> y decidir dónde va cada uno.</li>
+    <li>Explicar qué es el <strong>tensor arena</strong> y cómo se reutiliza memoria entre capas.</li>
+    <li>Hacer un presupuesto aproximado de SRAM para un proyecto de visión.</li>
+  </ul>
+</div>
+
+<h2>La pirámide de la memoria</h2>
+
+<p>Toda computadora tiene la misma tensión: la memoria rápida es cara y chica, la memoria grande es lenta. Por eso se organiza en <strong>niveles</strong>, del más cercano al núcleo al más lejano.</p>
+
+<ul>
+  <li><strong>Registros:</strong> dentro del núcleo. Un ciclo. Apenas unos cientos de bytes (incluidos los 8 registros de 128 bits de PIE).</li>
+  <li><strong>SRAM interna:</strong> en el mismo silicio. Uno o dos ciclos. 512 KB en el S3, de los cuales tu programa ve bastante menos.</li>
+  <li><strong>PSRAM externa:</strong> un chip aparte unido por un bus serie. Varios MB, pero cada fallo de caché cuesta decenas de ciclos.</li>
+  <li><strong>Flash externa:</strong> donde vive el programa y los pesos. Muchos MB, solo lectura durante la ejecución, y todavía más lenta.</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-3.1">
+  <canvas data-widget="memoria" width="640" height="248"></canvas>
+  <figcaption><b>fig 3.1</b>Cuatro mensajeros buscan un byte en distintos niveles. La longitud de cada pista está en escala logarítmica; mirá cuántos bytes trae cada uno en el mismo tiempo. Latencias aproximadas en ciclos de CPU a 240 MHz (orden de magnitud, sin caché): registro, en el núcleo; SRAM, en el chip; PSRAM, fuera por bus octal; flash, fuera por bus SPI.</figcaption>
+</figure>
+
+<div class="caja ojo">
+  <h4>ojo con las cifras</h4>
+  <p>Las latencias exactas de PSRAM y flash dependen del modo del bus, la frecuencia y el estado de la caché, y no están tabuladas de forma simple en la documentación. Tomá los números de la figura como <strong>órdenes de magnitud</strong>: SRAM ≈ 1, PSRAM ≈ decenas, flash ≈ decenas a cientos de ciclos por acceso que no está en caché.</p>
+</div>
+
+<div class="caja analogia">
+  <h4>analogía · el quirófano</h4>
+  <p>Los registros son el bisturí en la mano del cirujano. La SRAM es la bandeja junto a la camilla: estirás la mano y ya. La PSRAM es el armario del pasillo: alguien va a buscar, pero hay que esperar. La flash es el archivo del hospital con los protocolos impresos: está todo ahí, no se modifica durante la operación y conviene leerlo en orden.</p>
+</div>
+
+<h2>La caché y el truco del XIP</h2>
+
+<p>El núcleo no “habla” directamente con la flash por un bus paralelo: la flash está detrás de un bus serie. Aun así el programa puede <strong>ejecutarse directo desde ahí</strong> (XIP, <em>execute in place</em>) gracias a dos piezas:</p>
+<ul>
+  <li>La <strong>MMU</strong> mapea bloques de la flash (páginas de 64 KB) a direcciones que el núcleo ve como memoria común.</li>
+  <li>La <strong>caché</strong> guarda las líneas leídas recientemente (de 32 o 64 bytes). Si el dato ya está, llega en uno o dos ciclos. Si no, el núcleo se detiene mientras el controlador pide una ráfaga al chip externo y llena la línea.</li>
+</ul>
+<p>La clave: <strong>leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo.</p>
+
+<figure class="diagrama" data-titulo="fig-3.2 · interactivo">
+  <canvas data-motor="mem-cache" data-bits="mixto"></canvas>
+  <div class="controles" data-ctl="mem-cache"></div>
+  <figcaption><b>fig 3.2</b>Lectura de la flash a través de la caché. En modo secuencial, cada fallo trae una línea de 8 palabras y las siguientes lecturas son aciertos (~1-2 ciclos). En modo salteado casi todos son fallos: la CPU queda en espera (STALL) unas decenas de ciclos mientras la línea viaja por el bus SPI. Las barras comparan los ciclos reales con el caso ideal de aciertos; son órdenes de magnitud, no mediciones.</figcaption>
+</figure>
+
+<h2>Pesos y activaciones: dos datos muy distintos</h2>
+
+<p>Una red neuronal maneja dos tipos de datos con personalidades opuestas:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>Pesos</th><th>Activaciones</th></tr></thead>
+  <tbody>
+    <tr><td><b>Qué son</b></td><td>Los números aprendidos en el entrenamiento</td><td>Los resultados intermedios de cada capa (mapas de características)</td></tr>
+    <tr><td><b>Cambian</b></td><td>Nunca durante la inferencia</td><td>En cada imagen, en cada capa</td></tr>
+    <tr><td><b>Acceso</b></td><td>Solo lectura, bastante ordenado</td><td>Lectura y escritura, con ventanas que se deslizan</td></tr>
+    <tr><td><b>Tamaño típico</b></td><td>De ~100 KB a varios MB</td><td>De ~20 KB a unos cientos de KB (el pico)</td></tr>
+    <tr><td><b>Dónde conviene</b></td><td>Flash (vía caché) o PSRAM</td><td><b>SRAM interna</b> siempre que quepan</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Si las activaciones se van a la PSRAM, cada escritura puede obligar a la caché a expulsar una línea modificada y mandarla por el bus, y encima compiten con la lectura de pesos por el mismo camino. El resultado es una inferencia <strong>varias veces más lenta</strong>. Por eso la pregunta que decide si un modelo sirve casi nunca es “¿cuántos parámetros tiene?” sino “<strong>¿cuánto ocupa su capa más grande?</strong>”.</p>
+
+<div class="caja analogia">
+  <h4>analogía · tuercas por correo</h4>
+  <p>Tener las activaciones en SRAM es tener la caja de tuercas atornillada al banco de trabajo. Tenerlas en PSRAM es pedir cada tuerca por correo urgente: aunque el correo sea rápido, pasás la mayor parte del día esperando al repartidor.</p>
+</div>
+
+<h2>El tensor arena</h2>
+
+<p>En un microcontrolador no conviene pedir y devolver memoria dinámicamente mientras corre la red: la memoria se fragmenta y los tiempos se vuelven impredecibles. TensorFlow Lite for Microcontrollers resuelve esto con el <strong>tensor arena</strong>: un único bloque de bytes reservado de antemano donde el motor de inferencia acomoda todo.</p>
+
+<ul>
+  <li>De un lado van las <strong>activaciones</strong>, que se reutilizan entre capas.</li>
+  <li>Del otro, las <strong>estructuras persistentes</strong>: descripción de los tensores, parámetros de cuantización, datos del intérprete.</li>
+  <li>Si los dos lados se tocan al inicializar, el arena es demasiado chico y el programa avisa.</li>
+</ul>
+
+<p>El truco que lo hace viable: <strong>la salida de una capa solo hace falta hasta que la siguiente capa termina de leerla</strong>. Un planificador analiza de antemano cuándo “vive” cada tensor y los acomoda para que los que no se superponen en el tiempo compartan las mismas direcciones.</p>
+
+<figure class="diagrama" data-titulo="fig-3.3">
+  <canvas data-widget="arena" width="640" height="328"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 3.3</b>Cada columna es el momento en que se calcula una capa. El bloque de contorno brillante es la salida que se está escribiendo; los demás son buffers que siguen vivos. Compará el pico de memoria con y sin reutilización.</figcaption>
+</figure>
+
+<div class="caja analogia">
+  <h4>analogía · el andamio</h4>
+  <p>Para construir un edificio de 30 pisos no comprás 30 pisos de andamio. Alcanza con el andamio del piso donde trabajan y el siguiente: cuando el hormigón fragua, lo desarmás y lo subís.</p>
+</div>
+
+<div class="caja dato">
+  <h4>dato · alineación</h4>
+  <p>Los buffers se alinean a múltiplos de 16 bytes. Así las instrucciones vectoriales de 128 bits (16 bytes) pueden leer y escribir de una sola vez, sin penalización por datos “partidos”.</p>
+</div>
+
+<h2>Un presupuesto de SRAM</h2>
+
+<p>De los 512 KB del S3, una parte se va antes de escribir una línea de tu aplicación: pilas, código que debe correr desde RAM (interrupciones, drivers), variables globales y FreeRTOS. Luego vienen las radios, que son golosas: la pila Wi-Fi y la de Bluetooth LE se llevan cada una del orden de <strong>50 a 100 KB</strong>, según cómo se configuren sus buffers.</p>
+
+<figure class="diagrama" data-titulo="fig-3.4">
+  <canvas data-widget="presupuesto" width="640" height="200"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 3.4</b>Prendé y apagá las radios para ver cuánta SRAM queda para la red. El tramado representa la memoria libre. Valores aproximados: dependen de la configuración de ESP-IDF. Lo libre debe alcanzar para el tensor arena, el buffer de imagen y tu programa.</figcaption>
+</figure>
+
+<h3>Dos configuraciones típicas</h3>
+<ul>
+  <li><strong>S3 sin PSRAM</strong> (por ejemplo, 8 MB de flash y nada más). Los pesos se leen desde flash vía caché; el arena vive en SRAM con del orden de 100 a 200 KB. Imagen de entrada chica: 96 × 96 en escala de grises son apenas 9 KB. Alcanza para detectar personas, clasificar audio o leer medidores con redes compactas.</li>
+  <li><strong>S3 con 8 MB de PSRAM octal.</strong> Entran modelos de varios MB y cuadros VGA en color (640 × 480 × 2 bytes ≈ 600 KB). Si el arena entero tiene que ir a PSRAM, se gana capacidad pero se paga en tiempo: la inferencia se vuelve varias veces más lenta. Las bibliotecas optimizadas intentan mantener en SRAM al menos las partes más calientes.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Registros → SRAM → PSRAM → flash: cada escalón es más grande y bastante más lento.</li>
+    <li>Pesos: solo lectura, van a flash o PSRAM. Activaciones: lectura/escritura intensa, van a SRAM.</li>
+    <li>El tensor arena es un bloque fijo donde las activaciones se reutilizan: el pico lo marca la capa más grande, no la red entera.</li>
+    <li>Con Wi-Fi y BLE prendidos, la SRAM libre para IA se reduce a unos 200 KB o menos.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">Una red tiene 2 MB de pesos y su capa más grande necesita 150 KB de activaciones (entrada + salida). Tu S3 tiene 8 MB de flash, sin PSRAM, y usás Wi-Fi. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Los pesos se leen desde flash vía caché y el pico de activaciones (150 KB) entra en la SRAM libre aun con Wi-Fi. Va a andar; su velocidad dependerá de cuánto aproveche la caché.">Probablemente funciona: pesos en flash y activaciones en SRAM.</button>
+    <button type="button" data-por-que="Los pesos no necesitan estar en RAM: se pueden leer directamente desde la flash.">No entra: 2 MB de pesos no caben en 512 KB de SRAM.</button>
+    <button type="button" data-por-que="La PSRAM ayuda con modelos cuyas activaciones no entran en SRAM; acá sí entran.">Hace falta PSRAM sí o sí.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (System and Memory; Cache y MMU). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Minimizing RAM Usage</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/ram-usage.html">docs.espressif.com/…/performance/ram-usage.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Support for External RAM</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/flash_psram_config.html">docs.espressif.com/…/api-guides/flash_psram_config.html</a></li>
+    <li>David, R. et al. (2021). <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. MLSys. <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
+    <li>TensorFlow. <em>tflite-micro — GreedyMemoryPlanner</em>. <a href="https://github.com/tensorflow/tflite-micro/blob/main/tensorflow/lite/micro/memory_planner/greedy_memory_planner.h">github.com/tensorflow/tflite-micro/…/greedy_memory_planner.h</a></li>
+  </ol>
+  <p class="nota">Las latencias y los consumos de memoria de las radios son aproximados; varían con la versión y la configuración de ESP-IDF.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit · tomo-01 · nivel-03</footer>
+</body>
+</html>

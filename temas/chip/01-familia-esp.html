@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1 · La familia ESP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="chip" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01 · 12 min de lectura</span>
+  <h1>La familia ESP</h1>
+  <p class="bajada">Antes de meter una red neuronal en un chip hay que conocer al chip. Empezamos por la pregunta más básica: ¿qué es un microcontrolador y por qué hay tantos ESP distintos?</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar la diferencia real entre un microcontrolador y un microprocesador.</li>
+    <li>Ubicar cada chip de la familia ESP en su línea de tiempo y en su nicho.</li>
+    <li>Justificar por qué el <strong>ESP32-S3</strong> y el <strong>ESP32-P4</strong> son los candidatos para correr CNN.</li>
+  </ul>
+</div>
+
+<h2>Microcontrolador vs. microprocesador</h2>
+
+<p>Los dos tienen una CPU que ejecuta instrucciones. La diferencia está en <strong>dónde vive todo lo demás</strong>.</p>
+
+<p>Un <strong>microcontrolador (MCU)</strong> es una computadora completa dentro de un solo chip: CPU, memoria de trabajo (SRAM), acceso a la memoria de programa y periféricos (timers, ADC, GPIO, radios). La SRAM está en el mismo trozo de silicio que la CPU, así que leerla cuesta uno o dos ciclos de reloj.</p>
+
+<p>Un <strong>microprocesador (MPU)</strong>, como el de un celular o una Raspberry Pi, pone la CPU en un chip y la memoria grande (DRAM, DDR) en otro, conectada por pistas de la placa. Esa memoria es enorme pero lejana: cada acceso que no está en caché tarda decenas de nanosegundos, y para disimularlo el MPU apila cachés de varios niveles y corre un sistema operativo como Linux.</p>
+
+<figure class="diagrama" data-titulo="fig-1.1">
+  <svg viewBox="0 0 640 248" role="img" aria-label="Comparación: en el MCU todo está en un chip; en el MPU la memoria está en chips separados y la distancia entre CPU y DDR es larga">
+    <defs><pattern id="dza" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern><pattern id="daa" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="fa2"/><rect x="2" y="2" width="2" height="2" class="fa2"/></pattern></defs><text x="160" y="22" class="sv-tit f6" text-anchor="middle">MCU</text><text x="480" y="22" class="sv-tit f6" text-anchor="middle">MPU</text><rect x="64" y="36" width="192" height="148" class="f0 s4" stroke-width="2"/><rect x="63" y="35" width="2" height="2" class="f0"/><rect x="255" y="35" width="2" height="2" class="f0"/><rect x="63" y="183" width="2" height="2" class="f0"/><rect x="255" y="183" width="2" height="2" class="f0"/><rect x="80" y="52" width="72" height="48" class="f1 s3" stroke-width="2"/><rect x="79" y="51" width="2" height="2" class="f0"/><rect x="151" y="51" width="2" height="2" class="f0"/><rect x="79" y="99" width="2" height="2" class="f0"/><rect x="151" y="99" width="2" height="2" class="f0"/><text x="116" y="81" class="sv-tit f6" text-anchor="middle">CPU</text><rect x="168" y="52" width="72" height="48" class="f1 s3" stroke-width="2"/><rect x="167" y="51" width="2" height="2" class="f0"/><rect x="239" y="51" width="2" height="2" class="f0"/><rect x="167" y="99" width="2" height="2" class="f0"/><rect x="239" y="99" width="2" height="2" class="f0"/><text x="204" y="81" class="sv-tit f6" text-anchor="middle">SRAM</text><rect x="80" y="116" width="72" height="48" class="f1 s2" stroke-width="2"/><text x="116" y="145" class="sv-tit f4" text-anchor="middle">PERIF</text><rect x="168" y="116" width="72" height="48" class="f1 s2" stroke-width="2"/><text x="204" y="145" class="sv-tit f4" text-anchor="middle">RADIO</text><line x1="152" y1="76" x2="158" y2="76" class="s4" stroke-width="2"/><rect x="158" y="68" width="2" height="16" class="f4"/><rect x="160" y="70" width="2" height="12" class="f4"/><rect x="162" y="72" width="2" height="8" class="f4"/><rect x="164" y="74" width="2" height="4" class="f4"/><rect x="166" y="75" width="2" height="2" class="f4"/><rect width="6" height="6" class="fa4"><animate attributeName="x" values="154;158;162;158" dur="2.4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="73;73;73;73" dur="2.4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><text x="160" y="212" class="sv-lbl f4" text-anchor="middle">todo en un chip</text><text x="160" y="232" class="sv-lbl f6" text-anchor="middle">acceso: 1-2 ciclos</text><rect x="336" y="36" width="104" height="148" class="f0 s4" stroke-width="2"/><rect x="335" y="35" width="2" height="2" class="f0"/><rect x="439" y="35" width="2" height="2" class="f0"/><rect x="335" y="183" width="2" height="2" class="f0"/><rect x="439" y="183" width="2" height="2" class="f0"/><rect x="344" y="44" width="88" height="52" class="f1 s3" stroke-width="2"/><text x="388" y="75" class="sv-tit f6" text-anchor="middle">CPU</text><rect x="344" y="104" width="88" height="72" class="f1 s3" stroke-width="2"/><text x="388" y="145" class="sv-tit f6" text-anchor="middle">CACHÉ</text><rect x="452" y="52" width="88" height="92" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="496" y="44" class="sv-lbl fa3" font-weight="600" text-anchor="middle">distancia</text><rect x="552" y="44" width="72" height="52" class="f1 s3" stroke-width="2"/><rect x="551" y="43" width="2" height="2" class="f0"/><rect x="623" y="43" width="2" height="2" class="f0"/><rect x="551" y="95" width="2" height="2" class="f0"/><rect x="623" y="95" width="2" height="2" class="f0"/><text x="588" y="75" class="sv-tit f6" text-anchor="middle">DDR</text><rect x="552" y="112" width="72" height="48" class="f1 s2" stroke-width="2"/><rect x="551" y="111" width="2" height="2" class="f0"/><rect x="623" y="111" width="2" height="2" class="f0"/><rect x="551" y="159" width="2" height="2" class="f0"/><rect x="623" y="159" width="2" height="2" class="f0"/><text x="588" y="141" class="sv-tit f4" text-anchor="middle">eMMC</text><line x1="440" y1="64" x2="552" y2="64" class="s4" stroke-width="2"/><line x1="440" y1="80" x2="552" y2="80" class="s4" stroke-width="2"/><line x1="440" y1="136" x2="552" y2="136" class="s4" stroke-width="2"/><text x="496" y="116" class="sv-lbl f4" text-anchor="middle">pistas</text><rect width="6" height="6" class="fa4"><animate attributeName="x" values="442;468;494;520;546;546;520;494;468;442" dur="4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="61;61;61;61;61;61;61;61;61;61" dur="4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><text x="480" y="212" class="sv-lbl f4" text-anchor="middle">memoria en otros chips</text><text x="480" y="232" class="sv-lbl f6" text-anchor="middle">fallo de caché: 50-100 ns</text>
+  </svg>
+  <figcaption><b>fig 1.1</b>El cuadradito brillante que se mueve es un dato. En el MCU recorre un camino corto dentro del mismo silicio; en el MPU viaja por pistas de la placa hasta la DDR y vuelve.</figcaption>
+</figure>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>Microcontrolador</th><th>Microprocesador</th></tr></thead>
+  <tbody>
+    <tr><td><b>Memoria de trabajo</b></td><td>SRAM en el mismo chip, de 64 KB a ~1 MB</td><td>DRAM externa, de cientos de MB a GB</td></tr>
+    <tr><td><b>Sistema operativo</b></td><td>Ninguno o un RTOS (FreeRTOS, Zephyr)</td><td>Linux, Android</td></tr>
+    <tr><td><b>Arranque</b></td><td>Milisegundos</td><td>Segundos</td></tr>
+    <tr><td><b>Consumo activo</b></td><td>Decenas a cientos de mA a 3,3 V</td><td>De 1 W a más de 15 W</td></tr>
+    <tr><td><b>Sueño profundo</b></td><td>Unos pocos µA</td><td>Decenas de mA (la DDR debe refrescarse)</td></tr>
+    <tr><td><b>Tiempo real</b></td><td>Interrupciones deterministas</td><td>Latencia variable (cachés, planificador)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja analogia">
+  <h4>analogía · el taller y el centro logístico</h4>
+  <p>El MCU es un <strong>taller</strong>: el operario (CPU) tiene la estantería de materiales (SRAM) y las herramientas (periféricos) en la misma habitación. Si suena una alarma, suelta todo y reacciona al instante.</p>
+  <p>El MPU es un <strong>centro logístico</strong>: el operario es muchísimo más potente, pero los materiales están en un depósito al otro lado de una autopista (la DDR). Para no esperar el camión, guarda cajitas con piezas a mano (las cachés). Cuando la pieza no está en la cajita, la producción se detiene.</p>
+</div>
+
+<p>Para redes neuronales esto tiene una consecuencia directa que vamos a ver a lo largo de los tres tomos: <strong>en un MCU la memoria rápida es chiquita</strong>. Una CNN tiene que caber, o al menos organizarse, dentro de unos cientos de kilobytes.</p>
+
+<h2>Diez años de chips ESP</h2>
+
+<p>Espressif, una empresa de Shanghái, se hizo famosa en 2014 con el <strong>ESP8266</strong>: un chip con Wi-Fi que costaba monedas y que al principio se usaba como “módem” de otros microcontroladores. Desde entonces la familia se abrió en ramas con objetivos distintos.</p>
+
+<figure class="diagrama" data-titulo="fig-1.2">
+  <canvas data-widget="familia" width="640" height="336"></canvas>
+  <figcaption><b>fig 1.2</b>Selección de personaje. Hacé clic en un chip (o usá las flechas del teclado con el diagrama enfocado) para ver sus atributos. Los valores son de las hojas de datos de Espressif; la barra de “ayuda para IA” es una valoración cualitativa.</figcaption>
+</figure>
+
+<h3>Las tres ramas</h3>
+<ul>
+  <li><strong>Xtensa (ESP8266, ESP32, S2, S3).</strong> Núcleos con licencia de Cadence/Tensilica. El ESP32 original (2016) trajo doble núcleo a 240 MHz, 520 KB de SRAM y soporte para PSRAM externa. El <strong>S3</strong> (2021) sumó <strong>instrucciones vectoriales</strong> pensadas para IA.</li>
+  <li><strong>RISC-V para IoT (C3, C6, H2).</strong> Espressif empezó a diseñar sus propios núcleos con la arquitectura abierta RISC-V. Son baratos y eficientes: el C3 trae Wi-Fi 4 y BLE; el C6 suma Wi-Fi 6, Thread y Zigbee; el H2 deja el Wi-Fi y se queda con BLE, Thread y Zigbee. Ninguno tiene PSRAM ni aceleración de IA: sirven para clasificadores muy chicos, no para visión.</li>
+  <li><strong>RISC-V de alto rendimiento (P4).</strong> Doble núcleo a 400 MHz, instrucciones SIMD propias, interfaz de cámara MIPI-CSI, codificador H.264 y un acelerador de procesamiento de píxeles. Curiosamente <strong>no tiene radio</strong>: si necesitás Wi-Fi le agregás, por ejemplo, un C6 al lado.</li>
+</ul>
+
+<div class="caja dato">
+  <h4>dato · el salto del s3</h4>
+  <p>El ESP32-S3 agrega una extensión llamada <strong>PIE</strong> con registros de 128 bits. Una sola instrucción puede multiplicar y acumular <strong>16 pares de números de 8 bits</strong> a la vez. Una red neuronal es, en el fondo, millones de multiplicaciones y sumas, así que esto cambia todo. Lo vemos en detalle en el <a href="02-arquitectura.html">nivel 2</a>.</p>
+</div>
+
+<h2>¿Cuál sirve para una CNN?</h2>
+
+<p>Para correr una red convolucional hacen falta tres cosas: <strong>cómputo</strong> para las multiplicaciones, <strong>memoria rápida</strong> para los resultados intermedios y <strong>una forma de traer la imagen</strong> (interfaz de cámara). Con ese filtro la familia se reduce mucho:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Chip</th><th>Cómputo</th><th>Memoria</th><th>Cámara</th><th>Veredicto para CNN</th></tr></thead>
+  <tbody>
+    <tr><td>ESP8266</td><td>1 núcleo, sin SIMD</td><td>~160 KB, sin PSRAM</td><td>No</td><td>No</td></tr>
+    <tr><td>ESP32</td><td>2 núcleos, sin SIMD</td><td>520 KB + PSRAM</td><td>Paralela (DVP)</td><td>Redes muy chicas, lento</td></tr>
+    <tr><td>ESP32-C3 / C6 / H2</td><td>1 núcleo RISC-V</td><td>320-512 KB, sin PSRAM</td><td>No</td><td>Solo sensores 1D (vibración, audio simple)</td></tr>
+    <tr><td><b>ESP32-S3</b></td><td>2 núcleos + PIE (SIMD)</td><td>512 KB + PSRAM octal</td><td>DVP con DMA</td><td><b>Sí: el caballito de batalla</b></td></tr>
+    <tr><td><b>ESP32-P4</b></td><td>2 núcleos 400 MHz + SIMD</td><td>768 KB + PSRAM rápida</td><td>MIPI-CSI</td><td><b>Sí: el más potente</b></td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo · las cifras de consumo</h4>
+  <p>Las corrientes activas dependen muchísimo de qué esté haciendo el chip (transmitir por Wi-Fi puede pasar los 300 mA en picos). Tomá los rangos de la tabla como órdenes de magnitud, no como datos de diseño: para eso siempre la hoja de datos del chip y del módulo concreto.</p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Un MCU tiene todo adentro: memoria rápida pero chica. Esa limitación define cómo se diseñan las redes para él.</li>
+    <li>La familia ESP tiene ramas: Xtensa clásica, RISC-V para IoT y RISC-V de alto rendimiento.</li>
+    <li>Para CNN con cámara, los candidatos son <strong>ESP32-S3</strong> (instrucciones vectoriales + PSRAM) y <strong>ESP32-P4</strong> (más reloj, MIPI y aceleradores).</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Querés hacer un sensor Zigbee a pila que detecte vibraciones anómalas en un motor. ¿Qué chip elegís?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El P4 no tiene radio y consume mucho más: está pensado para multimedia.">ESP32-P4</button>
+    <button type="button" data-por-que="El S3 no tiene radio 802.15.4 (Zigbee/Thread) y sus instrucciones vectoriales sobran para una señal 1D.">ESP32-S3</button>
+    <button type="button" data-por-que="Tiene radio 802.15.4 para Zigbee, bajo consumo y alcanza para un clasificador 1D chico.">ESP32-C6 o ESP32-H2</button>
+    <button type="button" data-por-que="El ESP8266 solo tiene Wi-Fi, no Zigbee.">ESP8266</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP8266EX Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/0a-esp8266ex_datasheet_en.pdf">espressif.com/…/0a-esp8266ex_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-C3 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf">espressif.com/…/esp32-c3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-C6 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-c6_datasheet_en.pdf">espressif.com/…/esp32-c6_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-H2 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-h2_datasheet_en.pdf">espressif.com/…/esp32-h2_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-P4 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-p4_datasheet_en.pdf">espressif.com/…/esp32-p4_datasheet_en.pdf</a></li>
+    <li>Cadence. <em>Tensilica Xtensa LX Processors</em>. <a href="https://www.cadence.com/en_US/home/tools/ip/tensilica-ip/xtensa-lx-processors.html">cadence.com/…/xtensa-lx-processors.html</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada; los rangos de consumo son aproximados y conviene contrastarlos con la hoja de datos del módulo que uses.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit · tomo-01 · nivel-01</footer>
+</body>
+</html>

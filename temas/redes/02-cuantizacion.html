@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2 · Encoger la red</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="redes" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02 · 16 min de lectura</span>
+  <h1>Encoger la red</h1>
+  <p class="bajada">Una red entrenada en una computadora usa números de 32 bits con coma flotante. Para que entre y corra rápido en un ESP32 hay que pasarla a enteros de 8 bits, y de paso quitarle lo que sobra.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar qué es la <strong>cuantización</strong> y qué significan la escala y el punto cero.</li>
+    <li>Distinguir cuantización <strong>por tensor</strong> y <strong>por canal</strong>, y saber cuál conviene.</li>
+    <li>Contar cómo el chip hace toda la inferencia con <strong>enteros puros</strong>.</li>
+    <li>Elegir entre cuantizar después de entrenar (PTQ) o durante el entrenamiento (QAT).</li>
+    <li>Reconocer otras técnicas: poda, destilación y fusión de capas.</li>
+  </ul>
+</div>
+
+<h2>¿Por qué 8 bits?</h2>
+
+<p>Pasar de float32 a int8 no es un detalle: cambia las cuatro cosas que importan en un microcontrolador.</p>
+<ul>
+  <li><strong>Memoria:</strong> cada número ocupa 1 byte en vez de 4. Un modelo de un millón de parámetros pasa de 4 MB a 1 MB.</li>
+  <li><strong>Ancho de banda:</strong> cada ráfaga del bus de la flash o la PSRAM trae cuatro veces más pesos.</li>
+  <li><strong>Cómputo:</strong> la unidad vectorial PIE hace 16 multiplicaciones de 8 bits por instrucción; la unidad de punto flotante, una.</li>
+  <li><strong>Energía:</strong> en silicio CMOS una multiplicación entera de 8 bits gasta del orden de <strong>20 veces menos energía</strong> que una de coma flotante de 32 bits (≈ 0,2 pJ contra ≈ 3,7 pJ en un proceso de 45 nm).</li>
+</ul>
+
+<div class="caja analogia">
+  <h4>analogía · el multímetro y el ADC</h4>
+  <p>Para saber si una puerta está abierta no hace falta un multímetro de banco de seis dígitos y medio. Un ADC de 8 bits bien calibrado alcanza. La cuantización es pasar de uno al otro, eligiendo con cuidado la escala para no perder lo que importa.</p>
+</div>
+
+<h2>Escala y punto cero</h2>
+
+<p>La idea es una regla de tres, igual que en un conversor analógico-digital. Se elige un rango real (por ejemplo, de −0,8 a +0,8) y se lo reparte en los 256 escalones disponibles de un entero de 8 bits (de −128 a 127).</p>
+<ul>
+  <li>La <strong>escala</strong> es cuánto vale un escalón, igual que el valor del bit menos significativo de un ADC.</li>
+  <li>El <strong>punto cero</strong> es el entero que representa exactamente al 0 real. Importa porque el cero aparece muchísimo (por ejemplo, después de ReLU o en el relleno de bordes) y tiene que representarse sin error.</li>
+</ul>
+<p>Para recuperar el valor real: <strong>real = escala × (entero − punto cero)</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-2.1 · interactivo">
+  <canvas data-widget="quant" width="640" height="240"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.1</b>Arriba, 48 pesos reales. Abajo, dónde caen al redondearlos al escalón más cercano. Las rayitas horizontales de la línea del medio muestran cuánto se movió cada uno. Bajá los bits y mirá cómo crece el error.</figcaption>
+</figure>
+
+<h3>Simétrica o asimétrica</h3>
+<p>Si el rango está centrado en cero (algo típico de los <strong>pesos</strong>), se usa cuantización <strong>simétrica</strong>: el punto cero vale 0 y desaparecen sumas extra dentro del bucle de la convolución. Si el rango es todo positivo (típico de las <strong>activaciones</strong> después de ReLU), conviene la <strong>asimétrica</strong>, con un punto cero distinto de cero para no desperdiciar la mitad de los escalones.</p>
+
+<h2>Una escala para todos o una por filtro</h2>
+
+<p>Dentro de una capa, cada filtro puede tener pesos de tamaños muy distintos. Si se usa <strong>una sola escala</strong> para toda la capa (<strong>por tensor</strong>), el filtro con pesos más grandes obliga a estirar los escalones y los filtros de pesos chiquitos quedan representados con apenas dos o tres valores.</p>
+
+<figure class="diagrama" data-titulo="fig-2.2 · interactivo">
+  <canvas data-widget="quant" data-vista="canal" width="640" height="300"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.2</b>Tres filtros con pesos de tamaños muy distintos. La barra es el total de escalones del int8 simétrico (de −127 a 127); la parte llena es lo que usa cada filtro y el tramado, lo que desperdicia. Alterná entre una escala para todo el tensor y una por canal, y mirá cómo cambia el error del filtro chico.</figcaption>
+</figure>
+
+<p>La solución estándar es <strong>una escala por canal de salida</strong> (<strong>por canal</strong>). No cuesta casi nada: como la convolución calcula un canal de salida completo antes de pasar al siguiente, el chip solo carga una escala nueva al empezar cada canal. TensorFlow Lite Micro y ESP-NN lo usan por defecto en convoluciones.</p>
+
+<h2>Todo con enteros</h2>
+
+<p>¿Cómo aplica el chip las escalas, que son números con coma, sin usar la unidad de punto flotante? Con un truco de punto fijo:</p>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 168" role="img" aria-label="Cadena entera: multiplicar y acumular, multiplicar por un entero fijo, desplazar bits, sumar punto cero y saturar a 8 bits">
+    <text x="16" y="24" class="sv-tag f4" text-anchor="start">UN RESULTADO, CINCO PASOS</text>
+    <path d="M18,40H118V42H120V102H118V104H18V102H16V42H18Z" class="f1 s3" stroke-width="2"/>
+    <text x="68" y="68" class="sv-tit f6" text-anchor="middle">Σ int8×int8</text><text x="68" y="90" class="sv-lbl f4" text-anchor="middle">acumular</text>
+    <line x1="120" y1="72" x2="136" y2="72" class="s4" stroke-width="2"/><polygon points="136,68 142,72 136,76" class="f4"/>
+    <path d="M144,40H244V42H246V102H244V104H144V102H142V42H144Z" class="f1 s3" stroke-width="2"/>
+    <text x="194" y="68" class="sv-tit f6" text-anchor="middle">× M₀</text><text x="194" y="90" class="sv-lbl f4" text-anchor="middle">entero fijo</text>
+    <line x1="246" y1="72" x2="262" y2="72" class="s4" stroke-width="2"/><polygon points="262,68 268,72 262,76" class="f4"/>
+    <path d="M270,40H370V42H372V102H370V104H270V102H268V42H270Z" class="f1 s3" stroke-width="2"/>
+    <text x="320" y="68" class="sv-tit f6" text-anchor="middle">desplazar</text><text x="320" y="90" class="sv-lbl f4" text-anchor="middle">n bits</text>
+    <line x1="372" y1="72" x2="388" y2="72" class="s4" stroke-width="2"/><polygon points="388,68 394,72 388,76" class="f4"/>
+    <path d="M396,40H496V42H498V102H496V104H396V102H394V42H396Z" class="f1 s3" stroke-width="2"/>
+    <text x="446" y="68" class="sv-tit f6" text-anchor="middle">+ punto cero</text><text x="446" y="90" class="sv-lbl f4" text-anchor="middle">sumar</text>
+    <line x1="498" y1="72" x2="514" y2="72" class="s4" stroke-width="2"/><polygon points="514,68 520,72 514,76" class="f4"/>
+    <path d="M522,40H622V42H624V102H622V104H522V102H520V42H522Z" class="fa1 sa3" stroke-width="2"/>
+    <text x="572" y="68" class="sv-tit f6" text-anchor="middle">saturar</text><text x="572" y="90" class="sv-lbl f4" text-anchor="middle">a int8</text>
+    <rect y="120" width="8" height="8" class="fa4" x="64"><animate attributeName="x" values="64;190;316;442;568" dur="5s" calcMode="discrete" repeatCount="indefinite"/></rect>
+    <text x="320" y="152" class="sv-lbl f4" text-anchor="middle">escala combinada ≈ M₀ / 2ⁿ</text>
+  </svg>
+  <figcaption><b>fig 2.3</b>El camino de un resultado: de la suma de productos al valor de 8 bits que pasa a la capa siguiente, sin una sola operación de coma flotante.</figcaption>
+</figure>
+
+<ol>
+  <li>PIE multiplica entradas y pesos de 8 bits y acumula en registros anchos.</li>
+  <li>Las escalas de entrada, peso y salida se combinan en un único factor. Ese factor se precalcula como <strong>un entero de 32 bits</strong> más <strong>un corrimiento de n bits</strong>: multiplicar por M₀ y correr n lugares a la derecha equivale a multiplicar por un número con coma.</li>
+  <li>Se suma el punto cero de la salida y se satura al rango de 8 bits. Si hay ReLU, se aplica en este mismo paso recortando.</li>
+</ol>
+
+<h2>¿Cuándo cuantizar?</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>PTQ · después de entrenar</th><th>QAT · durante el entrenamiento</th></tr></thead>
+  <tbody>
+    <tr><td><b>Cómo</b></td><td>Se toma el modelo terminado y se lo convierte, pasándole unas cientos de imágenes de muestra para medir los rangos de cada capa (calibración).</td><td>Se entrena simulando el redondeo a 8 bits, para que la red aprenda a convivir con él.</td></tr>
+    <tr><td><b>Costo</b></td><td>Minutos en una PC</td><td>Un reentrenamiento completo, con GPU</td></tr>
+    <tr><td><b>Pérdida típica</b></td><td>Del orden de 1 a 2 puntos de exactitud en redes estándar</td><td>Casi nula</td></tr>
+    <tr><td><b>Cuándo</b></td><td>Primera opción, casi siempre</td><td>Redes muy chicas o cuando PTQ pierde demasiado</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja analogia">
+  <h4>analogía · el guitarrista</h4>
+  <p>PTQ es cambiarle las cuerdas a la guitarra el día del concierto: si el instrumento es tolerante, suena bien; si es delicado, desafina. QAT es hacer que el músico ensaye desde el principio con esas cuerdas: el día del concierto ya ajustó la técnica.</p>
+</div>
+
+<h2>Otras tijeras</h2>
+
+<h3>Poda (pruning)</h3>
+<p>Consiste en eliminar pesos que aportan poco. Hay dos formas, y en un microcontrolador la diferencia es enorme:</p>
+
+<figure class="diagrama" data-titulo="fig-2.4">
+  <svg viewBox="0 0 640 256" role="img" aria-label="Poda no estructurada deja huecos dispersos; poda estructurada elimina filas enteras y deja una matriz densa más chica">
+    <defs><pattern id="d54n" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" class="f1"/><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern><pattern id="d54a" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" class="fa1"/><rect width="2" height="2" class="fa2"/><rect x="2" y="2" width="2" height="2" class="fa2"/></pattern></defs>
+    <text x="160" y="24" class="sv-tag f4" text-anchor="middle">NO ESTRUCTURADA</text><text x="480" y="24" class="sv-tag f4" text-anchor="middle">ESTRUCTURADA</text>
+    <path d="M60,36H260V38H262V222H260V224H60V222H58V38H60Z" class="f1 s3" stroke-width="2"/><path d="M380,36H580V38H582V222H580V224H380V222H378V38H380Z" class="f1 s3" stroke-width="2"/>
+    <rect x="78" y="48" width="24" height="24" class="f5"/>
+    <rect x="106" y="48" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="134" y="48" width="24" height="24" class="f5"/>
+    <rect x="162" y="48" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="190" y="48" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="218" y="48" width="24" height="24" class="f5"/>
+    <rect x="78" y="76" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="106" y="76" width="24" height="24" class="f5"/>
+    <rect x="134" y="76" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="162" y="76" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="190" y="76" width="24" height="24" class="f5"/>
+    <rect x="218" y="76" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="78" y="104" width="24" height="24" class="f5"/>
+    <rect x="106" y="104" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="134" y="104" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="162" y="104" width="24" height="24" class="f5"/>
+    <rect x="190" y="104" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="218" y="104" width="24" height="24" class="f5"/>
+    <rect x="78" y="132" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="106" y="132" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="134" y="132" width="24" height="24" class="f5"/>
+    <rect x="162" y="132" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="190" y="132" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="218" y="132" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="78" y="160" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="106" y="160" width="24" height="24" class="f5"/>
+    <rect x="134" y="160" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="162" y="160" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="190" y="160" width="24" height="24" class="f5"/>
+    <rect x="218" y="160" width="24" height="24" class="f5"/>
+    <rect x="78" y="188" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="106" y="188" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="134" y="188" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="162" y="188" width="24" height="24" class="f5"/>
+    <rect x="190" y="188" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="218" y="188" width="24" height="24" fill="url(#d54n)"/>
+    <rect x="398" y="48" width="24" height="24" class="f5"/>
+    <rect x="426" y="48" width="24" height="24" class="f5"/>
+    <rect x="454" y="48" width="24" height="24" class="f5"/>
+    <rect x="482" y="48" width="24" height="24" class="f5"/>
+    <rect x="510" y="48" width="24" height="24" class="f5"/>
+    <rect x="538" y="48" width="24" height="24" class="f5"/>
+    <rect x="386" y="74" width="188" height="28" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
+    <rect x="398" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="426" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="454" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="482" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="510" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="538" y="76" width="24" height="24" fill="url(#d54a)"/>
+    <text x="592" y="93" class="sv-lbl fa3" text-anchor="start">fuera</text>
+    <rect x="398" y="104" width="24" height="24" class="f5"/>
+    <rect x="426" y="104" width="24" height="24" class="f5"/>
+    <rect x="454" y="104" width="24" height="24" class="f5"/>
+    <rect x="482" y="104" width="24" height="24" class="f5"/>
+    <rect x="510" y="104" width="24" height="24" class="f5"/>
+    <rect x="538" y="104" width="24" height="24" class="f5"/>
+    <rect x="398" y="132" width="24" height="24" class="f5"/>
+    <rect x="426" y="132" width="24" height="24" class="f5"/>
+    <rect x="454" y="132" width="24" height="24" class="f5"/>
+    <rect x="482" y="132" width="24" height="24" class="f5"/>
+    <rect x="510" y="132" width="24" height="24" class="f5"/>
+    <rect x="538" y="132" width="24" height="24" class="f5"/>
+    <rect x="386" y="158" width="188" height="28" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
+    <rect x="398" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="426" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="454" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="482" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="510" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <rect x="538" y="160" width="24" height="24" fill="url(#d54a)"/>
+    <text x="592" y="177" class="sv-lbl fa3" text-anchor="start">fuera</text>
+    <rect x="398" y="188" width="24" height="24" class="f5"/>
+    <rect x="426" y="188" width="24" height="24" class="f5"/>
+    <rect x="454" y="188" width="24" height="24" class="f5"/>
+    <rect x="482" y="188" width="24" height="24" class="f5"/>
+    <rect x="510" y="188" width="24" height="24" class="f5"/>
+    <rect x="538" y="188" width="24" height="24" class="f5"/>
+    <text x="160" y="248" class="sv-lbl f4" text-anchor="middle">huecos sueltos</text><text x="480" y="248" class="sv-lbl f6" text-anchor="middle">filas enteras fuera</text>
+  </svg>
+  <figcaption><b>fig 2.4</b>Izquierda: ceros dispersos. Derecha: se eliminan filtros completos.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>No estructurada:</strong> pone en cero pesos sueltos. Aunque sean el 80 %, la matriz sigue teniendo el mismo tamaño, y para aprovechar los ceros habría que guardar índices y saltar de un lado a otro: justo lo que PIE y la caché hacen mal.</li>
+  <li><strong>Estructurada:</strong> elimina filtros o canales enteros. La capa queda más angosta pero densa, y todo lo optimizado sigue funcionando. Es la que sirve en microcontroladores.</li>
+</ul>
+
+<h3>Destilación</h3>
+<p>Un modelo grande y preciso (el <strong>profesor</strong>) entrena a uno chico (el <strong>alumno</strong>). El alumno no aprende solo la respuesta correcta sino las “dudas” del profesor: que un 7 se parece un poco a un 1 y nada a un 0. Esa información extra le permite rendir más de lo que lograría solo.</p>
+
+<h3>Fusión de capas</h3>
+<p>Durante el entrenamiento es común encadenar convolución → <strong>batch normalization</strong> → ReLU. En inferencia, los parámetros de la normalización son constantes, así que se pueden <strong>absorber algebraicamente</strong> en los pesos y el sesgo de la convolución. La capa de normalización desaparece: cero memoria y cero ciclos. La ReLU se aplica en la saturación final (fig 2.3).</p>
+
+<div class="caja analogia">
+  <h4>analogía · el equivalente de Thévenin</h4>
+  <p>En lugar de dejar tres etapas en cascada, calculás el circuito equivalente y soldás una sola resistencia. El comportamiento es el mismo y la placa queda más simple.</p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>int8 da 4× menos memoria y ancho de banda, habilita PIE y gasta mucha menos energía.</li>
+    <li>real = escala × (entero − punto cero). Pesos: simétrica y por canal. Activaciones: asimétrica.</li>
+    <li>La inferencia entera se resuelve con multiplicaciones, corrimientos y saturación: sin coma flotante.</li>
+    <li>Empezá con PTQ; si pierde demasiado, QAT.</li>
+    <li>En MCU sirve la poda estructurada, la destilación y la fusión de capas.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Podaste el 70 % de los pesos de una red poniéndolos en cero, uno por uno. En el ESP32-S3, ¿qué esperás?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Los ceros sueltos siguen ocupando lugar y se siguen multiplicando, salvo que uses formatos dispersos que el hardware no acelera.">Que sea un 70 % más rápida.</button>
+    <button type="button" data-por-que="Exacto: con poda no estructurada la matriz sigue siendo del mismo tamaño y PIE hace las mismas cuentas. Para ganar velocidad hay que podar filtros enteros.">Que casi no cambie el tiempo, salvo que comprimas o podes de forma estructurada.</button>
+    <button type="button" data-por-que="La poda no cambia el formato numérico; sigue siendo int8.">Que ya no haga falta cuantizar.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Jacob, B. et al. (2018). <em>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</em>. CVPR. <a href="https://arxiv.org/abs/1712.05877">arxiv.org/abs/1712.05877</a></li>
+    <li>Krishnamoorthi, R. (2018). <em>Quantizing deep convolutional networks for efficient inference: A whitepaper</em>. <a href="https://arxiv.org/abs/1806.08342">arxiv.org/abs/1806.08342</a></li>
+    <li>Nagel, M. et al. (2021). <em>A White Paper on Neural Network Quantization</em>. <a href="https://arxiv.org/abs/2106.08295">arxiv.org/abs/2106.08295</a></li>
+    <li>Horowitz, M. (2014). <em>Computing’s energy problem (and what we can do about it)</em>. ISSCC. <a href="https://doi.org/10.1109/ISSCC.2014.6757323">doi.org/10.1109/ISSCC.2014.6757323</a></li>
+    <li>Hinton, G., Vinyals, O. y Dean, J. (2015). <em>Distilling the Knowledge in a Neural Network</em>. <a href="https://arxiv.org/abs/1503.02531">arxiv.org/abs/1503.02531</a></li>
+    <li>Han, S., Mao, H. y Dally, W. (2016). <em>Deep Compression: Compressing Deep Neural Networks with Pruning, Trained Quantization and Huffman Coding</em>. <a href="https://arxiv.org/abs/1510.00149">arxiv.org/abs/1510.00149</a></li>
+    <li>LiteRT (TensorFlow Lite). <em>Post-training quantization</em> y <em>especificación de cuantización int8</em>. <a href="https://ai.google.dev/edge/litert/models/post_training_quantization">ai.google.dev/edge/litert/models/post_training_quantization</a></li>
+  </ol>
+  <p class="nota">Las cifras de energía por operación son las de Horowitz (proceso de 45 nm) y sirven como orden de magnitud; en el ESP32-S3 los valores absolutos son otros, pero la proporción es similar.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit · tomo-02 · nivel-02</footer>
+</body>
+</html>

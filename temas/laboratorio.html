@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio · PixelMotor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/site.js" defer></script>
+<script src="../assets/pixelmotor.js" defer></script>
+<script src="../assets/escenas-lab.js" defer></script>
+</head>
+<body data-raiz="../">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="lab">laboratorio · pixelmotor</span>
+  <h1>Laboratorio de fenómenos eléctricos</h1>
+  <p class="bajada">Cinco figuras animadas con el motor retro del sitio, que mezcla tres épocas en un mismo cuadro: 8 bit para el texto, 16 bit para las figuras y 32 bit solo donde hace falta detalle. Debajo de cada una podés pausar la animación.</p>
+</header>
+
+<h2>Carga de un capacitor</h2>
+
+<p>La llave cierra y el capacitor se carga a través del resistor: la <strong>tensión sube</strong> de a poco mientras la <strong>corriente decae</strong>. Los puntitos que viajan por los cables son la corriente convencional.</p>
+
+<figure class="diagrama" data-titulo="lab-1">
+  <canvas data-motor="lab-rc" role="img" aria-label="Circuito con fuente, llave, resistor y capacitor; la corriente animada decae y el osciloscopio muestra la tensión subiendo"></canvas>
+  <figcaption><b>lab 1</b>En el recuadro ampliado (32 bit) las placas del capacitor se van poblando de cargas. Mirá cómo la curva de corriente cae a cero justo cuando la tensión llega a los 9 V: sin diferencia de tensión no hay corriente.</figcaption>
+</figure>
+
+<h2>Alterna por un LED</h2>
+
+<p>Con corriente alterna los puntitos van y vienen: la corriente <strong>cambia de sentido</strong> dos veces por ciclo. El LED solo deja pasar un semiciclo, así que <strong>parpadea</strong> al ritmo de la red.</p>
+
+<figure class="diagrama" data-titulo="lab-2">
+  <canvas data-motor="lab-ac" role="img" aria-label="Fuente de alterna con resistor y LED; la corriente cambia de sentido y el LED brilla medio ciclo"></canvas>
+  <figcaption><b>lab 2</b>Seguí los puntitos cuando cruzan por cero: ahí cambian de sentido, y el LED se apaga en el semiciclo que bloquea. El recuadro punteado sube a 32 bit: es donde más resolución aporta.</figcaption>
+</figure>
+
+<h2>Campo de un dipolo</h2>
+
+<p>El campo eléctrico <strong>sale de la carga positiva y entra en la negativa</strong>. Cerca de cada carga las flechas son fuertes; lejos, se debilitan.</p>
+
+<figure class="diagrama" data-titulo="lab-3">
+  <canvas data-motor="lab-campo" role="img" aria-label="Campo eléctrico de dos cargas: las flechas salen de la positiva y entran en la negativa"></canvas>
+  <figcaption><b>lab 3</b>Fijate en el punto medio entre las cargas: ahí los dos aportes suman y el campo es más intenso. Cerca de cada carga (32 bit) las flechas se ven más densas; lejos alcanza con la grilla de 16 bit.</figcaption>
+</figure>
+
+<h2>Señales en el osciloscopio</h2>
+
+<p>El mismo instrumento, tres personalidades: la <strong>senoide</strong> sube y baja suave, la <strong>cuadrada</strong> salta entre extremos y la <strong>PWM</strong> prende y apaga con un ciclo de trabajo fijo.</p>
+
+<figure class="diagrama" data-titulo="lab-4">
+  <canvas data-motor="lab-senales" role="img" aria-label="Osciloscopio con barrido que muestra una senoide, una cuadrada y una PWM"></canvas>
+  <figcaption><b>lab 4</b>El barrido dibuja de izquierda a derecha y vuelve a empezar: es el mismo truco de los osciloscopios de verdad. La grilla es de 16 bit y las trazas de 32 bit: más resolución solo donde hace falta.</figcaption>
+</figure>
+
+<h2>Tres épocas, un solo circuito</h2>
+
+<p>La resolución mixta funciona como tres capas transparentes alineadas: los píxeles gordos de <strong>8 bit</strong> contienen exactamente 2×2 de 16 bit y 4×4 de 32 bit, así que encajan sin costuras. Se sube de resolución <strong>solo donde hace falta detalle</strong>.</p>
+
+<figure class="diagrama" data-titulo="lab-5">
+  <canvas data-motor="lab-epocas" role="img" aria-label="Un circuito con fuente, resistor y LED: texto en 8 bit, cables y componentes en 16 bit y el LED en una zona de 32 bit"></canvas>
+  <figcaption><b>lab 5</b>Los textos son de 8 bit, los cables y componentes de 16 bit y el LED, dentro del recuadro punteado, se dibuja en 32 bit. Las tres épocas conviven en el mismo cuadro, cada una en su capa.</figcaption>
+</figure>
+
+</main>
+<footer class="pie">learning-in-8-bit · laboratorio</footer>
+</body>
+</html>

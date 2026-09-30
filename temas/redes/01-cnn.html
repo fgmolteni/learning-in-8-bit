@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1 · ¿Qué es una CNN?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="redes" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01 · 20 min de lectura</span>
+  <h1>¿Qué es una CNN?</h1>
+  <p class="bajada">Una red neuronal convolucional es, en el fondo, una cadena de filtros como los que ya conocés de procesamiento de señales. La diferencia es que los coeficientes no los diseñás vos: se aprenden.</p>
+</header>
+
+<figure class="diagrama" data-titulo="fig-1.0 · la red completa">
+  <canvas data-widget="redcnn" width="640" height="224"></canvas>
+  <figcaption><b>fig 1.0</b>Vista general. Un dígito entra por la izquierda, atraviesa capas de filtros que lo transforman en “mapas” cada vez más chicos y abstractos, y termina en diez neuronas: la más brillante es la respuesta. Los mapas se calculan de verdad con filtros de bordes; la parte densa es ilustrativa.</figcaption>
+</figure>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar la convolución como un filtro FIR en dos dimensiones.</li>
+    <li>Describir qué hacen ReLU, el pooling, la capa densa y softmax.</li>
+    <li>Calcular los <strong>parámetros</strong> y las <strong>operaciones MAC</strong> de una capa.</li>
+    <li>Entender por qué las convoluciones <strong>separables</strong> (MobileNet) son las favoritas en microcontroladores.</li>
+  </ul>
+</div>
+
+<h2>Una imagen es una tabla de números</h2>
+
+<p>Para el chip, una foto no es una foto: es una grilla de <strong>alto × ancho</strong> números. En escala de grises cada píxel es un byte, de 0 (negro) a 255 (blanco). En color hay tres grillas superpuestas, una por canal (rojo, verde y azul). Esa “profundidad” se llama <strong>canales</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-1.1">
+  <canvas data-widget="pixeles" width="640" height="272"></canvas>
+  <figcaption><b>fig 1.1</b>Pasá el mouse por la imagen de la izquierda: a la derecha se marca el número que realmente guarda la memoria. Una imagen de 96 × 96 en grises ocupa 9216 bytes.</figcaption>
+</figure>
+
+<h2>Convolución: un filtro FIR que se desliza</h2>
+
+<p>Si alguna vez implementaste un filtro FIR, ya sabés hacer una convolución: tomás una ventana de muestras, las multiplicás por coeficientes y sumás. En una imagen, la ventana es un cuadradito (típicamente de <strong>3 × 3</strong>) y los coeficientes forman el <strong>kernel</strong> o <strong>filtro</strong>. El kernel se desliza por toda la imagen y en cada posición produce un número. El conjunto de números resultante es un <strong>mapa de características</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-1.2 · interactivo">
+  <canvas data-widget="conv" width="640" height="288"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.2</b>El recuadro recorre la imagen; en cada posición se hacen 9 multiplicaciones y una suma. En la salida, las celdas sólidas son valores positivos y las tramadas, negativos. Probá otros filtros: el de bordes verticales “se enciende” en los lados de la casa.</figcaption>
+</figure>
+
+<p>Tres parámetros controlan el recorrido:</p>
+<ul>
+  <li><strong>Tamaño del kernel:</strong> 3 × 3 es lo más común; 5 × 5 o 7 × 7 ven más contexto pero cuestan más.</li>
+  <li><strong>Paso (stride):</strong> cuántos píxeles avanza la ventana. Con paso 2 la salida queda de la mitad de alto y de ancho: filtra y submuestrea a la vez, como un decimador.</li>
+  <li><strong>Relleno (padding):</strong> si se agregan ceros alrededor, la salida conserva el tamaño de la entrada; si no, se achica (una imagen de 10 × 10 con kernel 3 × 3 da 8 × 8).</li>
+</ul>
+
+<div class="caja dato">
+  <h4>dato · en varios canales</h4>
+  <p>Con una entrada de varios canales, el kernel también tiene varios canales: un filtro de 3 × 3 sobre 32 canales tiene 3 × 3 × 32 = 288 coeficientes y cada punto de salida es la suma de 288 productos. Una capa aplica muchos filtros distintos (por ejemplo, 64), y cada uno produce su propio mapa: la salida tiene 64 canales.</p>
+</div>
+
+<h3>Qué aprenden los filtros</h3>
+<p>Nadie les dice a los filtros qué buscar: se ajustan solos durante el entrenamiento. Aun así, aparece un patrón muy consistente:</p>
+<ul>
+  <li><strong>Primeras capas:</strong> filtros parecidos a detectores de bordes y gradientes (tipo Sobel), en distintas orientaciones.</li>
+  <li><strong>Capas intermedias:</strong> combinan bordes en esquinas, curvas y texturas.</li>
+  <li><strong>Capas profundas:</strong> responden a partes y objetos: un ojo, una rueda, la silueta de una persona.</li>
+</ul>
+
+<div class="caja analogia">
+  <h4>analogía · la sonda de EMI</h4>
+  <p>Imaginá que barrés una placa con una sonda de campo cercano de 3 × 3 mm. En cada punto anotás cuánto se parece lo que medís a cierto patrón. Al final tenés un mapa de dónde está ese patrón en la placa. Cada filtro de una capa es una sonda que busca un patrón distinto.</p>
+</div>
+
+<h2>ReLU: la no linealidad</h2>
+
+<p>Si solo encadenaras convoluciones, toda la red sería equivalente a <strong>una sola</strong> transformación lineal, por más capas que tuviera. Para que pueda aprender cosas complejas, después de cada convolución se aplica una función no lineal. La más usada es <strong>ReLU</strong>: deja pasar los positivos y convierte los negativos en cero.</p>
+
+<figure class="diagrama" data-titulo="fig-1.3">
+  <svg viewBox="0 0 640 216" role="img" aria-label="Gráficos de ReLU, que recorta los negativos a cero, y ReLU6, que además recorta arriba de 6">
+    <defs><pattern id="dza-43" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern><pattern id="daa-43" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="fa2"/><rect x="2" y="2" width="2" height="2" class="fa2"/></pattern></defs><text x="160" y="18" class="sv-tit f6" text-anchor="middle">ReLU</text><text x="480" y="18" class="sv-tit f6" text-anchor="middle">ReLU6</text><rect x="16" y="28" width="288" height="160" class="f1 s3" stroke-width="2"/><rect x="15" y="27" width="2" height="2" class="f0"/><rect x="303" y="27" width="2" height="2" class="f0"/><rect x="15" y="187" width="2" height="2" class="f0"/><rect x="303" y="187" width="2" height="2" class="f0"/><rect x="336" y="28" width="288" height="160" class="f1 s3" stroke-width="2"/><rect x="335" y="27" width="2" height="2" class="f0"/><rect x="623" y="27" width="2" height="2" class="f0"/><rect x="335" y="187" width="2" height="2" class="f0"/><rect x="623" y="187" width="2" height="2" class="f0"/><line x1="32" y1="152" x2="288" y2="152" class="s4" stroke-width="2"/><line x1="160" y1="48" x2="160" y2="152" class="s4" stroke-width="2"/><polyline points="32,152 160,152 272,40" class="fn s6" stroke-width="2"/><rect width="6" height="6" class="fa4"><animate attributeName="x" values="61;93;125;157;189;221;253;269" dur="4.8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="149;149;149;149;117;85;53;37" dur="4.8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><line x1="352" y1="152" x2="608" y2="152" class="s4" stroke-width="2"/><line x1="480" y1="48" x2="480" y2="152" class="s4" stroke-width="2"/><rect x="544" y="52" width="64" height="36" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="576" y="46" class="sv-lbl fa3" font-weight="600" text-anchor="middle">recorte</text><rect x="546" y="54" width="60" height="32" class="" fill="url(#daa-43)"/><polyline points="352,152 480,152 544,88 608,88" class="fn s6" stroke-width="2"/><line x1="480" y1="88" x2="544" y2="88" class="s3" stroke-width="2" stroke-dasharray="4 4"/><text x="472" y="93" class="sv-lbl f6" text-anchor="end">6</text><rect width="6" height="6" class="fa4"><animate attributeName="x" values="381;413;445;477;509;541;573;589" dur="4.8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="149;149;149;149;117;85;85;85" dur="4.8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><text x="160" y="208" class="sv-lbl f4" text-anchor="middle">sin techo</text><text x="480" y="208" class="sv-lbl f6" text-anchor="middle">techo en 6</text>
+  </svg>
+  <figcaption><b>fig 1.3</b>ReLU y ReLU6. El punto brillante recorre la entrada: ReLU deja pasar los positivos sin techo; ReLU6 además corta en 6, lo que da un rango conocido. Para un microcontrolador, ReLU es casi gratis: comparar con cero.</figcaption>
+</figure>
+
+<p>La variante <strong>ReLU6</strong> además recorta todo lo que pase de 6. ¿Para qué? Cuando la red se lleve a enteros de 8 bits (<a href="02-cuantizacion.html">nivel 2</a>), hay solo 256 escalones para representar los valores. Si el rango no tiene techo, un valor aislado muy grande obliga a estirar los escalones y se pierde resolución para todos los demás. Con el techo en 6, el rango es fijo y conocido.</p>
+
+<div class="caja analogia">
+  <h4>analogía · el zener</h4>
+  <p>ReLU6 es como poner un zener de 6 V en una entrada: por debajo no toca nada, por encima recorta. Así el conversor que viene después sabe exactamente qué rango tiene que cubrir.</p>
+</div>
+
+<h2>Pooling: resumir</h2>
+
+<p>El <strong>pooling</strong> achica los mapas. Toma ventanas (por ejemplo, de 2 × 2) y se queda con un solo valor por ventana: el máximo (<strong>max pooling</strong>) o el promedio (<strong>average pooling</strong>). Con ventanas de 2 × 2 y paso 2, el mapa queda con la cuarta parte de los valores.</p>
+
+<figure class="diagrama" data-titulo="fig-1.4">
+  <svg viewBox="0 0 640 216" role="img" aria-label="Max pooling de 2 por 2: un mapa de 4 por 4 se reduce a 2 por 2 quedándose con el máximo de cada cuadrante">
+    <defs><pattern id="dza-44" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern><pattern id="daa-44" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="fa2"/><rect x="2" y="2" width="2" height="2" class="fa2"/></pattern></defs><text x="192" y="22" class="sv-tit f6" text-anchor="middle">Entrada 4×4</text><text x="448" y="22" class="sv-tit f6" text-anchor="middle">Salida 2×2</text><rect x="112" y="40" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="132" y="65" class="sv-lbl f4" text-anchor="middle">1</text><rect x="152" y="40" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="172" y="65" class="sv-lbl f4" text-anchor="middle">3</text><rect x="192" y="40" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="212" y="65" class="sv-lbl f4" text-anchor="middle">2</text><rect x="232" y="40" width="40" height="40" class="f1 s3" stroke-width="2"/><rect x="236" y="44" width="32" height="32" class="" fill="url(#dza-44)"/><text x="252" y="65" class="sv-lbl f4" text-anchor="middle">0</text><rect x="112" y="80" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="132" y="105" class="sv-lbl f4" text-anchor="middle">4</text><rect x="152" y="80" width="40" height="40" class="fa1 sa3" stroke-width="2"/><text x="172" y="105" class="sv-lbl f6" text-anchor="middle" font-weight="600">8</text><rect x="192" y="80" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="212" y="105" class="sv-lbl f4" text-anchor="middle">1</text><rect x="232" y="80" width="40" height="40" class="fa1 sa3" stroke-width="2"/><text x="252" y="105" class="sv-lbl f6" text-anchor="middle" font-weight="600">5</text><rect x="112" y="120" width="40" height="40" class="f1 s3" stroke-width="2"/><rect x="116" y="124" width="32" height="32" class="" fill="url(#dza-44)"/><text x="132" y="145" class="sv-lbl f4" text-anchor="middle">0</text><rect x="152" y="120" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="172" y="145" class="sv-lbl f4" text-anchor="middle">2</text><rect x="192" y="120" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="212" y="145" class="sv-lbl f4" text-anchor="middle">1</text><rect x="232" y="120" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="145" class="sv-lbl f4" text-anchor="middle">1</text><rect x="112" y="160" width="40" height="40" class="fa1 sa3" stroke-width="2"/><text x="132" y="185" class="sv-lbl f6" text-anchor="middle" font-weight="600">7</text><rect x="152" y="160" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="172" y="185" class="sv-lbl f4" text-anchor="middle">1</text><rect x="192" y="160" width="40" height="40" class="f1 s3" stroke-width="2"/><text x="212" y="185" class="sv-lbl f4" text-anchor="middle">3</text><rect x="232" y="160" width="40" height="40" class="fa1 sa3" stroke-width="2"/><text x="252" y="185" class="sv-lbl f6" text-anchor="middle" font-weight="600">6</text><line x1="292" y1="120" x2="342" y2="120" class="s4" stroke-width="2"/><rect x="342" y="112" width="2" height="16" class="f4"/><rect x="344" y="114" width="2" height="12" class="f4"/><rect x="346" y="116" width="2" height="8" class="f4"/><rect x="348" y="118" width="2" height="4" class="f4"/><rect x="350" y="119" width="2" height="2" class="f4"/><text x="322" y="104" class="sv-lbl f4" text-anchor="middle">máx</text><rect x="384" y="56" width="64" height="64" class="fa1 sa3" stroke-width="2"/><text x="416" y="96" class="sv-tit f6" text-anchor="middle" font-size="20">8</text><rect x="448" y="56" width="64" height="64" class="fa1 sa3" stroke-width="2"/><text x="480" y="96" class="sv-tit f6" text-anchor="middle" font-size="20">5</text><rect x="384" y="120" width="64" height="64" class="fa1 sa3" stroke-width="2"/><text x="416" y="160" class="sv-tit f6" text-anchor="middle" font-size="20">7</text><rect x="448" y="120" width="64" height="64" class="fa1 sa3" stroke-width="2"/><text x="480" y="160" class="sv-tit f6" text-anchor="middle" font-size="20">6</text><rect width="80" height="80" class="fn sa4" stroke-width="2"><animate attributeName="x" values="112;192;112;192" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="40;40;120;120" dur="4s" calcMode="discrete" repeatCount="indefinite"/></rect><rect width="64" height="64" class="fn sa4" stroke-width="2"><animate attributeName="x" values="384;448;384;448" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="56;56;120;120" dur="4s" calcMode="discrete" repeatCount="indefinite"/></rect>
+  </svg>
+  <figcaption><b>fig 1.4</b>Max pooling 2 × 2: de cada cuadrante sobrevive el valor más alto. Si un rasgo apareció fuerte en algún lugar de la ventana, la señal pasa.</figcaption>
+</figure>
+
+<p>Además de ahorrar memoria y cálculo, el pooling da cierta tolerancia a pequeños corrimientos: si el borde se movió un píxel, el máximo de la ventana probablemente sea el mismo. Las redes modernas suelen terminar con un <strong>global average pooling</strong>, que reduce cada mapa entero a un solo número.</p>
+
+<h2>El final: capa densa y softmax</h2>
+
+<p>Después de varias rondas de convolución y pooling quedan pocos valores muy informativos. Se “aplanan” en una lista y pasan por una <strong>capa densa</strong>: cada neurona de salida multiplica <strong>todas</strong> las entradas por sus pesos y suma. Si hay 10 clases (los dígitos del 0 al 9), hay 10 neuronas de salida.</p>
+
+<p>Por último, <strong>softmax</strong> convierte esos 10 números en probabilidades que suman 1. El de mayor probabilidad es la respuesta. En un microcontrolador la exponencial que usa softmax se aproxima con tablas precalculadas o con aritmética de punto fijo.</p>
+
+<h2>Cuánto cuesta una capa</h2>
+
+<p>Para saber si una red entra y corre a tiempo en el chip hay que contar dos cosas por capa:</p>
+<ul>
+  <li><strong>Parámetros</strong> (memoria): cada filtro tiene kernel × kernel × canales de entrada coeficientes, más un sesgo. Se multiplica por la cantidad de filtros (canales de salida).</li>
+  <li><strong>MACs</strong> (tiempo): cada punto de la salida necesita kernel × kernel × canales de entrada multiplicaciones-acumulaciones. Se multiplica por alto × ancho de la salida y por los canales de salida.</li>
+</ul>
+
+<div class="caja dato">
+  <h4>ejemplo resuelto</h4>
+  <p>Entrada 28 × 28 con 32 canales, salida 28 × 28 con 64 canales, kernel 3 × 3.</p>
+  <p><strong>Parámetros:</strong> (3 × 3 × 32 + 1) × 64 = <strong>18 496</strong>, unos 18,5 KB en int8.</p>
+  <p><strong>MACs:</strong> 28 × 28 × 64 × (3 × 3 × 32) ≈ <strong>14,5 millones</strong>. Con PIE a 240 MHz y 16 MAC por ciclo, el piso teórico es de unos 3,8 ms. En la práctica, bastante más.</p>
+</div>
+
+<h2>El truco de MobileNet: separar</h2>
+
+<p>La convolución estándar hace dos trabajos a la vez: mira el <strong>vecindario espacial</strong> (los 3 × 3) y <strong>mezcla canales</strong> (los 32 de entrada). MobileNet los separa en dos pasos baratos:</p>
+<ol>
+  <li><strong>Depthwise:</strong> un filtro 3 × 3 por canal, cada canal por su lado, sin mezclar.</li>
+  <li><strong>Pointwise:</strong> una convolución de 1 × 1 que solo mezcla canales en cada píxel.</li>
+</ol>
+<p>El costo relativo queda en 1/(canales de salida) + 1/(kernel × kernel). Con kernel 3 × 3 y 64 canales de salida: 1/64 + 1/9 ≈ 0,13, es decir, <strong>unas 8 veces menos cálculo</strong>, con una pérdida de exactitud pequeña.</p>
+
+<figure class="diagrama" data-titulo="fig-1.5 · interactivo">
+  <canvas data-widget="separable" width="640" height="262"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.5</b>Una capa de 28 × 28 con 32 canales de entrada y 64 de salida. En la estándar, cada filtro mira los 32 canales a la vez. En la separable, la etapa 1 filtra cada canal por su lado y la etapa 2 los mezcla con un 1 × 1. Alterná los modos y compará los MACs.</figcaption>
+</figure>
+
+<figure class="diagrama" data-titulo="fig-1.6 · calculadora">
+  <canvas data-widget="macs" width="640" height="224"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.6</b>Mové los controles y mirá cómo crecen los MACs. Notá que duplicar los canales de entrada <em>y</em> de salida multiplica por cuatro el costo de la convolución estándar. “Separable” es depthwise + pointwise. El tiempo real suele ser varias veces mayor que el techo teórico.</figcaption>
+</figure>
+
+<div class="caja analogia">
+  <h4>analogía · moler y mezclar</h4>
+  <p>La convolución estándar es una máquina gigante que muele y mezcla 64 tipos de café a la vez, con una cuchilla especial para cada combinación. La separable muele cada origen por su lado con un molinillo simple y después vuelca todo en una mezcladora. El café sale casi igual, pero la maquinaria es mucho más chica.</p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Convolución = filtro FIR 2D que se desliza; sus coeficientes se aprenden.</li>
+    <li>ReLU agrega no linealidad; ReLU6 además acota el rango, lo que ayuda al pasar a 8 bits.</li>
+    <li>El pooling resume; la capa densa y softmax deciden la clase.</li>
+    <li>MACs = alto × ancho × canales de salida × (k × k × canales de entrada). Es la cuenta que decide el tiempo.</li>
+    <li>Las convoluciones separables cuestan ~8 veces menos: por eso MobileNet domina en microcontroladores.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Si en una capa estándar duplicás la resolución de la entrada (el doble de alto y el doble de ancho), sin cambiar nada más, ¿cuánto crecen los MACs?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Crecen alto y ancho a la vez, así que el efecto se multiplica.">El doble.</button>
+    <button type="button" data-por-que="Los parámetros no cambian con la resolución, pero los MACs sí.">No cambian.</button>
+    <button type="button" data-por-que="Hay el doble de filas y el doble de columnas de salida: 2 × 2 = 4 veces más puntos, cada uno con el mismo costo.">Cuatro veces.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>LeCun, Y., Bengio, Y. y Hinton, G. (2015). <em>Deep learning</em>. Nature 521, 436–444. <a href="https://www.nature.com/articles/nature14539">nature.com/articles/nature14539</a></li>
+    <li>Howard, A. G. et al. (2017). <em>MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications</em>. <a href="https://arxiv.org/abs/1704.04861">arxiv.org/abs/1704.04861</a></li>
+    <li>Sandler, M. et al. (2018). <em>MobileNetV2: Inverted Residuals and Linear Bottlenecks</em>. <a href="https://arxiv.org/abs/1801.04381">arxiv.org/abs/1801.04381</a></li>
+    <li>Jacob, B. et al. (2018). <em>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</em>. <a href="https://arxiv.org/abs/1712.05877">arxiv.org/abs/1712.05877</a></li>
+    <li>Zeiler, M. D. y Fergus, R. (2014). <em>Visualizing and Understanding Convolutional Networks</em>. ECCV. <a href="https://arxiv.org/abs/1311.2901">arxiv.org/abs/1311.2901</a></li>
+    <li>Stanford CS231n. <em>Convolutional Neural Networks for Visual Recognition — notas del curso</em>. <a href="https://cs231n.github.io/convolutional-networks/">cs231n.github.io/convolutional-networks</a></li>
+  </ol>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit · tomo-02 · nivel-01</footer>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# no publicar: material personal, notas internas y encargos
+ref/
+investigacion/
+GUIA.md
+DESPLIEGUE.md
+ENCARGO-*.md
+AGENTS.md

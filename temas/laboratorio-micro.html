@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio · PixelMicro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/site.js" defer></script>
+<script src="../assets/pixelmotor.js" defer></script>
+<script src="../assets/pixelmicro.js" defer></script>
+<script src="../assets/escenas-micro.js" defer></script>
+</head>
+<body data-raiz="../">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="lab">laboratorio · pixelmicro</span>
+  <h1>Laboratorio de microcontroladores</h1>
+  <p class="bajada">Cinco figuras animadas que muestran el interior del ESP32-S3: cómo el DMA mueve píxeles sin molestar a la CPU, qué pasa con un acierto o fallo de caché, cómo PIE multiplica de a dieciséis, el cableado entre la cámara y el chip, y las señales de la interfaz de video.</p>
+</header>
+
+<h2>Diagrama de bloques del ESP32-S3</h2>
+
+<p>Los píxeles de la cámara entran por la interfaz <strong>LCD_CAM</strong> y el <strong>GDMA</strong> (acceso directo a memoria) los deposita en la SRAM <strong>sin que ningún núcleo intervenga</strong>. Los cuadraditos brillantes son paquetes de datos viajando por esa ruta.</p>
+
+<figure class="diagrama" data-titulo="micro-1">
+  <canvas data-motor="micro-bloques" role="img" aria-label="Diagrama de bloques del ESP32-S3: los píxeles viajan de la cámara por LCD_CAM y GDMA hasta la SRAM sin CPU"></canvas>
+  <figcaption><b>micro 1</b>Bloques del ESP32-S3. La zona punteada es el dominio del DMA: los datos fluyen sin ocupar a la CPU. La caché con MMU da una ventana a la flash y la PSRAM externas por un bus SPI.</figcaption>
+</figure>
+
+<h2>Caché: acierto vs fallo</h2>
+
+<p>Cuando el núcleo pide un dato que <strong>ya está en la caché</strong>, lo obtiene en 1-2 ciclos (acierto). Si no está, tiene que ir a buscarlo a la <strong>PSRAM externa</strong>: la espera puede superar los 80 ciclos.</p>
+
+<figure class="diagrama" data-titulo="micro-2">
+  <canvas data-motor="micro-cache" role="img" aria-label="Un núcleo lee de la caché: acierto en 1-2 ciclos, fallo que busca en la PSRAM en decenas de ciclos"></canvas>
+  <figcaption><b>micro 2</b>Mirá el contador de ciclos: con un acierto (hit), el dato está listo casi de inmediato. Con un fallo (miss), la espera se multiplica. Por eso las bibliotecas optimizadas cuidan el orden de acceso a los datos.</figcaption>
+</figure>
+
+<h2>PIE: 16 MAC en paralelo</h2>
+
+<p>La extensión <strong>PIE</strong> agrega registros de 128 bits. En 128 bits entran <strong>16 valores de 8 bits</strong>, así que una sola instrucción puede hacer 16 multiplicaciones y acumulaciones (MAC) a la vez. Es lo que se llama <strong>SIMD</strong>: una instrucción, muchos datos.</p>
+
+<figure class="diagrama" data-titulo="micro-3">
+  <canvas data-motor="micro-pie" role="img" aria-label="Registro PIE de 128 bits partido en 16 valores de 8 bits haciendo 16 MAC en paralelo; lupa de 32 bits sobre los bits individuales"></canvas>
+  <figcaption><b>micro 3</b>El registro Q0 tiene los pesos, Q1 las entradas: una sola instrucción multiplica las 16 parejas y suma al acumulador. El recuadro ampliado (32 bit) muestra cada celda de 8 bits con su índice. Techo teórico: 240 M ciclos × 16 = 3840 MMAC/s por núcleo.</figcaption>
+</figure>
+
+<h2>Conexión OV2640 ↔ ESP32-S3</h2>
+
+<p>La cámara OV2640 se conecta al ESP32-S3 con un <strong>bus paralelo de 8 bits</strong> (D0–D7), tres señales de sincronismo (<strong>PCLK, VSYNC, HREF</strong>) y un bus <strong>SCCB</strong> (similar a I2C) para configuración.</p>
+
+<figure class="diagrama" data-titulo="micro-4">
+  <canvas data-motor="micro-pinout" role="img" aria-label="Diagrama de conexión entre la cámara OV2640 y el ESP32-S3: bus de datos D0-D7, señales PCLK, VSYNC, HREF y bus SCCB"></canvas>
+  <figcaption><b>micro 4</b>Las líneas sólidas en color de acento son el bus paralelo de 8 bits (D0–D7); las líneas punteadas neutras corresponden a sincronismo (PCLK marca el ritmo de cada píxel, HREF indica línea activa, VSYNC el inicio de cuadro); las líneas punteadas en acento son el bus serie SCCB para configurar la cámara.</figcaption>
+</figure>
+
+<h2>Cronograma de la interfaz de cámara</h2>
+
+<p>Así se ven las señales en un analizador lógico: <strong>VSYNC</strong> marca el inicio de cada cuadro, <strong>HREF</strong> indica cuándo hay una línea activa, <strong>PCLK</strong> marca el ritmo de cada píxel y <strong>D0–D7</strong> llevan el dato.</p>
+
+<figure class="diagrama" data-titulo="micro-5">
+  <canvas data-motor="micro-crono" role="img" aria-label="Cronograma animado de la interfaz de cámara: VSYNC, HREF, PCLK y datos D0-D7 como en un analizador lógico"></canvas>
+  <figcaption><b>micro 5</b>Fijate cómo PCLK solo pulsa cuando HREF está alto (línea activa). Durante VSYNC todo se detiene: es el blanqueo vertical entre cuadros. El LCD_CAM del ESP32-S3 lee los datos en cada flanco ascendente de PCLK.</figcaption>
+</figure>
+
+</main>
+<footer class="pie">learning-in-8-bit · laboratorio micro</footer>
+</body>
+</html>
