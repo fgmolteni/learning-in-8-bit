@@ -178,7 +178,7 @@ function widgetConv(cv) {
     const v = calc(i, j);
     const w = rotulo(g, "9 multiplicaciones + suma =", ox, 252, R(5));
     numero(g, `${+v.toFixed(2)}${relu ? " (ReLU)" : ""}`, ox + w + 10, 252, A(3));
-    rotulo(g, `posición ${paso + 1}/${M * M} · MACs acumulados: ${(paso + 1) * K * K}`, ox, 274, R(4));
+    rotulo(g, `posición ${paso + 1}/${M * M}, MACs acumulados: ${(paso + 1) * K * K}`, ox, 274, R(4));
   }
 
   function tick() {
@@ -237,11 +237,11 @@ function widgetQuant(cv) {
     const x0 = MG + 2, W2 = W - 2 * MG - 4;
     const px = (v) => x0 + ((v + maxAbs) / (2 * maxAbs)) * W2;
 
-    etiqueta(g, "PESOS · FLOAT32", MG, 16);
+    etiqueta(g, "PESOS FLOAT32", MG, 16);
     pesos.forEach((p) => { g.fillStyle = R(4); g.fillRect(Math.round(px(p)) - 1, 32, 2, 28); });
     base(g, MG, 62, W - 2 * MG);
 
-    etiqueta(g, `CUANTIZADOS · INT${bits}`, MG, 84, A(3));
+    etiqueta(g, `CUANTIZADOS A INT${bits}`, MG, 84, A(3));
     // escalones visibles
     const pasoVis = Math.max(1, Math.round(niveles / 64));
     g.fillStyle = R(2);
@@ -395,7 +395,7 @@ function widgetQuantCanal(cv) {
       usoTotal += usados;
       const err = f.w.reduce((s, v) => s + Math.abs(v - Math.max(-QMAX, Math.min(QMAX, Math.round(v / S))) * S), 0) / f.w.length;
       const y = 32 + i * 80;
-      rotulo(g, `FILTRO ${f.n} · pesos hasta ${coma(f.rango.toFixed(2))}`, MG, y, R(6));
+      rotulo(g, `FILTRO ${f.n}, pesos hasta ${coma(f.rango.toFixed(2))}`, MG, y, R(6));
       rotulo(g, `S = ${coma(S.toFixed(4))}`, W - MG, y, canal ? A(3) : R(5), "right");
       g.fillStyle = R(1); g.fillRect(MG, y + 14, bw, 24);
       tramado(g, MG, y + 14, bw, 24, R(3));                       // tramado neutro = escalones sin usar
@@ -473,7 +473,7 @@ function widgetFamilia(cv) {
       etiqueta(g, c.n.replace("ESP32-", "").replace("ESP", ""), x + (celda - 4) / 2, oy + 72, on ? A(3) : R(4), "center");
     });
     const c = CHIPS[sel];
-    titulo(g, `${c.n} · ${c.a}`, MG, 126, R(6));
+    titulo(g, `${c.n} (${c.a})`, MG, 126, R(6));
     rotulo(g, c.nota, MG, 152, R(5));
     barra(176, "RELOJ", c.mhz, 400, `${c.mhz} MHz`);
     barra(204, "NÚCLEOS", c.n_, 2, c.nuc);
@@ -531,8 +531,8 @@ function widgetSimd(cv) {
   function dibujar() {
     limpiar(g);
     const esc = Math.min(N, t), vec = Math.min(N, t * 16);
-    fila(16, "ESCALAR · 1 POR CICLO", esc, Math.min(t, N), 1);
-    fila(96, "PIE SIMD · 16 POR CICLO", vec, Math.min(t, N / 16), 16);
+    fila(16, "ESCALAR, 1 POR CICLO", esc, Math.min(t, N), 1);
+    fila(96, "PIE SIMD, 16 POR CICLO", vec, Math.min(t, N / 16), 16);
     const w = numero(g, "16x", MG, 192, A(3), "left", 28);
     rotulo(g, "menos ciclos: 64 → 4", MG + w + 12, 192, R(5));
   }
@@ -652,7 +652,7 @@ function widgetPresupuesto(cv) {
     const X = MG, Wb = W - 2 * MG, esc = Wb / 512, y = 40, h = 64;
     let x = X;
     const bloques = [...fijos, ...Object.values(opc).filter((o) => o.on)];
-    etiqueta(g, "SRAM INTERNA · 512 KB", MG, 16, R(5));
+    etiqueta(g, "SRAM INTERNA, 512 KB", MG, 16, R(5));
     bloques.forEach((b) => {
       const w = Math.round(b.kb * esc);
       caja(g, x, y, w - 4, h, "normal");
@@ -813,7 +813,7 @@ function widgetPixeles(cv) {
     limpiar(g);
     etiqueta(g, "LO QUE VES", x0, 16);
     img.forEach((f, i) => f.forEach((v, j) => { g.fillStyle = mezcla(R(0), R(6), v / 255); g.fillRect(x0 + j * c, y0 + i * c, c - 2, c - 2); }));
-    etiqueta(g, "LO QUE VE EL CHIP · 0-255", X, 16);
+    etiqueta(g, "LO QUE VE EL CHIP (0-255)", X, 16);
     img.forEach((f, i) => f.forEach((v, j) => {
       const sel = hover && hover[0] === i && hover[1] === j;
       if (sel) { g.fillStyle = A(1); g.fillRect(X + j * cc, y0 + i * c, cc - 2, c - 2); contorno(g, X + j * cc, y0 + i * c, cc - 2, c - 2, A(3)); }
@@ -974,7 +974,7 @@ function widgetBateria(cv) {
     g.fillStyle = A(3);
     g.fillRect(MG, y0 - 2, 160, 2); g.fillRect(176, y0 - h, 2, h); g.fillRect(176, y0 - h, 160, 2); g.fillRect(336, y0 - h, 2, h); g.fillRect(336, y0 - 2, W - MG - 336, 2);
     rotulo(g, `${p.sueno} µA`, MG + 8, y0 - 16, R(4));
-    rotulo(g, `${p.ma} mA · ${p.activo} ms`, 184, y0 - h - 12, R(5));
+    rotulo(g, `${p.ma} mA, ${p.activo} ms`, 184, y0 - h - 12, R(5));
   }
   const ctl = fig.querySelector(".controles");
   if (ctl) {

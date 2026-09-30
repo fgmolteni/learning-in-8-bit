@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 2 · Todo junto</title>
+<title>Nivel 2, Todo junto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -16,9 +16,9 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="02">nivel 02 · 18 min de lectura</span>
+  <span class="nivel-chip" data-n="02">nivel 02, 18 min de lectura</span>
   <h1>Todo junto</h1>
-  <p class="bajada">Un sistema de visión no es solo la red neuronal. Es una cadena: la cámara captura, alguien prepara la imagen, la red decide y el sistema actúa. En este nivel armamos la cadena completa, miramos casos reales y cerramos con cómo elegir el chip.</p>
+  <p class="bajada">Un sistema de visión es más que la red neuronal: es una cadena en la que la cámara captura, alguien prepara la imagen, la red decide y el sistema actúa. En este nivel armamos la cadena completa, miramos casos reales y cerramos con cómo elegir el chip.</p>
 </header>
 
 <div class="caja objetivos">
@@ -35,19 +35,19 @@
 
 <figure class="diagrama" data-titulo="fig-2.1">
   <svg viewBox="0 0 640 184" role="img" aria-label="Cadena de visión: captura por DMA, preproceso, inferencia y decisión">
-    <text x="400" y="24" class="sv-tag fa3" text-anchor="middle">AQUI SE VA EL TIEMPO</text>
+    <text x="400" y="24" class="sv-tag fa3" text-anchor="middle">AQUÍ SE VA EL TIEMPO</text>
     <path d="M332,30H468V32H470V118H468V120H332V118H330V32H332Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
     <path d="M18,40H142V42H144V110H142V112H18V110H16V42H18Z" class="f1 s3" stroke-width="2"/>
-    <text x="80" y="64" class="sv-tit f6" text-anchor="middle">1 · Captura</text><text x="80" y="86" class="sv-lbl f4" text-anchor="middle">cámara -> DMA</text><text x="80" y="102" class="sv-lbl f4" text-anchor="middle">CPU: 0 %</text>
+    <text x="80" y="64" class="sv-tit f6" text-anchor="middle">1. Captura</text><text x="80" y="86" class="sv-lbl f4" text-anchor="middle">cámara -> DMA</text><text x="80" y="102" class="sv-lbl f4" text-anchor="middle">CPU: 0 %</text>
     <line x1="144" y1="76" x2="170" y2="76" class="s4" stroke-width="2"/><polygon points="170,72 176,76 170,80" class="f4"/>
     <path d="M178,40H302V42H304V110H302V112H178V110H176V42H178Z" class="f1 s3" stroke-width="2"/>
-    <text x="240" y="64" class="sv-tit f6" text-anchor="middle">2 · Preparar</text><text x="240" y="86" class="sv-lbl f4" text-anchor="middle">recorte, grises</text><text x="240" y="102" class="sv-lbl f4" text-anchor="middle">escala a int8</text>
+    <text x="240" y="64" class="sv-tit f6" text-anchor="middle">2. Preparar</text><text x="240" y="86" class="sv-lbl f4" text-anchor="middle">recorte, grises</text><text x="240" y="102" class="sv-lbl f4" text-anchor="middle">escala a int8</text>
     <line x1="304" y1="76" x2="330" y2="76" class="s4" stroke-width="2"/><polygon points="330,72 336,76 330,80" class="f4"/>
     <path d="M338,40H462V42H464V110H462V112H338V110H336V42H338Z" class="fa1 sa3" stroke-width="2"/>
-    <text x="400" y="64" class="sv-tit f6" text-anchor="middle">3 · Inferir</text><text x="400" y="86" class="sv-lbl f4" text-anchor="middle">la CNN corre</text><text x="400" y="102" class="sv-lbl f4" text-anchor="middle">en un núcleo</text>
+    <text x="400" y="64" class="sv-tit f6" text-anchor="middle">3. Inferir</text><text x="400" y="86" class="sv-lbl f4" text-anchor="middle">la CNN corre</text><text x="400" y="102" class="sv-lbl f4" text-anchor="middle">en un núcleo</text>
     <line x1="464" y1="76" x2="490" y2="76" class="s4" stroke-width="2"/><polygon points="490,72 496,76 490,80" class="f4"/>
     <path d="M498,40H622V42H624V110H622V112H498V110H496V42H498Z" class="f1 s3" stroke-width="2"/>
-    <text x="560" y="64" class="sv-tit f6" text-anchor="middle">4 · Decidir</text><text x="560" y="86" class="sv-lbl f4" text-anchor="middle">umbral -> GPIO</text><text x="560" y="102" class="sv-lbl f4" text-anchor="middle">o mensaje Wi-Fi</text>
+    <text x="560" y="64" class="sv-tit f6" text-anchor="middle">4. Decidir</text><text x="560" y="86" class="sv-lbl f4" text-anchor="middle">umbral -> GPIO</text><text x="560" y="102" class="sv-lbl f4" text-anchor="middle">o mensaje Wi-Fi</text>
     <rect width="24" height="24" class="fa4" x="68" y="120"><animate attributeName="x" values="68;232;392;556" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="120;124;124;128" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="width" values="24;16;16;8" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="height" values="24;16;16;8" dur="4s" calcMode="discrete" repeatCount="indefinite"/></rect>
     <text x="80" y="168" class="sv-lbl f4" text-anchor="middle">QVGA color</text>
     <text x="240" y="168" class="sv-lbl f4" text-anchor="middle">96×96 grises</text>
@@ -72,14 +72,14 @@
   <li><strong>Núcleo 1:</strong> la inferencia, sin la carga de Wi-Fi ni del sistema (sigue recibiendo su tick y las interrupciones que se le asignen; ver <a href="../chip/05-tiempo-real.html">Tomo I, nivel 5</a>).</li>
 </ul>
 
-<figure class="diagrama" data-titulo="fig-2.2 · analizador lógico">
+<figure class="diagrama" data-titulo="fig-2.2 analizador lógico">
   <canvas data-widget="timing" width="640" height="240"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 2.2</b>Cada fila es un recurso; cada bloque, un trabajo sobre un cuadro. Con doble buffer el núcleo de inferencia casi nunca descansa, y los cuadros por segundo pasan a depender solo de la etapa más lenta. Tiempos aproximados: 30 ms de captura, 6 de preparación, 54 de inferencia. Filas: cámara con DMA, núcleo 0 (preproceso), núcleo 1 (inferencia) y decisión.</figcaption>
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · la línea de estampado</h4>
+  <h4>analogía: la línea de estampado</h4>
   <p>La bobina de chapa entra sola por los rodillos (captura), la guillotina la corta a medida (preparación), la prensa estampa la pieza de un golpe (inferencia) y un sensor de calidad la desvía a aprobados o rechazados (decisión). Nadie espera a nadie: mientras la prensa golpea una pieza, la guillotina ya corta la siguiente.</p>
 </div>
 
@@ -91,40 +91,40 @@
   <tbody>
     <tr><td><b>Detector de personas</b></td><td>96 × 96, grises</td><td>MobileNet chica, int8, TFLite Micro + ESP-NN, arena en SRAM</td><td><b>~54 ms</b> por inferencia (medido por Espressif); ~15 cuadros/s con captura y preparación</td></tr>
     <tr><td><b>Detección y reconocimiento de caras</b></td><td>QVGA color</td><td>ESP-WHO: un detector ubica la cara; otra red la convierte en una “huella” numérica para compararla con las guardadas</td><td>Del orden de cuadros por segundo de un dígito; necesita PSRAM</td></tr>
-    <tr><td><b>Palabra de activación</b></td><td>Audio 16 kHz de un micrófono digital</td><td>ESP-SR: un frontend de audio (cancela eco y ruido) + WakeNet, una red convolucional 1D</td><td>Tiempo real continuo usando una fracción de un núcleo</td></tr>
+    <tr><td><b>Palabra de activación</b></td><td>Audio 16 kHz de un micrófono digital</td><td>ESP-SR: un frontend de audio (cancela eco y ruido) y WakeNet, una red convolucional 1D</td><td>Tiempo real continuo usando una fracción de un núcleo</td></tr>
   </tbody>
 </table>
 </div>
 
 <div class="caja ojo">
-  <h4>ojo · de dónde sale cada número</h4>
+  <h4>ojo: de dónde sale cada número</h4>
   <p>El tiempo del detector de personas es el publicado por Espressif en el repositorio esp-tflite-micro. Para caras y voz, los tiempos dependen del modelo exacto y de la versión de ESP-WHO y ESP-SR; consultá sus tablas antes de dimensionar un producto.</p>
 </div>
 
-<h2>Energía: dormir es la clave</h2>
+<h2>Energía: conviene dormir</h2>
 
 <p>Mientras infiere, el S3 consume del orden de <strong>100 mA</strong>; transmitiendo por Wi-Fi, picos de <strong>300 mA</strong> o más. En sueño profundo, apenas <strong>unos µA</strong>. Por eso los equipos a batería no miran todo el tiempo: duermen, un sensor barato (un PIR, por ejemplo) los despierta, miran, deciden y vuelven a dormir.</p>
 
-<p>La energía de un despertar es tensión × corriente × tiempo. Pero ojo: el tiempo que cuenta no es solo la inferencia de 54 ms. Hay que arrancar, encender y estabilizar la cámara, capturar y quizás transmitir. Eso suele sumar <strong>más de un segundo</strong>, y domina la cuenta.</p>
+<p>La energía de un despertar es tensión × corriente × tiempo. Pero el tiempo que cuenta no es solo la inferencia de 54 ms: hay que arrancar, encender y estabilizar la cámara, capturar y quizás transmitir. Eso suele sumar <strong>más de un segundo</strong>, y domina la cuenta.</p>
 
-<h3>Ciclo de trabajo: la fórmula de la autonomía</h3>
+<h3>Ciclo de trabajo y autonomía</h3>
 
 <p>La corriente promedio es la energía de un ciclo completo dividida por su duración: lo que gasta el despertar, repartido en todo el período. Cada despertar cuesta lo mismo; lo que cambia es cuánto tiempo lo diluís en reposo.</p>
 
-<figure class="diagrama" data-titulo="fig-2.3 · interactivo">
+<figure class="diagrama" data-titulo="fig-2.3 interactivo">
   <canvas data-motor="pipe-energia" data-bits="mixto"></canvas>
   <div class="controles" data-ctl="pipe-energia"></div>
   <figcaption><b>fig 2.3</b>Un despertar: reposo (~10 µA), CPU (~100 mA) y transmisión Wi-Fi (pico ~300 mA). El área bajo la curva es la energía; la línea punteada es la corriente promedio, un rectángulo de igual área. Movés el reposo de 1 a 60 s: el despertar no cambia, pero el promedio cae. Valores como órdenes de magnitud.</figcaption>
 </figure>
 
-<figure class="diagrama" data-titulo="fig-2.4 · calculadora">
+<figure class="diagrama" data-titulo="fig-2.4 calculadora">
   <canvas data-widget="bateria" width="640" height="256"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 2.4</b>Jugá con los valores. Probá bajar el tiempo despierto a 100 ms (solo la inferencia) y compará con 1500 ms (arranque + cámara + inferencia): ahí se ve dónde está el verdadero gasto. Cuenta con 3,3 V y no incluye autodescarga ni pérdidas del regulador.</figcaption>
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · el centinela</h4>
+  <h4>analogía: el centinela</h4>
   <p>Dejar el reflector prendido toda la noche agota el generador en horas. Mejor un centinela quieto en la oscuridad que, cuando escucha un ruido, prende el reflector un instante, mira y lo apaga.</p>
 </div>
 
@@ -172,15 +172,15 @@
 
 <div class="caja clave">
   <h4>fin del tomo-03</h4>
-  <p>Recorriste el camino completo: del silicio del ESP32 a una red neuronal que ve. El siguiente paso natural es práctico: tomar una placa ESP32-S3 con cámara, correr el detector de personas de ejemplo y medir cada etapa con tus propios números.</p>
+  <p>Recorriste el camino completo, del silicio del ESP32 a una red neuronal que ve. El siguiente paso es práctico: tomar una placa ESP32-S3 con cámara, correr el detector de personas de ejemplo y medir cada etapa con tus propios números.</p>
 </div>
 
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
-    <li>Espressif Systems. <em>esp-tflite-micro</em> — tiempos del detector de personas con y sin ESP-NN. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>. Tiempos del detector de personas con y sin ESP-NN. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
     <li>Espressif Systems. <em>ESP-WHO</em>. <a href="https://github.com/espressif/esp-who">github.com/espressif/esp-who</a></li>
-    <li>Espressif Systems. <em>ESP-SR — documentación (AFE, WakeNet, MultiNet)</em>. <a href="https://docs.espressif.com/projects/esp-sr/en/latest/esp32s3/">docs.espressif.com/projects/esp-sr</a></li>
+    <li>Espressif Systems. <em>ESP-SR, documentación (AFE, WakeNet, MultiNet)</em>. <a href="https://docs.espressif.com/projects/esp-sr/en/latest/esp32s3/">docs.espressif.com/projects/esp-sr</a></li>
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (LCD_CAM, GDMA). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> (consumos por modo). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP32-P4 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-p4_datasheet_en.pdf">espressif.com/…/esp32-p4_datasheet_en.pdf</a></li>
@@ -193,6 +193,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-03 · nivel-02</footer>
+<footer class="pie">learning-in-8-bit, tomo-03, nivel-02</footer>
 </body>
 </html>

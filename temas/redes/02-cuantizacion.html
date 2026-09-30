@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 2 · Encoger la red</title>
+<title>Nivel 2, Encoger la red</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -14,7 +14,7 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="02">nivel 02 · 16 min de lectura</span>
+  <span class="nivel-chip" data-n="02">nivel 02, 16 min de lectura</span>
   <h1>Encoger la red</h1>
   <p class="bajada">Una red entrenada en una computadora usa números de 32 bits con coma flotante. Para que entre y corra rápido en un ESP32 hay que pasarla a enteros de 8 bits, y de paso quitarle lo que sobra.</p>
 </header>
@@ -32,7 +32,7 @@
 
 <h2>¿Por qué 8 bits?</h2>
 
-<p>Pasar de float32 a int8 no es un detalle: cambia las cuatro cosas que importan en un microcontrolador.</p>
+<p>Pasar de float32 a int8 cambia las cuatro cosas que importan en un microcontrolador.</p>
 <ul>
   <li><strong>Memoria:</strong> cada número ocupa 1 byte en vez de 4. Un modelo de un millón de parámetros pasa de 4 MB a 1 MB.</li>
   <li><strong>Ancho de banda:</strong> cada ráfaga del bus de la flash o la PSRAM trae cuatro veces más pesos.</li>
@@ -41,7 +41,7 @@
 </ul>
 
 <div class="caja analogia">
-  <h4>analogía · el multímetro y el ADC</h4>
+  <h4>analogía: el multímetro y el ADC</h4>
   <p>Para saber si una puerta está abierta no hace falta un multímetro de banco de seis dígitos y medio. Un ADC de 8 bits bien calibrado alcanza. La cuantización es pasar de uno al otro, eligiendo con cuidado la escala para no perder lo que importa.</p>
 </div>
 
@@ -54,7 +54,7 @@
 </ul>
 <p>Para recuperar el valor real: <strong>real = escala × (entero − punto cero)</strong>.</p>
 
-<figure class="diagrama" data-titulo="fig-2.1 · interactivo">
+<figure class="diagrama" data-titulo="fig-2.1 interactivo">
   <canvas data-widget="quant" width="640" height="240"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 2.1</b>Arriba, 48 pesos reales. Abajo, dónde caen al redondearlos al escalón más cercano. Las rayitas horizontales de la línea del medio muestran cuánto se movió cada uno. Bajá los bits y mirá cómo crece el error.</figcaption>
@@ -67,7 +67,7 @@
 
 <p>Dentro de una capa, cada filtro puede tener pesos de tamaños muy distintos. Si se usa <strong>una sola escala</strong> para toda la capa (<strong>por tensor</strong>), el filtro con pesos más grandes obliga a estirar los escalones y los filtros de pesos chiquitos quedan representados con apenas dos o tres valores.</p>
 
-<figure class="diagrama" data-titulo="fig-2.2 · interactivo">
+<figure class="diagrama" data-titulo="fig-2.2 interactivo">
   <canvas data-widget="quant" data-vista="canal" width="640" height="300"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 2.2</b>Tres filtros con pesos de tamaños muy distintos. La barra es el total de escalones del int8 simétrico (de −127 a 127); la parte llena es lo que usa cada filtro y el tramado, lo que desperdicia. Alterná entre una escala para todo el tensor y una por canal, y mirá cómo cambia el error del filtro chico.</figcaption>
@@ -77,7 +77,7 @@
 
 <h2>Todo con enteros</h2>
 
-<p>¿Cómo aplica el chip las escalas, que son números con coma, sin usar la unidad de punto flotante? Con un truco de punto fijo:</p>
+<p>Las escalas son números con coma, pero el chip las aplica sin usar la unidad de punto flotante, con un truco de punto fijo:</p>
 
 <figure class="diagrama" data-titulo="fig-2.3">
   <svg viewBox="0 0 640 168" role="img" aria-label="Cadena entera: multiplicar y acumular, multiplicar por un entero fijo, desplazar bits, sumar punto cero y saturar a 8 bits">
@@ -112,9 +112,9 @@
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th></th><th>PTQ · después de entrenar</th><th>QAT · durante el entrenamiento</th></tr></thead>
+  <thead><tr><th></th><th>PTQ (después de entrenar)</th><th>QAT (durante el entrenamiento)</th></tr></thead>
   <tbody>
-    <tr><td><b>Cómo</b></td><td>Se toma el modelo terminado y se lo convierte, pasándole unas cientos de imágenes de muestra para medir los rangos de cada capa (calibración).</td><td>Se entrena simulando el redondeo a 8 bits, para que la red aprenda a convivir con él.</td></tr>
+    <tr><td><b>Cómo</b></td><td>Se toma el modelo terminado y se lo convierte, pasándole unos cientos de imágenes de muestra para medir los rangos de cada capa (calibración).</td><td>Se entrena simulando el redondeo a 8 bits, para que la red aprenda a convivir con él.</td></tr>
     <tr><td><b>Costo</b></td><td>Minutos en una PC</td><td>Un reentrenamiento completo, con GPU</td></tr>
     <tr><td><b>Pérdida típica</b></td><td>Del orden de 1 a 2 puntos de exactitud en redes estándar</td><td>Casi nula</td></tr>
     <tr><td><b>Cuándo</b></td><td>Primera opción, casi siempre</td><td>Redes muy chicas o cuando PTQ pierde demasiado</td></tr>
@@ -123,7 +123,7 @@
 </div>
 
 <div class="caja analogia">
-  <h4>analogía · el guitarrista</h4>
+  <h4>analogía: el guitarrista</h4>
   <p>PTQ es cambiarle las cuerdas a la guitarra el día del concierto: si el instrumento es tolerante, suena bien; si es delicado, desafina. QAT es hacer que el músico ensaye desde el principio con esas cuerdas: el día del concierto ya ajustó la técnica.</p>
 </div>
 
@@ -224,13 +224,13 @@
 </ul>
 
 <h3>Destilación</h3>
-<p>Un modelo grande y preciso (el <strong>profesor</strong>) entrena a uno chico (el <strong>alumno</strong>). El alumno no aprende solo la respuesta correcta sino las “dudas” del profesor: que un 7 se parece un poco a un 1 y nada a un 0. Esa información extra le permite rendir más de lo que lograría solo.</p>
+<p>Un modelo grande y preciso (el <strong>profesor</strong>) entrena a uno chico (el <strong>alumno</strong>). El alumno aprende la respuesta correcta y también las “dudas” del profesor: que un 7 se parece un poco a un 1 y nada a un 0. Esa información extra le permite rendir más de lo que lograría solo.</p>
 
 <h3>Fusión de capas</h3>
 <p>Durante el entrenamiento es común encadenar convolución → <strong>batch normalization</strong> → ReLU. En inferencia, los parámetros de la normalización son constantes, así que se pueden <strong>absorber algebraicamente</strong> en los pesos y el sesgo de la convolución. La capa de normalización desaparece: cero memoria y cero ciclos. La ReLU se aplica en la saturación final (fig 2.3).</p>
 
 <div class="caja analogia">
-  <h4>analogía · el equivalente de Thévenin</h4>
+  <h4>analogía: el equivalente de Thévenin</h4>
   <p>En lugar de dejar tres etapas en cascada, calculás el circuito equivalente y soldás una sola resistencia. El comportamiento es el mismo y la placa queda más simple.</p>
 </div>
 
@@ -272,6 +272,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-02 · nivel-02</footer>
+<footer class="pie">learning-in-8-bit, tomo-02, nivel-02</footer>
 </body>
 </html>

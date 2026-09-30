@@ -164,7 +164,7 @@ PM.escena("pipe-energia", {
     txt(m, "REPOSO ~10µA", 20, 123, "n5"); txt(m, "CPU ~100mA", 122, 123, "n5"); txt(m, "WIFI ~300mA", 218, 123, "n5");
     // lectura
     txt(m, "EL AREA ES LA ENERGIA: ~" + Math.round(Q) + " mA·s POR DESPERTAR", 8, 138, "a4");
-    txt(m, "REPOSO " + S + " S · DESPIERTO " + (100 * (TC + TW) / P).toFixed(0) + "% DEL TIEMPO", 8, 152, "n6");
+    txt(m, "REPOSO " + S + " S, DESPIERTO " + (100 * (TC + TW) / P).toFixed(0) + "% DEL TIEMPO", 8, 152, "n6");
     txt(m, "VS ~100 mA SIEMPRE DESPIERTO: ~" + (IC / prom).toFixed(IC / prom < 10 ? 1 : 0) + " VECES MENOS", 8, 166, "n6");
     e16(m, () => {
       m.rect(68, 178, 244, 9, "n1"); m.rect(68, 178, Math.max(1, Math.round(244 * prom / 110)), 9, "a3"); m.marco(68, 178, 244, 9, "n3");

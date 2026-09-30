@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 1 · ¿Qué es una CNN?</title>
+<title>Nivel 1, ¿Qué es una CNN?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -14,12 +14,12 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="01">nivel 01 · 20 min de lectura</span>
+  <span class="nivel-chip" data-n="01">nivel 01, 20 min de lectura</span>
   <h1>¿Qué es una CNN?</h1>
   <p class="bajada">Una red neuronal convolucional es, en el fondo, una cadena de filtros como los que ya conocés de procesamiento de señales. La diferencia es que los coeficientes no los diseñás vos: se aprenden.</p>
 </header>
 
-<figure class="diagrama" data-titulo="fig-1.0 · la red completa">
+<figure class="diagrama" data-titulo="fig-1.0 la red completa">
   <canvas data-widget="redcnn" width="640" height="224"></canvas>
   <figcaption><b>fig 1.0</b>Vista general. Un dígito entra por la izquierda, atraviesa capas de filtros que lo transforman en “mapas” cada vez más chicos y abstractos, y termina en diez neuronas: la más brillante es la respuesta. Los mapas se calculan de verdad con filtros de bordes; la parte densa es ilustrativa.</figcaption>
 </figure>
@@ -29,14 +29,14 @@
   <ul>
     <li>Explicar la convolución como un filtro FIR en dos dimensiones.</li>
     <li>Describir qué hacen ReLU, el pooling, la capa densa y softmax.</li>
-    <li>Calcular los <strong>parámetros</strong> y las <strong>operaciones MAC</strong> de una capa.</li>
+    <li>Calcular los parámetros y las operaciones MAC de una capa.</li>
     <li>Entender por qué las convoluciones <strong>separables</strong> (MobileNet) son las favoritas en microcontroladores.</li>
   </ul>
 </div>
 
 <h2>Una imagen es una tabla de números</h2>
 
-<p>Para el chip, una foto no es una foto: es una grilla de <strong>alto × ancho</strong> números. En escala de grises cada píxel es un byte, de 0 (negro) a 255 (blanco). En color hay tres grillas superpuestas, una por canal (rojo, verde y azul). Esa “profundidad” se llama <strong>canales</strong>.</p>
+<p>Para el chip, una foto es una grilla de alto × ancho números. En escala de grises cada píxel es un byte, de 0 (negro) a 255 (blanco). En color hay tres grillas superpuestas, una por canal (rojo, verde y azul). Esa “profundidad” se llama <strong>canales</strong>.</p>
 
 <figure class="diagrama" data-titulo="fig-1.1">
   <canvas data-widget="pixeles" width="640" height="272"></canvas>
@@ -47,7 +47,7 @@
 
 <p>Si alguna vez implementaste un filtro FIR, ya sabés hacer una convolución: tomás una ventana de muestras, las multiplicás por coeficientes y sumás. En una imagen, la ventana es un cuadradito (típicamente de <strong>3 × 3</strong>) y los coeficientes forman el <strong>kernel</strong> o <strong>filtro</strong>. El kernel se desliza por toda la imagen y en cada posición produce un número. El conjunto de números resultante es un <strong>mapa de características</strong>.</p>
 
-<figure class="diagrama" data-titulo="fig-1.2 · interactivo">
+<figure class="diagrama" data-titulo="fig-1.2 interactivo">
   <canvas data-widget="conv" width="640" height="288"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 1.2</b>El recuadro recorre la imagen; en cada posición se hacen 9 multiplicaciones y una suma. En la salida, las celdas sólidas son valores positivos y las tramadas, negativos. Probá otros filtros: el de bordes verticales “se enciende” en los lados de la casa.</figcaption>
@@ -61,7 +61,7 @@
 </ul>
 
 <div class="caja dato">
-  <h4>dato · en varios canales</h4>
+  <h4>dato: en varios canales</h4>
   <p>Con una entrada de varios canales, el kernel también tiene varios canales: un filtro de 3 × 3 sobre 32 canales tiene 3 × 3 × 32 = 288 coeficientes y cada punto de salida es la suma de 288 productos. Una capa aplica muchos filtros distintos (por ejemplo, 64), y cada uno produce su propio mapa: la salida tiene 64 canales.</p>
 </div>
 
@@ -74,7 +74,7 @@
 </ul>
 
 <div class="caja analogia">
-  <h4>analogía · la sonda de EMI</h4>
+  <h4>analogía: la sonda de EMI</h4>
   <p>Imaginá que barrés una placa con una sonda de campo cercano de 3 × 3 mm. En cada punto anotás cuánto se parece lo que medís a cierto patrón. Al final tenés un mapa de dónde está ese patrón en la placa. Cada filtro de una capa es una sonda que busca un patrón distinto.</p>
 </div>
 
@@ -89,10 +89,10 @@
   <figcaption><b>fig 1.3</b>ReLU y ReLU6. El punto brillante recorre la entrada: ReLU deja pasar los positivos sin techo; ReLU6 además corta en 6, lo que da un rango conocido. Para un microcontrolador, ReLU es casi gratis: comparar con cero.</figcaption>
 </figure>
 
-<p>La variante <strong>ReLU6</strong> además recorta todo lo que pase de 6. ¿Para qué? Cuando la red se lleve a enteros de 8 bits (<a href="02-cuantizacion.html">nivel 2</a>), hay solo 256 escalones para representar los valores. Si el rango no tiene techo, un valor aislado muy grande obliga a estirar los escalones y se pierde resolución para todos los demás. Con el techo en 6, el rango es fijo y conocido.</p>
+<p>La variante <strong>ReLU6</strong> además recorta todo lo que pase de 6. Sirve para cuando la red se lleve a enteros de 8 bits (<a href="02-cuantizacion.html">nivel 2</a>): hay solo 256 escalones para representar los valores. Si el rango no tiene techo, un valor aislado muy grande obliga a estirar los escalones y se pierde resolución para todos los demás. Con el techo en 6, el rango es fijo y conocido.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el zener</h4>
+  <h4>analogía: el zener</h4>
   <p>ReLU6 es como poner un zener de 6 V en una entrada: por debajo no toca nada, por encima recorta. Así el conversor que viene después sabe exactamente qué rango tiene que cubrir.</p>
 </div>
 
@@ -107,7 +107,7 @@
   <figcaption><b>fig 1.4</b>Max pooling 2 × 2: de cada cuadrante sobrevive el valor más alto. Si un rasgo apareció fuerte en algún lugar de la ventana, la señal pasa.</figcaption>
 </figure>
 
-<p>Además de ahorrar memoria y cálculo, el pooling da cierta tolerancia a pequeños corrimientos: si el borde se movió un píxel, el máximo de la ventana probablemente sea el mismo. Las redes modernas suelen terminar con un <strong>global average pooling</strong>, que reduce cada mapa entero a un solo número.</p>
+<p>Aparte de ahorrar memoria y cálculo, el pooling da cierta tolerancia a pequeños corrimientos: si el borde se movió un píxel, el máximo de la ventana probablemente sea el mismo. Las redes modernas suelen terminar con un <strong>global average pooling</strong>, que reduce cada mapa entero a un solo número.</p>
 
 <h2>El final: capa densa y softmax</h2>
 
@@ -139,20 +139,20 @@
 </ol>
 <p>El costo relativo queda en 1/(canales de salida) + 1/(kernel × kernel). Con kernel 3 × 3 y 64 canales de salida: 1/64 + 1/9 ≈ 0,13, es decir, <strong>unas 8 veces menos cálculo</strong>, con una pérdida de exactitud pequeña.</p>
 
-<figure class="diagrama" data-titulo="fig-1.5 · interactivo">
+<figure class="diagrama" data-titulo="fig-1.5 interactivo">
   <canvas data-widget="separable" width="640" height="262"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 1.5</b>Una capa de 28 × 28 con 32 canales de entrada y 64 de salida. En la estándar, cada filtro mira los 32 canales a la vez. En la separable, la etapa 1 filtra cada canal por su lado y la etapa 2 los mezcla con un 1 × 1. Alterná los modos y compará los MACs.</figcaption>
 </figure>
 
-<figure class="diagrama" data-titulo="fig-1.6 · calculadora">
+<figure class="diagrama" data-titulo="fig-1.6 calculadora">
   <canvas data-widget="macs" width="640" height="224"></canvas>
   <div class="controles"></div>
   <figcaption><b>fig 1.6</b>Mové los controles y mirá cómo crecen los MACs. Notá que duplicar los canales de entrada <em>y</em> de salida multiplica por cuatro el costo de la convolución estándar. “Separable” es depthwise + pointwise. El tiempo real suele ser varias veces mayor que el techo teórico.</figcaption>
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · moler y mezclar</h4>
+  <h4>analogía: moler y mezclar</h4>
   <p>La convolución estándar es una máquina gigante que muele y mezcla 64 tipos de café a la vez, con una cuchilla especial para cada combinación. La separable muele cada origen por su lado con un molinillo simple y después vuelca todo en una mezcladora. El café sale casi igual, pero la maquinaria es mucho más chica.</p>
 </div>
 
@@ -186,12 +186,12 @@
     <li>Sandler, M. et al. (2018). <em>MobileNetV2: Inverted Residuals and Linear Bottlenecks</em>. <a href="https://arxiv.org/abs/1801.04381">arxiv.org/abs/1801.04381</a></li>
     <li>Jacob, B. et al. (2018). <em>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</em>. <a href="https://arxiv.org/abs/1712.05877">arxiv.org/abs/1712.05877</a></li>
     <li>Zeiler, M. D. y Fergus, R. (2014). <em>Visualizing and Understanding Convolutional Networks</em>. ECCV. <a href="https://arxiv.org/abs/1311.2901">arxiv.org/abs/1311.2901</a></li>
-    <li>Stanford CS231n. <em>Convolutional Neural Networks for Visual Recognition — notas del curso</em>. <a href="https://cs231n.github.io/convolutional-networks/">cs231n.github.io/convolutional-networks</a></li>
+    <li>Stanford CS231n. <em>Convolutional Neural Networks for Visual Recognition</em>. Notas del curso. <a href="https://cs231n.github.io/convolutional-networks/">cs231n.github.io/convolutional-networks</a></li>
   </ol>
 </section>
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-02 · nivel-01</footer>
+<footer class="pie">learning-in-8-bit, tomo-02, nivel-01</footer>
 </body>
 </html>

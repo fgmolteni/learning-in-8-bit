@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 1 · Del modelo al chip</title>
+<title>Nivel 1, Del modelo al chip</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -14,7 +14,7 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="01">nivel 01 · 14 min de lectura</span>
+  <span class="nivel-chip" data-n="01">nivel 01, 14 min de lectura</span>
   <h1>Del modelo al chip</h1>
   <p class="bajada">Ya sabemos cómo es el chip, cómo es la red y cómo se encoge. Falta el viaje: qué herramientas llevan un modelo entrenado en una PC hasta la flash de un ESP32-S3, y quién hace las cuentas rápidas una vez ahí.</p>
 </header>
@@ -35,7 +35,7 @@
   <svg viewBox="0 0 640 240" role="img" aria-label="Cadena de herramientas: entrenar, exportar, cuantizar, empaquetar, compilar y grabar en el chip">
     <path d="M18,16H622V18H624V110H622V112H18V110H16V18H18Z" class="fn s2" stroke-width="2"/><path d="M18,128H622V130H624V222H622V224H18V222H16V130H18Z" class="fn s2" stroke-width="2"/>
     <text x="28" y="34" class="sv-tag f4" text-anchor="start">EN LA PC</text><text x="28" y="146" class="sv-tag f4" text-anchor="start">HACIA EL CHIP</text>
-    <path d="M322,40H462V42H464V106H462V108H322V106H320V42H322Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="392" y="34" class="sv-tag fa3" text-anchor="middle">PIERDE PRECISION</text>
+    <path d="M322,40H462V42H464V106H462V108H322V106H320V42H322Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="392" y="34" class="sv-tag fa3" text-anchor="middle">PIERDE PRECISIÓN</text>
     <path d="M34,44H158V46H160V98H158V100H34V98H32V46H34Z" class="f1 s3" stroke-width="2"/>
     <text x="42" y="58" class="sv-tag f4" text-anchor="start">1</text><text x="96" y="76" class="sv-tit f6" text-anchor="middle">Entrenar</text><text x="96" y="92" class="sv-lbl f4" text-anchor="middle">float32</text>
     <line x1="160" y1="72" x2="174" y2="72" class="s4" stroke-width="2"/><polygon points="174,68 180,72 174,76" class="f4"/>
@@ -70,13 +70,13 @@
 
 <figure class="diagrama" data-titulo="fig-1.2">
   <svg viewBox="0 0 640 296" role="img" aria-label="Pila de software: aplicación arriba, motores TFLite Micro y ESP-DL, debajo la biblioteca ESP-NN, luego ESP-IDF y FreeRTOS, y al fondo el silicio con PIE">
-    <path d="M18,16H590V18H592V46H590V48H18V46H16V18H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="37" class="sv-tit f6" text-anchor="middle">Tu app · ESP-WHO · ESP-SR</text>
+    <path d="M18,16H590V18H592V46H590V48H18V46H16V18H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="37" class="sv-tit f6" text-anchor="middle">Tu app, ESP-WHO, ESP-SR</text>
     <path d="M18,60H296V62H298V106H296V108H18V106H16V62H18Z" class="f1 s3" stroke-width="2"/><text x="157" y="80" class="sv-tit f6" text-anchor="middle">TFLite Micro</text><text x="157" y="98" class="sv-lbl f4" text-anchor="middle">intérprete .tflite</text>
     <path d="M312,60H590V62H592V106H590V108H312V106H310V62H312Z" class="f1 s3" stroke-width="2"/><text x="451" y="80" class="sv-tit f6" text-anchor="middle">ESP-DL</text><text x="451" y="98" class="sv-lbl f4" text-anchor="middle">motor Espressif</text>
     <text x="16" y="124" class="sv-tag fa3" text-anchor="start">DONDE SE GANA EL TIEMPO</text>
     <path d="M10,130H598V132H600V196H598V198H10V196H8V132H10Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
     <path d="M22,138H586V140H588V188H586V190H22V188H20V140H22Z" class="f1 s3" stroke-width="2"/><text x="304" y="160" class="sv-tit f6" text-anchor="middle">ESP-NN</text><text x="304" y="178" class="sv-lbl f4" text-anchor="middle">rutinas a mano para PIE</text>
-    <path d="M18,210H590V212H592V240H590V242H18V240H16V212H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="231" class="sv-tit f6" text-anchor="middle">ESP-IDF · FreeRTOS · drivers</text>
+    <path d="M18,210H590V212H592V240H590V242H18V240H16V212H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="231" class="sv-tit f6" text-anchor="middle">ESP-IDF, FreeRTOS, drivers</text>
     <path d="M18,254H590V256H592V284H590V286H18V284H16V256H18Z" class="f1 s2" stroke-width="2"/><text x="304" y="275" class="sv-lbl f4" text-anchor="middle">SILICIO: LX7 + PIE + SRAM</text>
     
     <line x1="608" y1="16" x2="608" y2="286" class="s4" stroke-width="2"/>
@@ -106,18 +106,18 @@
 <p>Dos alternativas con otra filosofía. <strong>Edge Impulse</strong> es una plataforma completa (captura de datos, entrenamiento, despliegue) cuyo compilador EON convierte la red en código fijo en vez de interpretarla. <strong>microTVM</strong>, del proyecto Apache TVM, también generaba código a medida para cada modelo, reorganizando bucles para cada tamaño de tensor; en las versiones recientes de TVM ya no se mantiene, pero la idea sigue vigente.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el CNC y el troquel</h4>
+  <h4>analogía: el CNC y el troquel</h4>
   <p>Un intérprete es una fresadora CNC que lee G-code línea por línea: flexible, cambiás el archivo y hace otra pieza, pero cada línea tiene su costo de lectura. Un compilador como EON es un troquel mecanizado para una sola pieza: menos flexible, pero no pierde tiempo leyendo instrucciones y ocupa menos lugar. Edge Impulse reporta ahorros del orden de 25 a 55 % de RAM y flash con este enfoque.</p>
 </div>
 
 <h2>¿Cuánto se gana?</h2>
 
-<p>El caso de referencia en TinyML es el <strong>detector de personas</strong> de TensorFlow Lite Micro: una MobileNet chiquita que recibe una imagen de 96 × 96 en grises y responde “persona / no persona”. Las mediciones publicadas por Espressif para el ESP32-S3 son contundentes:</p>
+<p>El caso de referencia en TinyML es el <strong>detector de personas</strong> de TensorFlow Lite Micro: una MobileNet chiquita que recibe una imagen de 96 × 96 en grises y responde “persona / no persona”. Las mediciones publicadas por Espressif para el ESP32-S3 muestran una diferencia enorme:</p>
 
 <figure class="diagrama" data-titulo="fig-1.3">
   <svg viewBox="0 0 640 184" role="img" aria-label="Detector de personas en ESP32-S3: unos 2300 milisegundos con rutinas genéricas contra unos 54 milisegundos con ESP-NN">
     <defs><pattern id="d63" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" class="f2"/><rect width="2" height="2" class="f4"/><rect x="2" y="2" width="2" height="2" class="f4"/></pattern></defs>
-    <text x="16" y="24" class="sv-tag f4" text-anchor="start">TIEMPO POR IMAGEN · ESP32-S3</text>
+    <text x="16" y="24" class="sv-tag f4" text-anchor="start">TIEMPO POR IMAGEN EN ESP32-S3</text>
     <line x1="96" y1="32" x2="96" y2="120" class="s4" stroke-width="2"/>
     <text x="16" y="57" class="sv-lbl f4" text-anchor="start">genérico</text>
     <rect x="98" y="40" width="0" height="24" fill="url(#d63)"><animate attributeName="width" values="0;446;446" keyTimes="0;.6;1" dur="4s" repeatCount="indefinite"/></rect>
@@ -145,12 +145,12 @@
 </table>
 </div>
 
-<p>Dos lecturas interesantes: el ESP32 original, sin PIE, también mejora mucho solo con código bien escrito; y en este modelo chico, con esta versión de las bibliotecas, el S3 termina antes que el P4. El reloj no lo es todo: pesa tanto cuán optimizadas estén las rutinas para cada chip. El P4 se luce en modelos y resoluciones más grandes, donde importan su memoria y sus periféricos de imagen.</p>
+<p>Dos lecturas: el ESP32 original, sin PIE, también mejora mucho solo con código bien escrito; y en este modelo chico, con esta versión de las bibliotecas, el S3 termina antes que el P4. El reloj no lo es todo: pesa tanto cuán optimizadas estén las rutinas para cada chip. El P4 se luce en modelos y resoluciones más grandes, donde importan su memoria y sus periféricos de imagen.</p>
 
 <p>Capa por capa la mejora varía mucho: las tablas de ESP-NN muestran desde alrededor de <strong>1,5×</strong> en algunas convoluciones pequeñas hasta <strong>8×</strong> o más en capas densas. Depende de los tamaños: PIE brilla cuando los canales son múltiplos de 16 y los datos están bien alineados.</p>
 
 <div class="caja ojo">
-  <h4>ojo · los benchmarks envejecen</h4>
+  <h4>ojo: los benchmarks envejecen</h4>
   <p>Estas cifras dependen de la versión de ESP-IDF, de ESP-NN, de la frecuencia y de dónde viven los pesos. Antes de decidir un diseño, medí tu propio modelo en tu propia placa: todos estos motores incluyen formas de cronometrar cada capa.</p>
 </div>
 
@@ -180,13 +180,13 @@
   <ol>
     <li>Espressif Systems. <em>ESP-NN: Optimized neural network functions for Espressif chipsets</em>. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
     <li>Espressif Systems. <em>esp-tflite-micro</em> (TFLite Micro para ESP-IDF, con ejemplo de detección de personas y tiempos). <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
-    <li>Espressif Systems. <em>ESP-DL — documentación</em>. <a href="https://docs.espressif.com/projects/esp-dl/en/latest/">docs.espressif.com/projects/esp-dl</a></li>
+    <li>Espressif Systems. <em>ESP-DL, documentación</em>. <a href="https://docs.espressif.com/projects/esp-dl/en/latest/">docs.espressif.com/projects/esp-dl</a></li>
     <li>Espressif Systems. <em>ESP-PPQ</em>. <a href="https://github.com/espressif/esp-ppq">github.com/espressif/esp-ppq</a></li>
     <li>Espressif Systems. <em>ESP-WHO</em>. <a href="https://github.com/espressif/esp-who">github.com/espressif/esp-who</a></li>
     <li>David, R. et al. (2021). <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
     <li>Google. <em>LiteRT for Microcontrollers</em>. <a href="https://ai.google.dev/edge/litert/microcontrollers/overview">ai.google.dev/edge/litert/microcontrollers/overview</a></li>
     <li>Edge Impulse. <em>EON Compiler</em>. <a href="https://docs.edgeimpulse.com/docs/edge-impulse-studio/deployment/eon-compiler">docs.edgeimpulse.com/…/eon-compiler</a></li>
-    <li>Apache TVM. <em>microTVM — documentación archivada (v0.15)</em>. <a href="https://github.com/apache/tvm/tree/v0.15.0/docs/topic/microtvm">github.com/apache/tvm/…/docs/topic/microtvm</a></li>
+    <li>Apache TVM. <em>microTVM, documentación archivada (v0.15)</em>. <a href="https://github.com/apache/tvm/tree/v0.15.0/docs/topic/microtvm">github.com/apache/tvm/…/docs/topic/microtvm</a></li>
     <li>Chen, T. et al. (2018). <em>TVM: An Automated End-to-End Optimizing Compiler for Deep Learning</em>. OSDI. <a href="https://arxiv.org/abs/1802.04799">arxiv.org/abs/1802.04799</a></li>
   </ol>
   <p class="nota">Los tiempos del detector de personas corresponden a las tablas publicadas en el repositorio esp-tflite-micro; pueden variar entre versiones.</p>
@@ -194,6 +194,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-03 · nivel-01</footer>
+<footer class="pie">learning-in-8-bit, tomo-03, nivel-01</footer>
 </body>
 </html>

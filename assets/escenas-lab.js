@@ -104,7 +104,7 @@ PixelMotor.escena("lab-campo", {
       marcoZona(m, Z);
     });
     txt(m, "DIPOLO ELECTRICO", 160, 4, "n5", { alin: "centro", grande: true });
-    txt(m, L(m, "16 LEJOS · 32 CERCA", "8 BIT"), 160, 170, "n4", { alin: "centro" });
+    txt(m, L(m, "16 LEJOS, 32 CERCA", "8 BIT"), 160, 170, "n4", { alin: "centro" });
   },
 });
 

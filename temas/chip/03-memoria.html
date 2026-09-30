@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 3 · La memoria manda</title>
+<title>Nivel 3: La memoria manda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -16,7 +16,7 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="03">nivel 03 · 14 min de lectura</span>
+  <span class="nivel-chip" data-n="03">nivel 03, 14 min de lectura</span>
   <h1>La memoria manda</h1>
   <p class="bajada">En un microcontrolador, lo que limita a una red neuronal casi nunca es la velocidad de cálculo: es dónde están los datos y cuánto tarda en llegar cada byte.</p>
 </header>
@@ -53,7 +53,7 @@
 </div>
 
 <div class="caja analogia">
-  <h4>analogía · el quirófano</h4>
+  <h4>analogía: el quirófano</h4>
   <p>Los registros son el bisturí en la mano del cirujano. La SRAM es la bandeja junto a la camilla: estirás la mano y ya. La PSRAM es el armario del pasillo: alguien va a buscar, pero hay que esperar. La flash es el archivo del hospital con los protocolos impresos: está todo ahí, no se modifica durante la operación y conviene leerlo en orden.</p>
 </div>
 
@@ -64,9 +64,9 @@
   <li>La <strong>MMU</strong> mapea bloques de la flash (páginas de 64 KB) a direcciones que el núcleo ve como memoria común.</li>
   <li>La <strong>caché</strong> guarda las líneas leídas recientemente (de 32 o 64 bytes). Si el dato ya está, llega en uno o dos ciclos. Si no, el núcleo se detiene mientras el controlador pide una ráfaga al chip externo y llena la línea.</li>
 </ul>
-<p>La clave: <strong>leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo.</p>
+<p><strong>Leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo.</p>
 
-<figure class="diagrama" data-titulo="fig-3.2 · interactivo">
+<figure class="diagrama" data-titulo="fig-3.2 interactivo">
   <canvas data-motor="mem-cache" data-bits="mixto"></canvas>
   <div class="controles" data-ctl="mem-cache"></div>
   <figcaption><b>fig 3.2</b>Lectura de la flash a través de la caché. En modo secuencial, cada fallo trae una línea de 8 palabras y las siguientes lecturas son aciertos (~1-2 ciclos). En modo salteado casi todos son fallos: la CPU queda en espera (STALL) unas decenas de ciclos mientras la línea viaja por el bus SPI. Las barras comparan los ciclos reales con el caso ideal de aciertos; son órdenes de magnitud, no mediciones.</figcaption>
@@ -92,7 +92,7 @@
 <p>Si las activaciones se van a la PSRAM, cada escritura puede obligar a la caché a expulsar una línea modificada y mandarla por el bus, y encima compiten con la lectura de pesos por el mismo camino. El resultado es una inferencia <strong>varias veces más lenta</strong>. Por eso la pregunta que decide si un modelo sirve casi nunca es “¿cuántos parámetros tiene?” sino “<strong>¿cuánto ocupa su capa más grande?</strong>”.</p>
 
 <div class="caja analogia">
-  <h4>analogía · tuercas por correo</h4>
+  <h4>analogía: tuercas por correo</h4>
   <p>Tener las activaciones en SRAM es tener la caja de tuercas atornillada al banco de trabajo. Tenerlas en PSRAM es pedir cada tuerca por correo urgente: aunque el correo sea rápido, pasás la mayor parte del día esperando al repartidor.</p>
 </div>
 
@@ -106,7 +106,7 @@
   <li>Si los dos lados se tocan al inicializar, el arena es demasiado chico y el programa avisa.</li>
 </ul>
 
-<p>El truco que lo hace viable: <strong>la salida de una capa solo hace falta hasta que la siguiente capa termina de leerla</strong>. Un planificador analiza de antemano cuándo “vive” cada tensor y los acomoda para que los que no se superponen en el tiempo compartan las mismas direcciones.</p>
+<p>El truco que lo hace viable es que <strong>la salida de una capa solo hace falta hasta que la siguiente capa termina de leerla</strong>. Un planificador analiza de antemano cuándo “vive” cada tensor y los acomoda para que los que no se superponen en el tiempo compartan las mismas direcciones.</p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
   <canvas data-widget="arena" width="640" height="328"></canvas>
@@ -115,12 +115,12 @@
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · el andamio</h4>
+  <h4>analogía: el andamio</h4>
   <p>Para construir un edificio de 30 pisos no comprás 30 pisos de andamio. Alcanza con el andamio del piso donde trabajan y el siguiente: cuando el hormigón fragua, lo desarmás y lo subís.</p>
 </div>
 
 <div class="caja dato">
-  <h4>dato · alineación</h4>
+  <h4>dato: alineación</h4>
   <p>Los buffers se alinean a múltiplos de 16 bytes. Así las instrucciones vectoriales de 128 bits (16 bytes) pueden leer y escribir de una sola vez, sin penalización por datos “partidos”.</p>
 </div>
 
@@ -165,17 +165,17 @@
   <h2>Fuentes</h2>
   <ol>
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (System and Memory; Cache y MMU). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Minimizing RAM Usage</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/ram-usage.html">docs.espressif.com/…/performance/ram-usage.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Support for External RAM</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/flash_psram_config.html">docs.espressif.com/…/api-guides/flash_psram_config.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Minimizing RAM Usage</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/ram-usage.html">docs.espressif.com/…/performance/ram-usage.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Support for External RAM</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/flash_psram_config.html">docs.espressif.com/…/api-guides/flash_psram_config.html</a></li>
     <li>David, R. et al. (2021). <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. MLSys. <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
-    <li>TensorFlow. <em>tflite-micro — GreedyMemoryPlanner</em>. <a href="https://github.com/tensorflow/tflite-micro/blob/main/tensorflow/lite/micro/memory_planner/greedy_memory_planner.h">github.com/tensorflow/tflite-micro/…/greedy_memory_planner.h</a></li>
+    <li>TensorFlow. <em>tflite-micro: GreedyMemoryPlanner</em>. <a href="https://github.com/tensorflow/tflite-micro/blob/main/tensorflow/lite/micro/memory_planner/greedy_memory_planner.h">github.com/tensorflow/tflite-micro/…/greedy_memory_planner.h</a></li>
   </ol>
   <p class="nota">Las latencias y los consumos de memoria de las radios son aproximados; varían con la versión y la configuración de ESP-IDF.</p>
 </section>
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-01 · nivel-03</footer>
+<footer class="pie">learning-in-8-bit, tomo-01, nivel-03</footer>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 5 · Tiempo real: interrupciones y tareas</title>
+<title>Nivel 5: Tiempo real, interrupciones y tareas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -17,7 +17,7 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="05">nivel 05 · 18 min de lectura</span>
+  <span class="nivel-chip" data-n="05">nivel 05, 18 min de lectura</span>
   <h1>Tiempo real: interrupciones y tareas</h1>
   <p class="bajada">Un chip que ve, decide y además mantiene el Wi-Fi vivo hace muchas cosas a la vez con dos núcleos. Este nivel cuenta cómo se reparte el tiempo: quién interrumpe a quién, quién espera y qué pasa cuando algo se cuelga.</p>
 </header>
@@ -39,7 +39,7 @@
 <p>Hay dos maneras de enterarse de que algo pasó afuera del chip: un botón, un byte que llega por la UART, el final de una transferencia de DMA. La primera es <strong>sondear</strong>: el programa mira una y otra vez si el evento ya ocurrió. La segunda es la <strong>interrupción</strong>: el periférico levanta una línea y el núcleo deja lo que estaba haciendo para atenderlo.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el timbre</h4>
+  <h4>analogía: el timbre</h4>
   <p>Sondear es asomarte a la puerta cada diez segundos por si llegó alguien. Interrumpir es tener un timbre: hacés otra cosa (o dormís) hasta que suena.</p>
 </div>
 
@@ -147,7 +147,7 @@
 <p>Además, cada una es <strong>por nivel</strong> (la fuente mantiene la línea alta hasta que la atienden; si la suelta antes, se pierde) o <strong>por flanco</strong> (el núcleo anota que hubo un flanco). Solo las interrupciones por nivel se pueden <strong>compartir</strong> entre varios periféricos.</p>
 
 <div class="caja ojo">
-  <h4>ojo · niveles y latencias</h4>
+  <h4>ojo: niveles y latencias</h4>
   <p>La guía de ESP-IDF habla de niveles 1 a 7 (con el 6 para depuración y el 7 como NMI), mientras que el manual del S3 describe 1 a 5 más NMI. No pude confirmar cómo se corresponden, así que en este nivel usamos la numeración del manual. Las latencias que siguen también son <strong>del orden de</strong> lo que miden usuarios, no cifras oficiales de Espressif.</p>
 </div>
 
@@ -161,7 +161,7 @@
   <li>Si la rutina despertó a una tarea más prioritaria, el sistema salta a esa tarea en lugar de volver a la interrumpida.</li>
 </ol>
 
-<figure class="diagrama" data-titulo="fig-5.2 · animada">
+<figure class="diagrama" data-titulo="fig-5.2 animada">
   <canvas data-motor="chip05-irq"></canvas>
   <figcaption><b>fig 5.2</b>Una misma interrupción por tres caminos. En la fila 1 (nivel 1 a 3, en C) hay que guardar y restaurar el contexto, y eso ensancha la respuesta. En la fila 2 (nivel 4 o más, en ensamblador) la rutina arranca casi enseguida, pero no puede usar el sistema operativo. En la fila 3, la rutina está en flash mientras la caché está apagada: el núcleo no puede leerla. Los anchos son didácticos.</figcaption>
 </figure>
@@ -180,7 +180,7 @@
 </ul>
 
 <div class="caja analogia">
-  <h4>analogía · guardia de hospital</h4>
+  <h4>analogía: guardia de hospital</h4>
   <p>El nivel es el triage. Un paro cardíaco interrumpe una consulta de rutina. El médico de nivel 1 a 3 primero se lava y se cambia (guardar contexto); el de nivel 4 o más es el desfibrilador colgado en la pared: sin preparación, pero solo sabe hacer una cosa.</p>
 </div>
 
@@ -191,13 +191,13 @@
 <p>Una rutina normal, ubicada en flash, queda inutilizable en esa ventana. Si igual llega la interrupción, el resultado es una excepción fatal por acceso con la caché apagada (la fila 3 de la fig 5.2). Una rutina <strong>segura para IRAM</strong> sigue funcionando, con una condición: <strong>todo</strong> lo que toca (su código, sus constantes, sus datos y cada función que llame) tiene que estar en la RAM interna.</p>
 
 <div class="caja dato">
-  <h4>dato · el precio de la IRAM</h4>
+  <h4>dato: el precio de la IRAM</h4>
   <p>La IRAM sale del mismo pool de SRAM interna que el tensor arena y los buffers de DMA. Cada byte de rutina que vive ahí es un byte menos para la red. Además, el código en IRAM nunca falla en la caché de instrucciones, así que responde con menos dispersión aun sin escrituras de flash. La duración de la ventana con la caché apagada depende de la memoria flash usada: la hoja de datos de tu chip tiene los números.</p>
 </div>
 
 <h3>Interrupciones y dos núcleos</h3>
 
-<p>Cada interrupción de CPU vive en <strong>un núcleo concreto</strong>: el que ejecutó la inicialización del periférico. Espressif recomienda que las interrupciones críticas vayan al <strong>núcleo 1</strong>, donde por defecto no corren las tareas de radio. Y un detalle que sorprende: <strong>apagar interrupciones en un núcleo no protege datos del otro</strong>. Por eso las secciones críticas de ESP-IDF combinan "interrupciones apagadas" con un <em>spinlock</em>, una bandera en memoria que el otro núcleo espera girando.</p>
+<p>Cada interrupción de CPU vive en <strong>un núcleo concreto</strong>: el que ejecutó la inicialización del periférico. Espressif recomienda que las interrupciones críticas vayan al <strong>núcleo 1</strong>, donde por defecto no corren las tareas de radio. Y <strong>apagar interrupciones en un núcleo no protege datos del otro</strong>. Por eso las secciones críticas de ESP-IDF combinan "interrupciones apagadas" con un <em>spinlock</em>, una bandera en memoria que el otro núcleo espera girando.</p>
 
 <h2>El planificador, las tareas y el tick</h2>
 
@@ -211,7 +211,7 @@
 </ul>
 
 <div class="caja ojo">
-  <h4>ojo · el tick no es la latencia</h4>
+  <h4>ojo: el tick no es la latencia</h4>
   <p>Una interrupción de periférico reacciona en microsegundos. El tick solo fija la <strong>resolución de las esperas</strong> y de los temporizadores de software: con 100 Hz, un retardo de "3 ms" se redondea a un múltiplo de 10 ms.</p>
 </div>
 
@@ -274,7 +274,7 @@
 </div>
 
 <div class="caja ojo">
-  <h4>ojo · valores por defecto</h4>
+  <h4>ojo: valores por defecto</h4>
   <p>Estas prioridades son las que se observan en ESP-IDF 5.x y pueden cambiar entre versiones. Tomalas como un orden de magnitud de "qué tan alto viven Wi-Fi y el sistema", no como un contrato.</p>
 </div>
 
@@ -284,7 +284,7 @@
 
 <p>Una inferencia es un cálculo largo y sin cesión: unos 54 ms en el caso QVGA del Tomo III, con las unidades vectoriales de PIE ocupadas todo el tiempo. Cada paquete Wi-Fi, cada beacon y cada reintento genera ráfagas de rutinas de interrupción y de trabajo de prioridad 22 o 23. Si la inferencia compartiera núcleo con el Wi-Fi, ocurrirían dos cosas malas: la desalojaría cada ráfaga (tiempo <strong>variable</strong>), o, si tuviera prioridad alta, <strong>atrasaría</strong> al Wi-Fi hasta perder paquetes.</p>
 
-<figure class="diagrama" data-titulo="fig-5.4 · interactivo">
+<figure class="diagrama" data-titulo="fig-5.4 interactivo">
   <canvas data-motor="chip05-gantt"></canvas>
   <div class="controles" data-ctl="chip05-gantt"></div>
   <figcaption><b>fig 5.4</b>Diagrama de Gantt de 100 ms. Cada barra es una tarea corriendo; las marcas punteadas son el tick (cada 10 ms). Con la inferencia anclada al núcleo 1, el trabajo de 54 ms termina en 54 ms. Con todo anclado al núcleo 0, la inferencia solo corre en los huecos que deja el Wi-Fi: termina más tarde y el núcleo 1 queda ocioso. Las ráfagas son ilustrativas, no una medición.</figcaption>
@@ -293,7 +293,7 @@
 <p>Anclar tiene un costo: <strong>anclar todo a un núcleo deja al otro sin trabajo</strong>, y una tarea anclada a un núcleo saturado puede quedar sin correr aunque su prioridad sea alta. Por eso se ancla lo que <em>tiene motivo</em> (la inferencia al 1) y se deja el resto al planificador.</p>
 
 <div class="caja ojo">
-  <h4>ojo · "núcleo dedicado" no es "núcleo sin interrupciones"</h4>
+  <h4>ojo: "núcleo dedicado" no es "núcleo sin interrupciones"</h4>
   <p>Cuando en el <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
 </div>
 
@@ -315,9 +315,9 @@
 </table>
 </div>
 
-<p>Y una regla de oro para las interrupciones: la rutina hace <strong>lo mínimo</strong> (leer el registro, anotar el tiempo) y <strong>despierta a una tarea</strong> que hace el trabajo pesado. Una rutina de interrupción nunca bloquea y solo usa las variantes del sistema pensadas para ella.</p>
+<p>Regla de oro para las interrupciones: la rutina hace <strong>lo mínimo</strong> (leer el registro, anotar el tiempo) y <strong>despierta a una tarea</strong> que hace el trabajo pesado. Una rutina de interrupción nunca bloquea y solo usa las variantes del sistema pensadas para ella.</p>
 
-<figure class="diagrama" data-titulo="fig-5.5 · animada">
+<figure class="diagrama" data-titulo="fig-5.5 animada">
   <canvas data-motor="chip05-cola"></canvas>
   <figcaption><b>fig 5.5</b>Cámara, colas e inferencia. La cámara (con DMA, sin CPU) llena el buffer A mientras la inferencia usa el B. Al terminar, el buffer lleno pasa a la cola de <em>llenas</em> y el usado vuelve por la de <em>libres</em>; los roles se cruzan. Por las colas viajan <strong>punteros</strong>, no la imagen. El resultado (unos pocos bytes) sale hacia la tarea de red del núcleo 0.</figcaption>
 </figure>
@@ -329,7 +329,7 @@
 <p>Dos flujos (dos tareas, una tarea y una interrupción, o dos núcleos) leen, modifican y escriben el mismo dato, y el resultado depende del orden en que se intercalan.</p>
 
 <div class="caja dato">
-  <h4>dato · un encoder que salta 65 536 cuentas</h4>
+  <h4>dato: un encoder que salta 65 536 cuentas</h4>
   <p>Un contador de pulsos de encoder de 32 bits lo incrementa una interrupción y lo lee una tarea en dos accesos de 16 bits. Si la interrupción cae justo entre los dos, la tarea lee una posición imposible. Igual con un motor: una interrupción actualiza la velocidad y el ángulo, y el lazo de control lee el ángulo nuevo con la velocidad vieja.</p>
 </div>
 
@@ -341,19 +341,19 @@
 
 <p>La <strong>herencia de prioridad</strong> lo acota: mientras la baja tiene la llave, el mutex le presta la prioridad de la más urgente que espera. La baja termina, la suelta y vuelve a su nivel. No lo elimina: acota la demora. Un semáforo binario no tiene herencia, así que para exclusión mutua se usa un mutex.</p>
 
-<figure class="diagrama" data-titulo="fig-5.6 · interactivo">
+<figure class="diagrama" data-titulo="fig-5.6 interactivo">
   <canvas data-motor="chip05-inversion"></canvas>
   <div class="controles" data-ctl="chip05-inversion"></div>
   <figcaption><b>fig 5.6</b>Tres tareas (alta, media y baja) y una llave. La baja toma la llave en t = 1; la alta la pide en t = 5; la media despierta en t = 6. Sin herencia, la media desaloja a la baja y la alta espera hasta t = 17. Con herencia, la baja sube de prioridad, termina en t = 6 y la alta cumple su plazo. Los tiempos son unidades didácticas.</figcaption>
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · la llave del baño</h4>
+  <h4>analogía: la llave del baño</h4>
   <p>El pasante (baja) tiene la llave del único baño y el director (alta) espera. Si un cliente (media) le pide un café al pasante, el director sigue esperando. La herencia es darle al pasante, por un rato, la autoridad del director para que termine y devuelva la llave.</p>
 </div>
 
 <div class="caja ojo">
-  <h4>ojo · no dependas de la herencia</h4>
+  <h4>ojo: no dependas de la herencia</h4>
   <p>La documentación de FreeRTOS advierte que la corrección del sistema no debería depender de la herencia: es mejor <strong>diseñar para que no haya inversión</strong>. Por ejemplo, un robot con un lazo de motor (alta), telemetría Wi-Fi (media) y registro en la tarjeta SD (baja) que comparten un bus SPI. Si el registro tiene el bus, la telemetría puede impedir que lo suelte y el motor pierde su lazo. Lo sano es que el lazo de control no comparta ese bus.</p>
 </div>
 
@@ -368,7 +368,7 @@
 <p>Un <strong>watchdog</strong> es un temporizador de cuenta regresiva que hay que reiniciar ("alimentar") de forma periódica. Si se agota, dispara una recuperación. Es un seguro contra cuelgues, no una función de tu aplicación.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el hombre muerto</h4>
+  <h4>analogía: el hombre muerto</h4>
   <p>Es el pedal del maquinista: hay que pisarlo cada tanto y, si no lo pisás, el tren frena. El watchdog de tareas es el pedal que pisa la tarea inactiva; el de interrupciones, el que pisa el tick.</p>
 </div>
 
@@ -426,14 +426,14 @@
   <h2>Fuentes</h2>
   <ol>
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (cap. 9, matriz de interrupciones; cap. 13, watchdogs). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Interrupt Allocation</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/intr_alloc.html">docs.espressif.com/…/system/intr_alloc.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — High-Priority Interrupts</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/hlinterrupts.html">docs.espressif.com/…/api-guides/hlinterrupts.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — IDF FreeRTOS</em> (SMP, afinidad, spinlocks). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/freertos_idf.html">docs.espressif.com/…/system/freertos_idf.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Watchdogs</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/wdts.html">docs.espressif.com/…/system/wdts.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Fatal Errors</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/fatal-errors.html">docs.espressif.com/…/api-guides/fatal-errors.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — High Resolution Timer</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/esp_timer.html">docs.espressif.com/…/system/esp_timer.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF — Performance: Speed</em> (prioridades y núcleos de las tareas del sistema). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/speed.html">docs.espressif.com/…/performance/speed.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Interrupt Allocation</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/intr_alloc.html">docs.espressif.com/…/system/intr_alloc.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: High-Priority Interrupts</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/hlinterrupts.html">docs.espressif.com/…/api-guides/hlinterrupts.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: IDF FreeRTOS</em> (SMP, afinidad, spinlocks). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/freertos_idf.html">docs.espressif.com/…/system/freertos_idf.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Watchdogs</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/wdts.html">docs.espressif.com/…/system/wdts.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Fatal Errors</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/fatal-errors.html">docs.espressif.com/…/api-guides/fatal-errors.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: High Resolution Timer</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/esp_timer.html">docs.espressif.com/…/system/esp_timer.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Performance: Speed</em> (prioridades y núcleos de las tareas del sistema). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/speed.html">docs.espressif.com/…/performance/speed.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración de FreeRTOS</em> (tick de 100 Hz, 25 prioridades). <a href="https://github.com/espressif/esp-idf/blob/master/components/freertos/Kconfig">github.com/espressif/esp-idf/…/components/freertos/Kconfig</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración del sistema</em> (TWDT de 5 s, IWDT de 300/800 ms). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_system/Kconfig">github.com/espressif/esp-idf/…/components/esp_system/Kconfig</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración de Wi-Fi</em> (núcleo del controlador). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/Kconfig">github.com/espressif/esp-idf/…/components/esp_wifi/Kconfig</a></li>
@@ -445,6 +445,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-01 · nivel-05</footer>
+<footer class="pie">learning-in-8-bit, tomo-01, nivel-05</footer>
 </body>
 </html>

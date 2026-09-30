@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // chip05-irq · tres caminos de una misma interrupción (línea de tiempo, no a escala)
 // =====================================================================================
 const IRQ_FILAS = [
-  { y: 22, rot: "C, NIVEL 1-3 · ISR EN IRAM", seg: [[8, 70, "tarea"], [70, 78, "hw"], [78, 116, "ctx"], [116, 146, "isr"], [146, 182, "ctx"], [182, 312, "tarea"]] },
+  { y: 22, rot: "C, NIVEL 1-3, ISR EN IRAM", seg: [[8, 70, "tarea"], [70, 78, "hw"], [78, 116, "ctx"], [116, 146, "isr"], [146, 182, "ctx"], [182, 312, "tarea"]] },
   { y: 64, rot: "ENSAMBLADOR, NIVEL 4+", seg: [[8, 70, "tarea"], [70, 78, "hw"], [78, 108, "isr"], [108, 114, "ctx"], [114, 312, "tarea"]] },
   { y: 106, rot: "ISR EN FLASH, CACHE APAGADA", seg: [[8, 70, "tarea"], [70, 78, "hw"], [78, 312, "err"]] },
 ];
@@ -102,14 +102,14 @@ PM.escena("chip05-gantt", {
       [[8, "n6"], [66, "n5"], [132, "n4"], [192, "a3"]].forEach(([x, k]) => m.rect(x, 104, 7, 7, k));
       m.tramado(272, 104, 7, 7, "n3"); m.marco(272, 104, 7, 7, "n3");
     });
-    txt(m, "VENTANA DE 100 ms · TICK CADA 10 ms (100 Hz)", 8, 2, "n6");
+    txt(m, "VENTANA DE 100 ms, TICK CADA 10 ms (100 Hz)", 8, 2, "n6");
     txt(m, "NUCL 0", 4, 34, "n6"); txt(m, "NUCL 1", 4, 70, "n6");
     for (let k = 0; k <= 10; k++) txt(m, String(k * 10), xs(k * 10), 92, "n4", { alin: k === 10 ? "der" : "centro" });
     [[19, "WIFI 23"], [77, "TIMER 22"], [143, "LWIP 18"], [203, "INFERENCIA"], [283, "IDLE"]].forEach(([x, s]) => txt(m, s, x, 104, "n5"));
     e32(m, () => m.linea(xs(msc), 20, xs(msc), 88, "a4", { grosor: 1 }));
     const hecho = g.c0.concat(g.c1).reduce((n, k, i) => n + (k === "f" && (i % G_MS) < msc ? 1 : 0), 0);
     const listo = msc >= g.fin;
-    txt(m, "TRABAJO DE LA IA: " + Math.min(G_TRAB, Math.round(hecho)) + " / " + G_TRAB + " ms" + (listo ? " · LISTO" : ""), 8, 120, "a4");
+    txt(m, "TRABAJO DE LA IA: " + Math.min(G_TRAB, Math.round(hecho)) + " / " + G_TRAB + " ms" + (listo ? ", LISTO" : ""), 8, 120, "a4");
     if (ST.gantt.modo === "c1") {
       txt(m, "ANCLADA AL NUCLEO 1: TERMINA A LOS 54 ms", 8, 132, "n6");
       txt(m, "SIN WIFI EN ESE NUCLEO: TIEMPO CONSTANTE", 8, 144, "n5");
@@ -157,7 +157,7 @@ PM.escena("chip05-cola", {
     });
     txt(m, "CAMARA", 40, 61, "n6", { alin: "centro" }); txt(m, "SIN CPU", 40, 71, "n4", { alin: "centro" });
     txt(m, "INFERENCIA", 280, 61, "n6", { alin: "centro" }); txt(m, "NUCLEO 1", 280, 71, "n4", { alin: "centro" });
-    txt(m, "COLA · LLENAS", 160, 12, "n5", { alin: "centro" }); txt(m, "COLA · LIBRES", 160, 146, "n5", { alin: "centro" });
+    txt(m, "COLA LLENAS", 160, 12, "n5", { alin: "centro" }); txt(m, "COLA LIBRES", 160, 146, "n5", { alin: "centro" });
     txt(m, "RESULT", 262, 118, "n4");
     // buffers: [letra, centro, relleno]
     const bufs = [];

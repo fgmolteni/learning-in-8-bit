@@ -155,8 +155,8 @@ PM.escena("chip06-ota", {
       txt(m, nom, S.x + S.w / 2, y + 10, "n6", { alin: "centro" });
       txt(m, est, S.x + S.w / 2, y + 26, est === "ABORTADA" ? "n4" : corriendo ? "n6" : "n5", { alin: "centro" });
     };
-    dibujaSlot(A_, "OTA_0 · A", estA, corre === "A");
-    dibujaSlot(B_, "OTA_1 · B", estB, corre === "B");
+    dibujaSlot(A_, "OTA_0 (A)", estA, corre === "A");
+    dibujaSlot(B_, "OTA_1 (B)", estB, corre === "B");
     // puntero de otadata hacia la ranura que arranca
     const dest = s < 2 || (s === 2 && p < 0.5) ? A_ : s === 4 && !ok ? A_ : B_;
     const xd = dest.x + dest.w / 2;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 4 · Periféricos: cómo el chip toca el mundo</title>
+<title>Nivel 4: Periféricos, cómo el chip toca el mundo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -16,7 +16,7 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="04">nivel 04 · 18 min de lectura</span>
+  <span class="nivel-chip" data-n="04">nivel 04, 18 min de lectura</span>
   <h1>Periféricos: cómo el chip toca el mundo</h1>
   <p class="bajada">Los núcleos calculan, pero todo lo que el chip siente o hace pasa por sus pines: un pin es un circuito con decisiones de diseño, y detrás de él hay contadores, conversores y buses que trabajan solos mientras la CPU piensa en otra cosa.</p>
 </header>
@@ -52,7 +52,7 @@
 <p>Cuando el pin no está manejado por nadie, las resistencias de <strong>pull-up</strong> y <strong>pull-down</strong> evitan que quede colgado leyendo ruido. Valen del orden de 45 kΩ, así que son un empujoncito, no un “1” robusto contra un cable largo.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el pin como llave con resorte</h4>
+  <h4>analogía: el pin como llave con resorte</h4>
   <p>IE y OE son dos interruptores: “escuchar” y “hablar”. Los pull son un resorte débil que lleva la cuerda floja hacia arriba o hacia abajo cuando nadie tira de ella. Cualquiera que tire con fuerza, sea el chip o un circuito externo, gana sin esfuerzo.</p>
 </div>
 
@@ -67,12 +67,12 @@
 <p>Un LED con 330 Ω a 3,3 V, con unos 2 V de caída propia, consume alrededor de <strong>4 mA</strong>, muy por debajo de cualquier nivel. Para cargas de decenas de mA hay que usar un transistor o un driver externo.</p>
 
 <div class="caja ojo">
-  <h4>ojo · los 40 mA no son un permiso</h4>
+  <h4>ojo: los 40 mA no son un permiso</h4>
   <p>El datasheet da 40 mA de fuente y 28 mA de sumidero como valores típicos con la fuerza máxima, y 1500 mA de corriente total acumulada como máximo absoluto. Son límites del silicio, no una recomendación de diseño: no hay un valor continuo recomendado por pin que se pueda citar, así que dejá un margen holgado.</p>
 </div>
 
 <div class="caja analogia">
-  <h4>analogía · el diámetro de la manguera</h4>
+  <h4>analogía: el diámetro de la manguera</h4>
   <p>Una fuerza de salida alta es una manguera ancha: llena el balde (la capacidad de la línea) más rápido y da flancos más limpios, pero con golpe de ariete: más ruido de conmutación y más emisión electromagnética. Una manguera fina suaviza los flancos.</p>
 </div>
 
@@ -86,7 +86,7 @@
   <li>El <strong>RTC IO MUX</strong> atiende a los 22 pines RTC: sus funciones de bajo consumo y analógicas (ADC, táctil, cristal de 32 kHz) y su conexión con el subsistema que sigue despierto en sueño profundo.</li>
 </ol>
 
-<figure class="diagrama" data-titulo="fig-4.2 · animada">
+<figure class="diagrama" data-titulo="fig-4.2 animada">
   <canvas data-motor="chip04-matriz"></canvas>
   <figcaption><b>fig 4.2</b>La matriz cierra un cruce entre una señal de periférico (filas) y un pin del chip (columnas). Cada pocos segundos cambia la ruta y la misma señal aparece en otro pin, sin tocar el hardware. Los cuatro pines dibujados son ejemplos; en el chip real son 45.</figcaption>
 </figure>
@@ -97,7 +97,7 @@
 <p>Todo eso agrega <strong>uno o dos ciclos de APB de latencia</strong> y un jitter de más o menos un ciclo. Para un LED o un botón es irrelevante. Para un reloj SPI de decenas de MHz importa, y ahí conviene el pin directo del IO MUX. El datasheet lo refleja: los máximos de velocidad se dan con pines directos y por la matriz el retardo de ida y vuelta limita el modo full-duplex; el límite exacto consultalo en el datasheet para tu caso.</p>
 
 <div class="caja analogia">
-  <h4>analogía · la central telefónica</h4>
+  <h4>analogía: la central telefónica</h4>
   <p>Cada periférico es un teléfono con su número y la matriz es la central con un panel de conexiones: une cualquier teléfono con cualquier línea externa. El IO MUX son unas pocas líneas directas cableadas, para las llamadas que no toleran la demora de pasar por la central.</p>
 </div>
 
@@ -121,7 +121,7 @@
 </div>
 
 <div class="caja ojo">
-  <h4>ojo · un LED puede impedir el arranque</h4>
+  <h4>ojo: un LED puede impedir el arranque</h4>
   <p>Si conectás a un strapping pin algo que fuerza un nivel durante el reset (un LED con pull-up fuerte en GPIO45, por ejemplo), el chip arranca mal aunque el firmware esté perfecto. En la práctica habitual, GPIO0 en bajo al soltar el reset entra en modo de descarga; la tabla completa de modos, mirala en el manual antes de diseñar la placa.</p>
 </div>
 
@@ -145,7 +145,7 @@
 </ul>
 
 <div class="caja analogia">
-  <h4>analogía · cronómetro y reloj de pared</h4>
+  <h4>analogía: cronómetro y reloj de pared</h4>
   <p>El Timer Group es un cronómetro con botones: lo programás, dispara y te avisa. El System Timer es el reloj de pared que nunca se detiene y del que todo el sistema saca la hora.</p>
 </div>
 
@@ -155,7 +155,7 @@
 
 <p>El bloque <strong>LEDC</strong> tiene <strong>8 canales y 4 timers</strong> (cada canal elige uno). Su mecanismo es un contador que cuenta de 0 hasta el máximo mientras un comparador vigila un umbral: la salida está en alto mientras el contador esté por debajo. Además puede hacer <strong>fades</strong> por hardware, rampas de ciclo de trabajo sin CPU.</p>
 
-<figure class="diagrama" data-titulo="fig-4.3 · interactivo">
+<figure class="diagrama" data-titulo="fig-4.3 interactivo">
   <canvas data-motor="chip04-pwm"></canvas>
   <div class="controles" data-ctl="pwm"></div>
   <figcaption><b>fig 4.3</b>Arriba, el contador en escalera y el umbral en punteado. Abajo, la salida. Con pocos bits el ciclo de trabajo se redondea al escalón más cercano (probá 4 bits y 40 %). Al subir los bits, el contador tiene más marcas que recorrer en cada período y la frecuencia cae; el cálculo asume el reloj de 80 MHz sin divisor.</figcaption>
@@ -192,7 +192,7 @@
 <p>Un puente en H tiene un transistor “alto” y uno “bajo” por rama. Si conducen a la vez hay un cortocircuito directo de la fuente (<em>shoot-through</em>). Los transistores reales no se apagan al instante: por eso el generador de <strong>tiempo muerto</strong> retrasa por separado el flanco de subida y el de bajada de cada salida. El retardo es un registro de 16 bits multiplicado por 6,25 ns, hasta unos 410 µs. El valor útil depende del transistor: en la práctica, entre cien nanosegundos y un microsegundo, según su tiempo de apagado más un margen.</p>
 
 <div class="caja analogia">
-  <h4>analogía · los semáforos de la esquina</h4>
+  <h4>analogía: los semáforos de la esquina</h4>
   <p>Entre el verde de una calle y el verde de la otra hay un instante con todos en rojo, para que el último auto termine de cruzar. El tiempo muerto es ese instante: no importa cuándo mandás el cambio, los dos transistores nunca están abiertos a la vez.</p>
 </div>
 
@@ -202,14 +202,14 @@
 
 <p>El SAR es una búsqueda binaria. Un DAC interno genera un valor de prueba, un comparador dice si la entrada está por encima o por debajo, y el bit se conserva o se descarta. Se empieza por el más significativo y se baja un bit por paso: <strong>12 comparaciones para 12 bits</strong>.</p>
 
-<figure class="diagrama" data-titulo="fig-4.4 · interactivo">
+<figure class="diagrama" data-titulo="fig-4.4 interactivo">
   <canvas data-motor="chip04-sar"></canvas>
   <div class="controles" data-ctl="sar"></div>
   <figcaption><b>fig 4.4</b>Conversión paso a paso. Cada barra es el valor que prueba el DAC interno; la línea horizontal es la tensión de entrada. Si la barra queda por debajo de la línea, el bit se conserva (barra llena); si la pasa, se descarta (tramado). Abajo se arma el resultado, del bit más significativo al menos significativo. Movés la entrada con el deslizador.</figcaption>
 </figure>
 
 <div class="caja analogia">
-  <h4>analogía · la balanza de dos platillos</h4>
+  <h4>analogía: la balanza de dos platillos</h4>
   <p>Tenés pesas de 2048, 1024, 512… Probás la más grande: si el objeto pesa más, la dejás; si no, la sacás. Después la siguiente. Con 12 pesadas ajustás el peso al último gramo, sin probar las 4096 combinaciones.</p>
 </div>
 
@@ -229,7 +229,7 @@
 </div>
 
 <div class="caja dato">
-  <h4>dato · ni con 12 dB se llega a 3,3 V</h4>
+  <h4>dato: ni con 12 dB se llega a 3,3 V</h4>
   <p>El techo útil del ADC es de unos <strong>2,9 V</strong>. Para leer una señal de 3,3 V hace falta un divisor externo. Y en ese rango el error total es de decenas de mV: <strong>los 12 bits son resolución, no exactitud</strong>.</p>
 </div>
 
@@ -240,7 +240,7 @@
 <p>Los canales de ADC2 <strong>no pueden usarse a la vez que el Wi-Fi</strong>: comparte recursos con el subsistema de radio. Además, el manual indica que el controlador digital de ADC2 no funciona bien en el S3 y que en la práctica solo sirve la conversión simple. Regla práctica: si la señal analógica convive con Wi-Fi, usá un canal de <strong>ADC1</strong>.</p>
 
 <div class="caja analogia">
-  <h4>analogía · una herramienta para dos</h4>
+  <h4>analogía: una herramienta para dos</h4>
   <p>El ADC2 y la radio se turnan una sola herramienta. Si la radio la necesita, el ADC2 espera, y no hay forma de que te avise a tiempo.</p>
 </div>
 
@@ -260,7 +260,7 @@
 
 <p>Los pines se usan para lo simple (un LED, un botón), pero los sensores, las pantallas, la memoria y el audio hablan por buses serie. Cada uno responde a otra idea de diseño.</p>
 
-<figure class="diagrama" data-titulo="fig-4.5 · animada">
+<figure class="diagrama" data-titulo="fig-4.5 animada">
   <canvas data-motor="chip04-buses"></canvas>
   <figcaption><b>fig 4.5</b>Los tres cronogramas se dibujan a la vez y transmiten el mismo byte. La UART no tiene reloj: se apoya en el bit de inicio y en una velocidad acordada. El I2C agrega un reloj y le suma confirmaciones (A) tras cada byte. En SPI el reloj empuja un bit por cada línea de datos, y la selección de chip (CS) marca el mensaje.</figcaption>
 </figure>
@@ -294,12 +294,12 @@
 <p>El pull-up interno del S3 vale unos 45 kΩ: con 100 pF sube en unos <strong>3,8 µs</strong>. Sirve para un cable cortísimo y velocidades muy bajas. Por eso el datasheet limita los 800 kbit/s a “la fuerza de los pull-ups”.</p>
 
 <div class="caja ojo">
-  <h4>ojo · los límites del estándar</h4>
+  <h4>ojo: los límites del estándar</h4>
   <p>La especificación I2C exige tiempos de subida del orden de 1 µs a 100 kHz y de unos 300 ns a 400 kHz, y una corriente de bajada de unos 3 mA (lo que fija un mínimo de resistencia cercano a 1 kΩ a 3,3 V). Son cifras de la especificación del estándar, no del datasheet del S3: confirmalas ahí antes de fijar valores.</p>
 </div>
 
 <div class="caja analogia">
-  <h4>analogía · la reunión de mesa</h4>
+  <h4>analogía: la reunión de mesa</h4>
   <p>En I2C todos solo pueden bajar la mano. La mano sube sola por un resorte, la resistencia. Si el resorte es débil (resistencia grande), la mano sube despacio y no podés hablar rápido.</p>
 </div>
 
@@ -309,7 +309,7 @@
 <p>Es el bus rápido: SPI2 como maestro llega a <strong>80 MHz</strong>. En modo quad, 80 MHz × 4 líneas dan 320 Mbit/s (40 MB/s), y en octal 80 MB/s. Esos máximos suponen pines directos por el IO MUX y cables cortos.</p>
 
 <div class="caja analogia">
-  <h4>analogía · el tren de engranajes</h4>
+  <h4>analogía: el tren de engranajes</h4>
   <p>Dos engranajes acoplados con un metrónomo común: cada tic desplaza un diente hacia cada lado. Nadie tiene que adivinar la velocidad, porque el reloj viaja con los datos.</p>
 </div>
 
@@ -317,7 +317,7 @@
 <p>Tres señales de base: reloj de bit (BCK), selección de palabra (WS: izquierda o derecha) y datos (SD), más un reloj maestro opcional. Los dos controladores soportan varios formatos (Philips, MSB, LSB, PCM, TDM) y <strong>PDM</strong>, el formato de 1 bit sobremuestreado de los micrófonos MEMS baratos. Para audio estéreo de 16 bits a 48 kHz, el reloj de bit es 48 000 × 2 × 16 = 1,536 MHz.</p>
 
 <div class="caja analogia">
-  <h4>analogía · hablar sin metrónomo</h4>
+  <h4>analogía: hablar sin metrónomo</h4>
   <p>La UART es como dos personas que acordaron de antemano a qué velocidad hablar y se enganchan al oír la primera sílaba. Si uno habla apenas más rápido que el otro, al cabo de unas cuantas palabras ya no se entienden.</p>
 </div>
 
@@ -332,7 +332,7 @@
 </ul>
 
 <div class="caja analogia">
-  <h4>analogía · la cinta transportadora</h4>
+  <h4>analogía: la cinta transportadora</h4>
   <p>El periférico pone cajas (datos) en la cinta y la lista de descriptores dice a qué estante de la RAM va cada lote. La CPU, el operario, solo aparece cuando suena el timbre.</p>
 </div>
 
@@ -364,11 +364,11 @@
   <ol>
     <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em> (pines y prioridades, arranque, controladores serie, ADC, características eléctricas). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em> (GDMA, IO MUX y GPIO Matrix, matriz de interrupciones, SYSTIMER, TIMG, I2C, LEDC, MCPWM, sensores del chip). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide — GPIO (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/gpio.html">docs.espressif.com/…/peripherals/gpio.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide — LEDC (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/ledc.html">docs.espressif.com/…/peripherals/ledc.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide — ADC de una conversión (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/adc/adc_oneshot.html">docs.espressif.com/…/adc/adc_oneshot.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide — índice de periféricos (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/index.html">docs.espressif.com/…/peripherals/index.html</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide — DAC (ESP32 original)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/dac.html">docs.espressif.com/…/peripherals/dac.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: GPIO (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/gpio.html">docs.espressif.com/…/peripherals/gpio.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: LEDC (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/ledc.html">docs.espressif.com/…/peripherals/ledc.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: ADC de una conversión (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/adc/adc_oneshot.html">docs.espressif.com/…/adc/adc_oneshot.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: índice de periféricos (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/index.html">docs.espressif.com/…/peripherals/index.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: DAC (ESP32 original)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/dac.html">docs.espressif.com/…/peripherals/dac.html</a></li>
     <li>NXP. <em>UM10204: I2C-bus specification and user manual</em> (tiempos de subida y corriente de bajada citados como órdenes de magnitud). <a href="https://www.nxp.com/docs/en/user-guide/UM10204.pdf">nxp.com/docs/en/user-guide/UM10204.pdf</a></li>
   </ol>
   <p class="nota">Las cifras del estándar I2C y la comparación con otros chips de la familia no se verificaron contra las fuentes primarias correspondientes y van como órdenes de magnitud o no se afirman.</p>
@@ -376,6 +376,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit · tomo-01 · nivel-04</footer>
+<footer class="pie">learning-in-8-bit, tomo-01, nivel-04</footer>
 </body>
 </html>

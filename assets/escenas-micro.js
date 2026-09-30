@@ -33,7 +33,7 @@ PixelMotor.escena("micro-bloques", {
         { id: "n1",    x: 106, y: 22,  w: 90, h: 32, titulo: "Nucleo 1", sub: "LX7+PIE" },
         { id: "cache", x: 8,   y: 62,  w: 188, h: 22, titulo: "Cache+MMU" },
         { id: "rom",   x: 8,   y: 98,  w: 86, h: 34, titulo: "ROM", sub: "384 KB" },
-        { id: "peri",  x: 8,   y: 142, w: 86, h: 34, titulo: "Perifericos", sub: "I2S·USB" },
+        { id: "peri",  x: 8,   y: 142, w: 86, h: 34, titulo: "Perifericos", sub: "I2S, USB" },
         { id: "sram",  x: 112, y: 98,  w: 82, h: 34, titulo: "SRAM", sub: "512 KB" },
         { id: "gdma",  x: 210, y: 98,  w: 82, h: 34, titulo: "GDMA", sub: "5 canales" },
         { id: "lcd",   x: 210, y: 142, w: 82, h: 34, titulo: "LCD_CAM", sub: "interfaz" },
@@ -202,7 +202,7 @@ PixelMotor.escena("micro-pinout", {
   descripcion: "Diagrama de conexión entre la cámara OV2640 y el ESP32-S3: bus de datos D0 a D7, señales de sincronismo PCLK, VSYNC, HREF y bus SCCB para configuración",
   dibujar(m, t) {
     fondo(m);
-    en(m, 8, () => m.texto("CONEXION OV2640 - ESP32-S3", 160, 6, "n6", { alin: "centro" }));
+    en(m, 8, () => m.texto("CONEXION OV2640 A ESP32-S3", 160, 6, "n6", { alin: "centro" }));
 
     // OV2640 (chip izquierdo)
     const camPines = [
