@@ -347,6 +347,8 @@ abbr[title], .termino { text-decoration: underline dotted var(--texto-suave); te
 .nav-niveles small { display: block; font-family: var(--f-mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); }
 .nav-niveles span { font-family: var(--f-serif); font-size: 1.4rem; line-height: 1.25; color: var(--tinta); }
 
+footer.pie .autor { margin-top: .5rem; color: var(--texto); }
+footer.pie .autor a { color: var(--a3); }
 footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--texto-suave); font-size: .8rem; font-family: var(--f-mono); letter-spacing: .04em; border-top: 1px solid var(--linea-fuerte); }
 
 /* animaciones */

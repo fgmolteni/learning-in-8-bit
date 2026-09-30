@@ -69,7 +69,7 @@
 <p>Si todo se hace en fila, la cámara espera a la red y la red espera a la cámara. El truco clásico es el <strong>doble buffer</strong> (o “ping-pong”): hay dos buffers de imagen. Mientras la red trabaja sobre uno, la cámara llena el otro; después se intercambian. Con dos núcleos el reparto natural es:</p>
 <ul>
   <li><strong>Núcleo 0:</strong> Wi-Fi, sistema y preparación de cuadros.</li>
-  <li><strong>Núcleo 1:</strong> solo inferencia, sin interrupciones.</li>
+  <li><strong>Núcleo 1:</strong> la inferencia, sin la carga de Wi-Fi ni del sistema (sigue recibiendo su tick y las interrupciones que se le asignen; ver <a href="../chip/05-tiempo-real.html">Tomo I, nivel 5</a>).</li>
 </ul>
 
 <figure class="diagrama" data-titulo="fig-2.2 · analizador lógico">

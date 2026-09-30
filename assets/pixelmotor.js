@@ -63,9 +63,9 @@
   // minúsculas solo para unidades (mA, ms, kHz, Hz): el resto del texto va en mayúsculas
   Object.assign(FUENTE, Object.fromEntries(Object.entries({
     m: "00000 00000 11010 10101 10101 10001 10001", s: "00000 00000 01110 10000 01110 00001 11110",
-    k: "10000 10000 10010 10100 11000 10100 10010", z: "00000 00000 11111 00010 00100 01000 11111",
+    k: "10000 10000 10010 10100 11000 10100 10010", h: "10000 10000 10110 11001 10001 10001 10001", z: "00000 00000 11111 00010 00100 01000 11111",
   }).map(([c, g]) => [c, g.split(" ").map((f) => parseInt(f, 2))])));
-  const UNIDAD = /^(m|k|µ)?(A|V|W|F|H|Hz|s|Ω)(·s)?$|^(Hz|ms|kHz|MHz|mA|mV|mW|mF|µF|µA|µs|kB|KB|MB|GB)$/;
+  const UNIDAD = /^(m|k|µ)?(A|V|W|F|H|Hz|s|Ω)(·s)?$|^(Hz|ms|kHz|MHz|mA|mAh|Ah|Wh|mWh|mV|mW|mF|µF|µA|µs|kB|KB|MB|GB)$/;
   const normalizar = (s) => String(s).split(/(\s+)/).map((pal) => {
     // una palabra que es unidad (o número+unidad, ej. "100mA") conserva sus minúsculas
     const m = pal.match(/^([(~≈<>+-]?[\d.,]*)(.*?)([),.:]?)$/);

@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 5 · Tiempo real: interrupciones y tareas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-chip-05.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="chip" data-nivel="5">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="05">nivel 05 · 18 min de lectura</span>
+  <h1>Tiempo real: interrupciones y tareas</h1>
+  <p class="bajada">Un chip que ve, decide y además mantiene el Wi-Fi vivo hace muchas cosas a la vez con dos núcleos. Este nivel cuenta cómo se reparte el tiempo: quién interrumpe a quién, quién espera y qué pasa cuando algo se cuelga.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar qué hace el hardware cuando llega una <strong>interrupción</strong> y por qué la rutina que la atiende vive en IRAM.</li>
+    <li>Elegir entre <strong>sondeo</strong> e interrupción según el evento.</li>
+    <li>Describir qué es un <strong>planificador</strong>, una tarea, una prioridad, el tick y los estados de una tarea.</li>
+    <li>Explicar por qué Wi-Fi corre en el núcleo 0 y la inferencia se ancla al núcleo 1.</li>
+    <li>Elegir entre cola, semáforo, mutex y notificación, y reconocer una <strong>carrera</strong>, una <strong>inversión de prioridades</strong> y un <strong>interbloqueo</strong>.</li>
+    <li>Decir qué vigila cada <strong>watchdog</strong>.</li>
+  </ul>
+</div>
+
+<h2>Preguntar o esperar el aviso</h2>
+
+<p>Hay dos maneras de enterarse de que algo pasó afuera del chip: un botón, un byte que llega por la UART, el final de una transferencia de DMA. La primera es <strong>sondear</strong>: el programa mira una y otra vez si el evento ya ocurrió. La segunda es la <strong>interrupción</strong>: el periférico levanta una línea y el núcleo deja lo que estaba haciendo para atenderlo.</p>
+
+<div class="caja analogia">
+  <h4>analogía · el timbre</h4>
+  <p>Sondear es asomarte a la puerta cada diez segundos por si llegó alguien. Interrumpir es tener un timbre: hacés otra cosa (o dormís) hasta que suena.</p>
+</div>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>Sondeo</th><th>Interrupción</th></tr></thead>
+  <tbody>
+    <tr><td><b>Latencia</b></td><td>Como peor caso, una vuelta completa del bucle</td><td>Acotada por el hardware: del orden de microsegundos</td></tr>
+    <tr><td><b>CPU</b></td><td>Gasta ciclos aunque no pase nada y no puede dormir</td><td>Gasta ciclos solo cuando hay evento; puede dormir</td></tr>
+    <tr><td><b>Complejidad</b></td><td>Simple: el flujo es lineal</td><td>El flujo "salta" en cualquier punto: hay concurrencia</td></tr>
+    <tr><td><b>Conviene cuando</b></td><td>El evento es casi continuo y previsible</td><td>El evento es raro, asíncrono o urgente</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Regla práctica: entrar y salir de una interrupción cuesta cientos de ciclos. Si el evento ocurre casi siempre, sondear sale más barato. Si es raro o urgente, se interrumpe.</p>
+
+<h2>Del pin a la CPU: la matriz de interrupciones</h2>
+
+<p>El ESP32-S3 tiene <strong>99 fuentes</strong> de interrupción entre todos sus periféricos, pero cada núcleo LX7 solo ofrece <strong>32 interrupciones propias</strong>: 26 para periféricos y 6 internas (temporizadores del núcleo, software, perfilado). Falta un conmutador entre los dos números. Es la <strong>matriz de interrupciones</strong>.</p>
+
+<p>Funciona como un tablero de conexiones con un registro por fuente y por núcleo: cada registro dice "esta fuente va a la interrupción N de este núcleo". Una misma fuente puede ir a <strong>varias</strong> interrupciones y a <strong>ambos</strong> núcleos.</p>
+
+<figure class="diagrama" data-titulo="fig-5.1">
+  <svg viewBox="0 0 640 312" role="img" aria-label="Diagrama: 99 fuentes de interrupción de los periféricos entran a la matriz de interrupciones, que las conecta a 26 más 6 interrupciones de cada núcleo; cada interrupción tiene un nivel de prioridad de 1 a 5 más la no enmascarable. Una misma fuente, LCD_CAM, se conecta al nivel 3 del núcleo 0 y también al nivel 3 del núcleo 1.">
+    <text x="16" y="32" class="sv-tit f6" text-anchor="start">99 fuentes</text>
+    <text x="312" y="32" class="sv-tit f6" text-anchor="middle">Matriz</text>
+    <text x="536" y="32" class="sv-tit f6" text-anchor="middle">32 por núcleo</text>
+    <rect x="216" y="48" width="192" height="248" class="f1 s3" stroke-width="2"/><rect x="215" y="47" width="2" height="2" class="f0"/><rect x="407" y="47" width="2" height="2" class="f0"/><rect x="215" y="295" width="2" height="2" class="f0"/><rect x="407" y="295" width="2" height="2" class="f0"/>
+    <line x1="240" y1="56" x2="240" y2="288" class="s2" stroke-width="2"/>
+    <line x1="264" y1="56" x2="264" y2="288" class="s2" stroke-width="2"/>
+    <line x1="288" y1="56" x2="288" y2="288" class="s2" stroke-width="2"/>
+    <line x1="312" y1="56" x2="312" y2="288" class="s2" stroke-width="2"/>
+    <line x1="336" y1="56" x2="336" y2="288" class="s2" stroke-width="2"/>
+    <line x1="360" y1="56" x2="360" y2="288" class="s2" stroke-width="2"/>
+    <line x1="384" y1="56" x2="384" y2="288" class="s2" stroke-width="2"/>
+    <rect x="16" y="56" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="55" width="2" height="2" class="f0"/><rect x="151" y="55" width="2" height="2" class="f0"/><rect x="15" y="81" width="2" height="2" class="f0"/><rect x="151" y="81" width="2" height="2" class="f0"/>
+    <text x="28" y="75" class="sv-lbl f6" text-anchor="start">GPIO</text>
+    <line x1="152" y1="69" x2="408" y2="69" class="s2" stroke-width="2"/>
+    <rect x="16" y="90" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="89" width="2" height="2" class="f0"/><rect x="151" y="89" width="2" height="2" class="f0"/><rect x="15" y="115" width="2" height="2" class="f0"/><rect x="151" y="115" width="2" height="2" class="f0"/>
+    <text x="28" y="109" class="sv-lbl f6" text-anchor="start">SPI</text>
+    <line x1="152" y1="103" x2="408" y2="103" class="s2" stroke-width="2"/>
+    <rect x="16" y="124" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="123" width="2" height="2" class="f0"/><rect x="151" y="123" width="2" height="2" class="f0"/><rect x="15" y="149" width="2" height="2" class="f0"/><rect x="151" y="149" width="2" height="2" class="f0"/>
+    <text x="28" y="143" class="sv-lbl f6" text-anchor="start">UART</text>
+    <line x1="152" y1="137" x2="408" y2="137" class="s2" stroke-width="2"/>
+    <rect x="16" y="158" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="157" width="2" height="2" class="f0"/><rect x="151" y="157" width="2" height="2" class="f0"/><rect x="15" y="183" width="2" height="2" class="f0"/><rect x="151" y="183" width="2" height="2" class="f0"/>
+    <text x="28" y="177" class="sv-lbl f6" text-anchor="start">DMA</text>
+    <line x1="152" y1="171" x2="408" y2="171" class="s2" stroke-width="2"/>
+    <rect x="16" y="192" width="136" height="26" class="fa1 sa3" stroke-width="2"/><rect x="15" y="191" width="2" height="2" class="f0"/><rect x="151" y="191" width="2" height="2" class="f0"/><rect x="15" y="217" width="2" height="2" class="f0"/><rect x="151" y="217" width="2" height="2" class="f0"/>
+    <text x="28" y="211" class="sv-lbl fa3" text-anchor="start">LCD_CAM</text>
+    <line x1="152" y1="205" x2="288" y2="205" class="sa3" stroke-width="2"/>
+    <rect x="16" y="226" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="225" width="2" height="2" class="f0"/><rect x="151" y="225" width="2" height="2" class="f0"/><rect x="15" y="251" width="2" height="2" class="f0"/><rect x="151" y="251" width="2" height="2" class="f0"/>
+    <text x="28" y="245" class="sv-lbl f6" text-anchor="start">Wi-Fi MAC</text>
+    <line x1="152" y1="239" x2="408" y2="239" class="s2" stroke-width="2"/>
+    <rect x="16" y="260" width="136" height="26" class="f1 s3" stroke-width="2"/><rect x="15" y="259" width="2" height="2" class="f0"/><rect x="151" y="259" width="2" height="2" class="f0"/><rect x="15" y="285" width="2" height="2" class="f0"/><rect x="151" y="285" width="2" height="2" class="f0"/>
+    <text x="28" y="279" class="sv-lbl f6" text-anchor="start">… hasta 99</text>
+    <line x1="152" y1="273" x2="408" y2="273" class="s2" stroke-width="2"/>
+    <polyline points="288,205 288,116 448,116" class="fn sa3" stroke-width="2"/>
+    <polyline points="288,205 360,205 360,252 448,252" class="fn sa3" stroke-width="2"/>
+    <polygon points="448,116 440,111 440,121" class="fa3"/>
+    <polygon points="448,252 440,247 440,257" class="fa3"/>
+    <rect x="284" y="201" width="8" height="8" class="fa3"/>
+    <rect x="356" y="201" width="8" height="8" class="fa3"/>
+    <text x="312" y="284" class="sv-lbl f4" text-anchor="middle" font-size="16">un registro por fuente</text>
+    <rect x="448" y="48" width="176" height="112" class="f1 s3" stroke-width="2"/><rect x="447" y="47" width="2" height="2" class="f0"/><rect x="623" y="47" width="2" height="2" class="f0"/><rect x="447" y="159" width="2" height="2" class="f0"/><rect x="623" y="159" width="2" height="2" class="f0"/>
+    <text x="536" y="74" class="sv-tit f6" text-anchor="middle">Núcleo 0</text>
+    <text x="536" y="94" class="sv-lbl f4" text-anchor="middle" font-size="16">26 + 6 interrupciones</text>
+    <rect x="454" y="108" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="453" y="107" width="2" height="2" class="f0"/><rect x="477" y="107" width="2" height="2" class="f0"/><rect x="453" y="131" width="2" height="2" class="f0"/><rect x="477" y="131" width="2" height="2" class="f0"/>
+    <text x="466" y="125" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text>
+    <rect x="482" y="108" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="481" y="107" width="2" height="2" class="f0"/><rect x="505" y="107" width="2" height="2" class="f0"/><rect x="481" y="131" width="2" height="2" class="f0"/><rect x="505" y="131" width="2" height="2" class="f0"/>
+    <text x="494" y="125" class="sv-lbl f6" text-anchor="middle" font-size="16">2</text>
+    <rect x="510" y="108" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="509" y="107" width="2" height="2" class="f0"/><rect x="533" y="107" width="2" height="2" class="f0"/><rect x="509" y="131" width="2" height="2" class="f0"/><rect x="533" y="131" width="2" height="2" class="f0"/>
+    <text x="522" y="125" class="sv-lbl fa3" text-anchor="middle" font-size="16">3</text>
+    <rect x="538" y="108" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="537" y="107" width="2" height="2" class="f0"/><rect x="561" y="107" width="2" height="2" class="f0"/><rect x="537" y="131" width="2" height="2" class="f0"/><rect x="561" y="131" width="2" height="2" class="f0"/>
+    <text x="550" y="125" class="sv-lbl f6" text-anchor="middle" font-size="16">4</text>
+    <rect x="566" y="108" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="565" y="107" width="2" height="2" class="f0"/><rect x="589" y="107" width="2" height="2" class="f0"/><rect x="565" y="131" width="2" height="2" class="f0"/><rect x="589" y="131" width="2" height="2" class="f0"/>
+    <text x="578" y="125" class="sv-lbl f6" text-anchor="middle" font-size="16">5</text>
+    <rect x="594" y="108" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="593" y="107" width="2" height="2" class="f0"/><rect x="617" y="107" width="2" height="2" class="f0"/><rect x="593" y="131" width="2" height="2" class="f0"/><rect x="617" y="131" width="2" height="2" class="f0"/>
+    <text x="606" y="125" class="sv-lbl f6" text-anchor="middle" font-size="16">NMI</text>
+    <text x="536" y="150" class="sv-lbl f4" text-anchor="middle" font-size="16">nivel = prioridad →</text>
+    <rect x="448" y="184" width="176" height="112" class="f1 s3" stroke-width="2"/><rect x="447" y="183" width="2" height="2" class="f0"/><rect x="623" y="183" width="2" height="2" class="f0"/><rect x="447" y="295" width="2" height="2" class="f0"/><rect x="623" y="295" width="2" height="2" class="f0"/>
+    <text x="536" y="210" class="sv-tit f6" text-anchor="middle">Núcleo 1</text>
+    <text x="536" y="230" class="sv-lbl f4" text-anchor="middle" font-size="16">26 + 6 interrupciones</text>
+    <rect x="454" y="244" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="453" y="243" width="2" height="2" class="f0"/><rect x="477" y="243" width="2" height="2" class="f0"/><rect x="453" y="267" width="2" height="2" class="f0"/><rect x="477" y="267" width="2" height="2" class="f0"/>
+    <text x="466" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text>
+    <rect x="482" y="244" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="481" y="243" width="2" height="2" class="f0"/><rect x="505" y="243" width="2" height="2" class="f0"/><rect x="481" y="267" width="2" height="2" class="f0"/><rect x="505" y="267" width="2" height="2" class="f0"/>
+    <text x="494" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">2</text>
+    <rect x="510" y="244" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="509" y="243" width="2" height="2" class="f0"/><rect x="533" y="243" width="2" height="2" class="f0"/><rect x="509" y="267" width="2" height="2" class="f0"/><rect x="533" y="267" width="2" height="2" class="f0"/>
+    <text x="522" y="261" class="sv-lbl fa3" text-anchor="middle" font-size="16">3</text>
+    <rect x="538" y="244" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="537" y="243" width="2" height="2" class="f0"/><rect x="561" y="243" width="2" height="2" class="f0"/><rect x="537" y="267" width="2" height="2" class="f0"/><rect x="561" y="267" width="2" height="2" class="f0"/>
+    <text x="550" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">4</text>
+    <rect x="566" y="244" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="565" y="243" width="2" height="2" class="f0"/><rect x="589" y="243" width="2" height="2" class="f0"/><rect x="565" y="267" width="2" height="2" class="f0"/><rect x="589" y="267" width="2" height="2" class="f0"/>
+    <text x="578" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">5</text>
+    <rect x="594" y="244" width="24" height="24" class="f0 s3" stroke-width="2"/><rect x="593" y="243" width="2" height="2" class="f0"/><rect x="617" y="243" width="2" height="2" class="f0"/><rect x="593" y="267" width="2" height="2" class="f0"/><rect x="617" y="267" width="2" height="2" class="f0"/>
+    <text x="606" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">NMI</text>
+    <text x="536" y="286" class="sv-lbl f4" text-anchor="middle" font-size="16">nivel = prioridad →</text>
+    </svg>
+  <figcaption><b>fig 5.1</b>Las fuentes de los periféricos (izquierda) entran a la matriz y salen hacia las interrupciones de cada núcleo (derecha). En el ejemplo, la interfaz de cámara está conectada al nivel 3 de los dos núcleos: la misma fuente, dos destinos. En este chip la prioridad está cableada a la interrupción de destino, así que <strong>elegir a cuál conectás una fuente es elegir su prioridad</strong>.</figcaption>
+</figure>
+
+<h3>Niveles, tipos y anidamiento</h3>
+
+<p>Cada interrupción del núcleo tiene un <strong>nivel</strong>: mayor nivel, mayor prioridad. El manual del S3 las reparte en niveles 1 a 5 más una <strong>NMI</strong> (no enmascarable, la más alta). Una interrupción de nivel alto interrumpe a una de nivel bajo, que queda en pausa hasta que la alta termina: es el <strong>anidamiento</strong>.</p>
+
+<p>Además, cada una es <strong>por nivel</strong> (la fuente mantiene la línea alta hasta que la atienden; si la suelta antes, se pierde) o <strong>por flanco</strong> (el núcleo anota que hubo un flanco). Solo las interrupciones por nivel se pueden <strong>compartir</strong> entre varios periféricos.</p>
+
+<div class="caja ojo">
+  <h4>ojo · niveles y latencias</h4>
+  <p>La guía de ESP-IDF habla de niveles 1 a 7 (con el 6 para depuración y el 7 como NMI), mientras que el manual del S3 describe 1 a 5 más NMI. No pude confirmar cómo se corresponden, así que en este nivel usamos la numeración del manual. Las latencias que siguen también son <strong>del orden de</strong> lo que miden usuarios, no cifras oficiales de Espressif.</p>
+</div>
+
+<h2>Qué pasa cuando llega una interrupción</h2>
+
+<p>La secuencia es la misma en todos los casos, con más o menos trabajo de software en el medio:</p>
+<ol>
+  <li>El periférico levanta la fuente, la matriz la enruta y el núcleo la anota como <strong>pendiente</strong>.</li>
+  <li>Al terminar la instrucción en curso, si está habilitada y su nivel supera al actual, el hardware guarda dónde iba (el contador de programa y el estado) y <strong>salta al vector</strong> de ese nivel.</li>
+  <li>En los niveles 1 a 3, un despachador del sistema <strong>guarda el contexto</strong> (los registros de la tarea interrumpida) en la pila, identifica qué periférico disparó y llama a tu rutina en C. Al volver, restaura todo.</li>
+  <li>Si la rutina despertó a una tarea más prioritaria, el sistema salta a esa tarea en lugar de volver a la interrumpida.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-5.2 · animada">
+  <canvas data-motor="chip05-irq"></canvas>
+  <figcaption><b>fig 5.2</b>Una misma interrupción por tres caminos. En la fila 1 (nivel 1 a 3, en C) hay que guardar y restaurar el contexto, y eso ensancha la respuesta. En la fila 2 (nivel 4 o más, en ensamblador) la rutina arranca casi enseguida, pero no puede usar el sistema operativo. En la fila 3, la rutina está en flash mientras la caché está apagada: el núcleo no puede leerla. Los anchos son didácticos.</figcaption>
+</figure>
+
+<h3>Cuánto tarda</h3>
+
+<p>La respuesta típica en C se mide en <strong>microsegundos</strong>: usuarios reportaron del orden de 2 µs desde el flanco externo hasta la primera línea de la rutina a 240 MHz, unos 500 ciclos de 4,2 ns. Es una medición de foros, no un dato de Espressif. En ensamblador, Espressif dice solo "muy baja".</p>
+
+<p>Lo que importa es el <strong>peor caso</strong>, no el típico. Se suma cualquier interrupción de nivel igual o mayor que esté corriendo, cualquier sección con interrupciones enmascaradas, un fallo de caché si la rutina está en flash y, sobre todo, la caché apagada (próxima sección).</p>
+
+<h3>Dos clases de rutinas</h3>
+
+<ul>
+  <li><strong>Niveles 1 a 3:</strong> rutinas en C con el entorno completo. Pueden avisar al sistema operativo (con las variantes pensadas para eso).</li>
+  <li><strong>Niveles 4 en adelante:</strong> de "alta prioridad". Solo en ensamblador, sin llamar a C ni al sistema, porque corren dentro de una sección crítica que el sistema ni conoce. A cambio, la latencia es mínima. Sirven, por ejemplo, para generar una señal con jitter de nanosegundos mientras todo lo demás está bloqueado.</li>
+</ul>
+
+<div class="caja analogia">
+  <h4>analogía · guardia de hospital</h4>
+  <p>El nivel es el triage. Un paro cardíaco interrumpe una consulta de rutina. El médico de nivel 1 a 3 primero se lava y se cambia (guardar contexto); el de nivel 4 o más es el desfibrilador colgado en la pared: sin preparación, pero solo sabe hacer una cosa.</p>
+</div>
+
+<h2>Por qué la rutina vive en IRAM</h2>
+
+<p>Como viste en el <a href="03-memoria.html">nivel 3</a>, tu programa se ejecuta desde la flash externa a través de una caché. Pero cuando hay que <strong>escribir o borrar la flash</strong> (guardar un parámetro, actualizar el firmware, escribir un archivo), la flash no puede estar leyéndose a la vez. El sistema <strong>apaga la caché</strong> y frena las tareas que dependen de ella.</p>
+
+<p>Una rutina normal, ubicada en flash, queda inutilizable en esa ventana. Si igual llega la interrupción, el resultado es una excepción fatal por acceso con la caché apagada (la fila 3 de la fig 5.2). Una rutina <strong>segura para IRAM</strong> sigue funcionando, con una condición: <strong>todo</strong> lo que toca (su código, sus constantes, sus datos y cada función que llame) tiene que estar en la RAM interna.</p>
+
+<div class="caja dato">
+  <h4>dato · el precio de la IRAM</h4>
+  <p>La IRAM sale del mismo pool de SRAM interna que el tensor arena y los buffers de DMA. Cada byte de rutina que vive ahí es un byte menos para la red. Además, el código en IRAM nunca falla en la caché de instrucciones, así que responde con menos dispersión aun sin escrituras de flash. La duración de la ventana con la caché apagada depende de la memoria flash usada: la hoja de datos de tu chip tiene los números.</p>
+</div>
+
+<h3>Interrupciones y dos núcleos</h3>
+
+<p>Cada interrupción de CPU vive en <strong>un núcleo concreto</strong>: el que ejecutó la inicialización del periférico. Espressif recomienda que las interrupciones críticas vayan al <strong>núcleo 1</strong>, donde por defecto no corren las tareas de radio. Y un detalle que sorprende: <strong>apagar interrupciones en un núcleo no protege datos del otro</strong>. Por eso las secciones críticas de ESP-IDF combinan "interrupciones apagadas" con un <em>spinlock</em>, una bandera en memoria que el otro núcleo espera girando.</p>
+
+<h2>El planificador, las tareas y el tick</h2>
+
+<p>Un <strong>RTOS</strong> (sistema operativo de tiempo real) reparte la CPU entre varias <strong>tareas</strong>. Cada una parece un programa con su propio bucle infinito y su propia pila. La regla es determinista: corre la tarea lista de <strong>mayor prioridad</strong>. No busca ser "justo" como Linux: busca <strong>cumplir plazos</strong>.</p>
+
+<ul>
+  <li><strong>Tarea:</strong> una función con su pila y un bloque de control (estado y prioridad).</li>
+  <li><strong>Prioridad:</strong> un número; mayor número, más prioritaria. ESP-IDF configura 25 niveles (0 a 24). Entre tareas de igual prioridad se reparte el tiempo por turnos.</li>
+  <li><strong>Apropiación:</strong> si se despierta una tarea más prioritaria que la que corre, la desplaza de inmediato, sin esperar al próximo tick.</li>
+  <li><strong>Tick:</strong> una interrupción periódica de un temporizador que cuenta el tiempo del sistema, despierta las tareas cuyo retardo venció y rota las de igual prioridad. Por defecto, <strong>100 Hz</strong> (cada 10 ms); se puede subir hasta 1000 Hz a costa de más CPU.</li>
+</ul>
+
+<div class="caja ojo">
+  <h4>ojo · el tick no es la latencia</h4>
+  <p>Una interrupción de periférico reacciona en microsegundos. El tick solo fija la <strong>resolución de las esperas</strong> y de los temporizadores de software: con 100 Hz, un retardo de "3 ms" se redondea a un múltiplo de 10 ms.</p>
+</div>
+
+<h3>Los estados de una tarea</h3>
+
+<p>Una tarea no está siempre corriendo. Está en uno de cuatro estados, y casi todo su tiempo lo pasa <strong>bloqueada</strong>: esperando un retardo, un dato en una cola, un semáforo o una notificación (con un tiempo límite opcional). Bloqueada no gasta CPU. Cuando todas las demás están bloqueadas corre la <strong>tarea inactiva</strong> (idle), de prioridad mínima; hay una por núcleo y es el lugar donde se puede mandar la CPU a dormir.</p>
+
+<figure class="diagrama" data-titulo="fig-5.3">
+  <svg viewBox="0 0 640 312" role="img" aria-label="Diagrama de estados de una tarea: Lista, Ejecutando, Bloqueada y Suspendida. De Lista a Ejecutando la elige el planificador; de Ejecutando a Lista la desaloja una tarea más prioritaria; de Ejecutando a Bloqueada cuando espera un evento o un retardo; de Bloqueada a Lista cuando llega el evento o vence el plazo; de Ejecutando a Suspendida al suspenderla y de Suspendida a Lista al reanudarla.">
+    <rect x="240" y="40" width="160" height="48" class="fa1 sa3" stroke-width="2"/><rect x="239" y="39" width="2" height="2" class="f0"/><rect x="399" y="39" width="2" height="2" class="f0"/><rect x="239" y="87" width="2" height="2" class="f0"/><rect x="399" y="87" width="2" height="2" class="f0"/>
+    <text x="320" y="62" class="sv-tit f6" text-anchor="middle">Ejecutando</text>
+    <text x="320" y="80" class="sv-lbl f4" text-anchor="middle" font-size="16">usa un núcleo</text>
+    <rect x="32" y="152" width="160" height="48" class="f1 s3" stroke-width="2"/><rect x="31" y="151" width="2" height="2" class="f0"/><rect x="191" y="151" width="2" height="2" class="f0"/><rect x="31" y="199" width="2" height="2" class="f0"/><rect x="191" y="199" width="2" height="2" class="f0"/>
+    <text x="112" y="174" class="sv-tit f6" text-anchor="middle">Lista</text>
+    <text x="112" y="192" class="sv-lbl f4" text-anchor="middle" font-size="16">espera un núcleo libre</text>
+    <rect x="448" y="152" width="160" height="48" class="f1 s3" stroke-width="2"/><rect x="447" y="151" width="2" height="2" class="f0"/><rect x="607" y="151" width="2" height="2" class="f0"/><rect x="447" y="199" width="2" height="2" class="f0"/><rect x="607" y="199" width="2" height="2" class="f0"/>
+    <text x="528" y="174" class="sv-tit f6" text-anchor="middle">Bloqueada</text>
+    <text x="528" y="192" class="sv-lbl f4" text-anchor="middle" font-size="16">no gasta CPU</text>
+    <rect x="240" y="248" width="160" height="48" class="f1 s2" stroke-width="2"/><rect x="239" y="247" width="2" height="2" class="f0"/><rect x="399" y="247" width="2" height="2" class="f0"/><rect x="239" y="295" width="2" height="2" class="f0"/><rect x="399" y="295" width="2" height="2" class="f0"/>
+    <text x="320" y="270" class="sv-tit f4" text-anchor="middle">Suspendida</text>
+    <text x="320" y="288" class="sv-lbl f4" text-anchor="middle" font-size="16">fuera del planificador</text>
+    <polyline points="80,152 80,56 240,56" class="fn s4" stroke-width="2"/><polygon points="240,56 232,51 232,61" class="f4"/>
+    <text x="88" y="46" class="sv-lbl f4" text-anchor="start" font-size="16">la elige el planificador</text>
+    <polyline points="240,80 152,80 152,152" class="fn s4" stroke-width="2"/><polygon points="152,152 147,144 157,144" class="f4"/>
+    <text x="160" y="102" class="sv-lbl f4" text-anchor="start" font-size="16">desalojo por prioridad</text>
+    <polyline points="400,64 528,64 528,152" class="fn s4" stroke-width="2"/><polygon points="528,152 523,144 533,144" class="f4"/>
+    <text x="408" y="54" class="sv-lbl f4" text-anchor="start" font-size="16">espera un evento o un retardo</text>
+    <polyline points="448,184 192,184" class="fn s4" stroke-width="2"/><polygon points="192,184 200,179 200,189" class="f4"/>
+    <text x="332" y="176" class="sv-lbl f4" text-anchor="start" font-size="16">llega el evento</text>
+    <text x="332" y="202" class="sv-lbl f4" text-anchor="start" font-size="16">o vence el plazo</text>
+    <polyline points="320,88 320,248" class="fn s3" stroke-width="2" stroke-dasharray="4 4"/><polygon points="320,248 315,240 325,240" class="f3"/>
+    <text x="328" y="132" class="sv-lbl f4" text-anchor="start" font-size="16">suspender</text>
+    <polyline points="240,272 112,272 112,200" class="fn s3" stroke-width="2" stroke-dasharray="4 4"/><polygon points="112,200 107,208 117,208" class="f3"/>
+    <text x="120" y="264" class="sv-lbl f4" text-anchor="start" font-size="16">reanudar</text>
+    </svg>
+  <figcaption><b>fig 5.3</b>Los cuatro estados. El camino normal es Ejecutando, Bloqueada, Lista, Ejecutando. Una tarea lista pasa a ejecutar cuando el planificador la elige, y vuelve a lista si otra más prioritaria la desaloja. La suspensión (punteada) es poco usada: la tarea queda afuera hasta que otra la reanude.</figcaption>
+</figure>
+
+<h3>Cambiar de tarea</h3>
+
+<p>El <strong>cambio de contexto</strong> guarda el estado de la tarea saliente (registros y puntero de pila) en <strong>su pila</strong>, elige a la siguiente y restaura la suya. Ocurre cuando una tarea se bloquea, cuando una rutina de interrupción despierta a una más prioritaria o cuando el tick decide rotar. Cuesta del orden de <strong>microsegundos</strong>; no hay una cifra oficial. Las tareas que usan coma flotante quedan ancladas a un núcleo para no mover el estado de la unidad de coma flotante entre núcleos.</p>
+
+<h2>FreeRTOS en dos núcleos</h2>
+
+<p>ESP-IDF usa una variante <strong>SMP</strong> (multiprocesamiento simétrico) de FreeRTOS: hay <strong>una sola lista</strong> de tareas listas y cada núcleo corre el planificador y toma la más prioritaria <em>compatible con él</em>. Esa compatibilidad se llama <strong>afinidad</strong>: una tarea puede quedar <strong>anclada</strong> al núcleo 0, anclada al 1, o <strong>sin afinidad</strong> (puede migrar).</p>
+
+<p>Los nombres históricos son núcleo 0 = PRO_CPU (protocolos) y núcleo 1 = APP_CPU (aplicación), y así se usan. Por defecto, el sistema pone su propio trabajo en el núcleo 0:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Tarea del sistema</th><th>Prioridad</th><th>Núcleo</th></tr></thead>
+  <tbody>
+    <tr><td><b>Controlador Wi-Fi</b></td><td>23</td><td>0 (configurable al 1)</td></tr>
+    <tr><td><b>Controlador Bluetooth</b></td><td>23</td><td>0</td></tr>
+    <tr><td><b>Temporizador de alta resolución</b></td><td>22</td><td>0</td></tr>
+    <tr><td><b>Pila TCP/IP</b></td><td>18</td><td>sin afinidad</td></tr>
+    <tr><td><b>Tarea principal de tu aplicación</b></td><td>1</td><td>0</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo · valores por defecto</h4>
+  <p>Estas prioridades son las que se observan en ESP-IDF 5.x y pueden cambiar entre versiones. Tomalas como un orden de magnitud de "qué tan alto viven Wi-Fi y el sistema", no como un contrato.</p>
+</div>
+
+<p>El reloj del sistema también vive ahí: el núcleo 0 es el único que lleva la cuenta del tiempo. El núcleo 1 sí recibe su tick para rotar tareas, pero no cuenta.</p>
+
+<h3>Por qué la inferencia va anclada al núcleo 1</h3>
+
+<p>Una inferencia es un cálculo largo y sin cesión: unos 54 ms en el caso QVGA del Tomo III, con las unidades vectoriales de PIE ocupadas todo el tiempo. Cada paquete Wi-Fi, cada beacon y cada reintento genera ráfagas de rutinas de interrupción y de trabajo de prioridad 22 o 23. Si la inferencia compartiera núcleo con el Wi-Fi, ocurrirían dos cosas malas: la desalojaría cada ráfaga (tiempo <strong>variable</strong>), o, si tuviera prioridad alta, <strong>atrasaría</strong> al Wi-Fi hasta perder paquetes.</p>
+
+<figure class="diagrama" data-titulo="fig-5.4 · interactivo">
+  <canvas data-motor="chip05-gantt"></canvas>
+  <div class="controles" data-ctl="chip05-gantt"></div>
+  <figcaption><b>fig 5.4</b>Diagrama de Gantt de 100 ms. Cada barra es una tarea corriendo; las marcas punteadas son el tick (cada 10 ms). Con la inferencia anclada al núcleo 1, el trabajo de 54 ms termina en 54 ms. Con todo anclado al núcleo 0, la inferencia solo corre en los huecos que deja el Wi-Fi: termina más tarde y el núcleo 1 queda ocioso. Las ráfagas son ilustrativas, no una medición.</figcaption>
+</figure>
+
+<p>Anclar tiene un costo: <strong>anclar todo a un núcleo deja al otro sin trabajo</strong>, y una tarea anclada a un núcleo saturado puede quedar sin correr aunque su prioridad sea alta. Por eso se ancla lo que <em>tiene motivo</em> (la inferencia al 1) y se deja el resto al planificador.</p>
+
+<div class="caja ojo">
+  <h4>ojo · "núcleo dedicado" no es "núcleo sin interrupciones"</h4>
+  <p>Cuando en el <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
+</div>
+
+<h2>Cómo se hablan las tareas</h2>
+
+<p>Compartir una variable entre tareas es la receta de los problemas de la sección siguiente. Las herramientas del sistema existen para pasar datos y avisar eventos con orden:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Herramienta</th><th>Qué hace</th><th>Analogía</th><th>Cuándo</th></tr></thead>
+  <tbody>
+    <tr><td><b>Cola</b></td><td>Buffer FIFO de mensajes de tamaño fijo, con copia; quien espera se bloquea</td><td>Cinta transportadora con casilleros</td><td>Pasar datos: una lectura, un comando, un puntero</td></tr>
+    <tr><td><b>Semáforo binario</b></td><td>Bandera "hay evento" (0 o 1)</td><td>Timbre de una puerta</td><td>Avisar un evento: fin de DMA, dato listo</td></tr>
+    <tr><td><b>Semáforo contador</b></td><td>Cuenta eventos o recursos</td><td>Estacionamiento con N lugares</td><td>Contar eventos rápidos o limitar a N usuarios</td></tr>
+    <tr><td><b>Mutex</b></td><td>Llave de acceso exclusivo con <em>dueño</em> y herencia de prioridad</td><td>La llave del baño único</td><td>Proteger un recurso: un bus I2C o SPI</td></tr>
+    <tr><td><b>Notificación a tarea</b></td><td>Un casillero dentro de la tarea destinataria</td><td>Nota adhesiva en el escritorio</td><td>Aviso 1 a 1 desde una interrupción: más rápida y liviana, un solo receptor</td></tr>
+    <tr><td><b>Grupo de eventos</b></td><td>Varios bits esperables en combinación</td><td>Tablero de luces "todo listo"</td><td>Esperar "A y B" o "A o B"</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Y una regla de oro para las interrupciones: la rutina hace <strong>lo mínimo</strong> (leer el registro, anotar el tiempo) y <strong>despierta a una tarea</strong> que hace el trabajo pesado. Una rutina de interrupción nunca bloquea y solo usa las variantes del sistema pensadas para ella.</p>
+
+<figure class="diagrama" data-titulo="fig-5.5 · animada">
+  <canvas data-motor="chip05-cola"></canvas>
+  <figcaption><b>fig 5.5</b>Cámara, colas e inferencia. La cámara (con DMA, sin CPU) llena el buffer A mientras la inferencia usa el B. Al terminar, el buffer lleno pasa a la cola de <em>llenas</em> y el usado vuelve por la de <em>libres</em>; los roles se cruzan. Por las colas viajan <strong>punteros</strong>, no la imagen. El resultado (unos pocos bytes) sale hacia la tarea de red del núcleo 0.</figcaption>
+</figure>
+
+<h2>Cuando sale mal</h2>
+
+<h3>Condición de carrera</h3>
+
+<p>Dos flujos (dos tareas, una tarea y una interrupción, o dos núcleos) leen, modifican y escriben el mismo dato, y el resultado depende del orden en que se intercalan.</p>
+
+<div class="caja dato">
+  <h4>dato · un encoder que salta 65 536 cuentas</h4>
+  <p>Un contador de pulsos de encoder de 32 bits lo incrementa una interrupción y lo lee una tarea en dos accesos de 16 bits. Si la interrupción cae justo entre los dos, la tarea lee una posición imposible. Igual con un motor: una interrupción actualiza la velocidad y el ángulo, y el lazo de control lee el ángulo nuevo con la velocidad vieja.</p>
+</div>
+
+<p>Se resuelve con una sección crítica corta (con spinlock en dos núcleos), con un mutex, con operaciones atómicas o, mejor, <strong>pasando el dato por una cola</strong> en vez de compartir la variable.</p>
+
+<h3>Inversión de prioridades</h3>
+
+<p>Una tarea de <strong>alta</strong> prioridad espera un mutex que tiene una de <strong>baja</strong>. Esa demora es inevitable. El problema aparece cuando una de prioridad <strong>media</strong> se despierta: desaloja a la baja, que no puede terminar ni soltar la llave, y la alta queda esperando, en la práctica, a la media. Es la <em>inversión no acotada</em>.</p>
+
+<p>La <strong>herencia de prioridad</strong> lo acota: mientras la baja tiene la llave, el mutex le presta la prioridad de la más urgente que espera. La baja termina, la suelta y vuelve a su nivel. No lo elimina: acota la demora. Un semáforo binario no tiene herencia, así que para exclusión mutua se usa un mutex.</p>
+
+<figure class="diagrama" data-titulo="fig-5.6 · interactivo">
+  <canvas data-motor="chip05-inversion"></canvas>
+  <div class="controles" data-ctl="chip05-inversion"></div>
+  <figcaption><b>fig 5.6</b>Tres tareas (alta, media y baja) y una llave. La baja toma la llave en t = 1; la alta la pide en t = 5; la media despierta en t = 6. Sin herencia, la media desaloja a la baja y la alta espera hasta t = 17. Con herencia, la baja sube de prioridad, termina en t = 6 y la alta cumple su plazo. Los tiempos son unidades didácticas.</figcaption>
+</figure>
+
+<div class="caja analogia">
+  <h4>analogía · la llave del baño</h4>
+  <p>El pasante (baja) tiene la llave del único baño y el director (alta) espera. Si un cliente (media) le pide un café al pasante, el director sigue esperando. La herencia es darle al pasante, por un rato, la autoridad del director para que termine y devuelva la llave.</p>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo · no dependas de la herencia</h4>
+  <p>La documentación de FreeRTOS advierte que la corrección del sistema no debería depender de la herencia: es mejor <strong>diseñar para que no haya inversión</strong>. Por ejemplo, un robot con un lazo de motor (alta), telemetría Wi-Fi (media) y registro en la tarjeta SD (baja) que comparten un bus SPI. Si el registro tiene el bus, la telemetría puede impedir que lo suelte y el motor pierde su lazo. Lo sano es que el lazo de control no comparta ese bus.</p>
+</div>
+
+<h3>Interbloqueo</h3>
+
+<p>Dos tareas, cada una con un recurso y esperando el que tiene la otra: A tiene el bus I2C y pide el display; B tiene el display y pide el bus I2C. Ninguna avanza, y ninguna se entera. Dos brazos de un robot que necesitan la misma pinza y la misma cinta, cada uno con una en la mano, hacen lo mismo.</p>
+
+<p>Se previene con un <strong>orden global</strong> de adquisición (siempre el bus antes que el display), con <strong>tiempo límite</strong> en cada espera (y liberar todo si vence), con secciones críticas cortas y sin anidar llaves cuando se pueda.</p>
+
+<h2>Los perros guardianes</h2>
+
+<p>Un <strong>watchdog</strong> es un temporizador de cuenta regresiva que hay que reiniciar ("alimentar") de forma periódica. Si se agota, dispara una recuperación. Es un seguro contra cuelgues, no una función de tu aplicación.</p>
+
+<div class="caja analogia">
+  <h4>analogía · el hombre muerto</h4>
+  <p>Es el pedal del maquinista: hay que pisarlo cada tanto y, si no lo pisás, el tren frena. El watchdog de tareas es el pedal que pisa la tarea inactiva; el de interrupciones, el que pisa el tick.</p>
+</div>
+
+<p>El ESP32-S3 tiene dos temporizadores de watchdog principales (en los grupos de temporizadores 0 y 1), uno en el dominio RTC para arranque y bajo consumo, un "súper watchdog" y otro para el cristal de 32 kHz. Cada principal tiene cuatro etapas: en cada una se puede no hacer nada, interrumpir, reiniciar el núcleo o reiniciar todo. Así se escala: primero aviso, después reinicio.</p>
+
+<ul>
+  <li><strong>Watchdog de tareas (TWDT):</strong> vigila que las tareas suscritas lo alimenten. Por defecto vigila las tareas inactivas de cada núcleo. Si una no corre durante <strong>5 s</strong>, alguien acaparó la CPU sin ceder: un bucle infinito o una espera activa. Imprime qué tareas no reportaron.</li>
+  <li><strong>Watchdog de interrupciones (IWDT):</strong> comprueba que la interrupción del tick se siga atendiendo en cada núcleo. Por defecto vence a los <strong>300 ms</strong> (800 ms con PSRAM, porque sus accesos alargan las esperas). Lo dispara una sección crítica larga, una rutina de interrupción pesada (procesar una imagen adentro de la rutina) o un spinlock que nunca se soltó.</li>
+</ul>
+
+<p>Una inferencia de 54 ms no dispara nada si la tarea cede al terminar. Un bucle que espera una bandera en el núcleo 1 sin ceder, sí dispara el TWDT. Los watchdogs convierten un fallo de temporización silencioso en un <strong>reinicio limpio y diagnosticable</strong>. Si el sistema controla algo físico (un motor, un relé), el estado de las salidas <strong>después</strong> del reinicio tiene que ser seguro.</p>
+
+<h2>Temporizadores de software</h2>
+
+<p>Sirven para "hacer algo dentro de X ms" sin dedicar una tarea entera. Elegí por precisión:</p>
+<ul>
+  <li><strong>Temporizadores de FreeRTOS:</strong> los maneja una tarea de servicio; su resolución es la del tick (1 a 10 ms) y sus avisos no deben bloquear, porque frenarían a todos los demás.</li>
+  <li><strong>Temporizador de alta resolución de ESP-IDF:</strong> contador de 52 bits con resolución de <strong>1 µs</strong>. Sus avisos corren en una tarea de prioridad alta del núcleo 0, no pueden bloquear y se serializan: si vencen dos a la vez, el segundo espera al primero.</li>
+  <li><strong>Periféricos de hardware</strong> (PWM, RMT, LCD_CAM): para precisión de nanosegundos sin intervención de la CPU.</li>
+</ul>
+
+<h2>Cierre: el doble buffer del pipeline</h2>
+
+<p>Todo lo anterior se junta en el pipeline del <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a>: captura, preparación, inferencia y decisión. La <strong>cámara con DMA</strong> llena un buffer sin CPU y, al terminar el cuadro, levanta una <strong>interrupción</strong>. La rutina (corta, en IRAM) solo <strong>avisa</strong> a una tarea con una notificación. La tarea de inferencia, anclada al núcleo 1, corre sus 54 ms sin que el Wi-Fi la moleste.</p>
+
+<p>El <strong>doble buffer</strong> es lo que evita que cámara e inferencia se pisen: mientras el DMA llena el A, la IA procesa el B. Se sincronizan con dos colas de punteros (libres y llenas), como en la fig 5.5. Así el dueño del buffer es siempre uno solo, sin mutex y sin copiar la imagen.</p>
+
+<p>Si la inferencia es más lenta que la cámara, la cola de llenas se llena y hay que decidir: <strong>descartar el cuadro más viejo</strong> (baja la latencia, se pierden cuadros) o <strong>frenar la captura</strong> (no se pierde nada, sube la latencia). Es una decisión de diseño. Y el resultado, de unos pocos bytes, viaja por otra cola a la tarea de red del núcleo 0. Nunca compartas la imagen con la red mediante un mutex prolongado: si el Wi-Fi se atrasa, la inferencia esperaría, y tenés una <strong>inversión de prioridades entre núcleos</strong>.</p>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Sondeo: simple pero gasta CPU; interrupción: reacciona en microsegundos y deja dormir. La matriz conecta 99 fuentes con 26 + 6 interrupciones por núcleo y <strong>elegir el destino es elegir la prioridad</strong>.</li>
+    <li>Niveles 1 a 3 (en C) guardan contexto y pueden avisar al sistema; nivel 4 o más va en ensamblador y es lo más rápido, pero corre a espaldas del sistema.</li>
+    <li>Con la caché de flash apagada, solo las rutinas <strong>en IRAM</strong> pueden correr; todo lo que toquen tiene que estar en RAM interna.</li>
+    <li>El planificador corre la tarea lista más prioritaria. Tick de 100 Hz por defecto; estados: ejecutando, lista, bloqueada, suspendida.</li>
+    <li>Wi-Fi vive en el núcleo 0; la inferencia se ancla al 1. Anclar todo a un núcleo deja al otro ocioso.</li>
+    <li>Pasá datos con colas; usá mutex (con herencia) para exclusión; tomá las llaves en el mismo orden y con tiempo límite.</li>
+    <li>El IWDT vigila el tick (300 ms); el TWDT, la tarea inactiva (5 s). Una salida segura tras el reinicio es parte del diseño.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Tu programa guarda un parámetro en la flash mientras la cámara sigue generando interrupciones. El sistema se reinicia con un error de caché. ¿Qué pasó y cómo se evita?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La prioridad de la interrupción no cambia lo que pasa: el problema es de dónde se lee la rutina, no de quién tiene más nivel.">La interrupción de la cámara tenía menos prioridad que la escritura, y hay que subirle el nivel.</button>
+    <button type="button" data-por-que="Durante la escritura se apaga la caché que permite ejecutar desde flash. Una rutina ubicada en flash no puede leerse y produce la excepción. Una rutina segura para IRAM, con todo su código y datos en RAM interna, sigue funcionando (a costa de IRAM).">La caché estaba apagada por la escritura y la rutina vivía en flash: hay que ponerla en IRAM, con todo lo que toca.</button>
+    <button type="button" data-por-que="El watchdog de interrupciones vigila el tick, no las rutinas de periféricos. Subir su tiempo no arregla un acceso a memoria que está inaccesible.">El watchdog de interrupciones venció: hay que alargar su tiempo.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (cap. 9, matriz de interrupciones; cap. 13, watchdogs). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Interrupt Allocation</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/intr_alloc.html">docs.espressif.com/…/system/intr_alloc.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — High-Priority Interrupts</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/hlinterrupts.html">docs.espressif.com/…/api-guides/hlinterrupts.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — IDF FreeRTOS</em> (SMP, afinidad, spinlocks). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/freertos_idf.html">docs.espressif.com/…/system/freertos_idf.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Watchdogs</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/wdts.html">docs.espressif.com/…/system/wdts.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Fatal Errors</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/fatal-errors.html">docs.espressif.com/…/api-guides/fatal-errors.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — High Resolution Timer</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/esp_timer.html">docs.espressif.com/…/system/esp_timer.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF — Performance: Speed</em> (prioridades y núcleos de las tareas del sistema). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/speed.html">docs.espressif.com/…/performance/speed.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF, configuración de FreeRTOS</em> (tick de 100 Hz, 25 prioridades). <a href="https://github.com/espressif/esp-idf/blob/master/components/freertos/Kconfig">github.com/espressif/esp-idf/…/components/freertos/Kconfig</a></li>
+    <li>Espressif Systems. <em>ESP-IDF, configuración del sistema</em> (TWDT de 5 s, IWDT de 300/800 ms). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_system/Kconfig">github.com/espressif/esp-idf/…/components/esp_system/Kconfig</a></li>
+    <li>Espressif Systems. <em>ESP-IDF, configuración de Wi-Fi</em> (núcleo del controlador). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/Kconfig">github.com/espressif/esp-idf/…/components/esp_wifi/Kconfig</a></li>
+    <li>Real Time Engineers. <em>Mastering the FreeRTOS Real Time Kernel</em> (tareas y tick, colas, temporizadores, interrupciones, recursos, notificaciones). <a href="https://github.com/FreeRTOS/FreeRTOS-Kernel-Book">github.com/FreeRTOS/FreeRTOS-Kernel-Book</a></li>
+    <li>Usuarios de foros. <em>Interrupt latency on ESP32</em> (medición no oficial de unos 2 µs). <a href="https://www.eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/">eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/</a></li>
+  </ol>
+  <p class="nota">Las latencias de interrupción y de cambio de contexto son del orden de lo reportado por usuarios, sin cifra oficial. Las prioridades de las tareas del sistema dependen de la versión de ESP-IDF.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit · tomo-01 · nivel-05</footer>
+</body>
+</html>

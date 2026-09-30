@@ -7,6 +7,9 @@ const CURSOS = {
       { f: "01-familia-esp.html", t: "La familia ESP", d: "Qué es un microcontrolador y quién es quién entre ESP8266, ESP32, S3, C6 y P4." },
       { f: "02-arquitectura.html", t: "Anatomía del ESP32-S3", d: "Núcleos, buses, periféricos, arranque y la extensión vectorial PIE." },
       { f: "03-memoria.html", t: "La memoria manda", d: "SRAM, PSRAM, flash y caché: dónde vive cada byte de una red neuronal." },
+      { f: "04-perifericos.html", t: "Periféricos", d: "Pines, PWM, ADC y buses serie: cómo el chip toca el mundo." },
+      { f: "05-tiempo-real.html", t: "Tiempo real", d: "Interrupciones, tareas y colas: cómo el chip hace varias cosas a tiempo." },
+      { f: "06-energia.html", t: "Energía y ciclo de vida", d: "Relojes, modos de sueño y cómo se actualiza el firmware sin romperlo." },
     ],
   },
   redes: {
@@ -174,8 +177,19 @@ function pausarFueraDePantalla() {
   document.querySelectorAll("figure.diagrama svg").forEach((s) => io.observe(s));
 }
 
+// ---- autoría: firma al pie de todas las páginas ----
+function montarAutor() {
+  const pie = document.querySelector("footer.pie");
+  if (!pie) return;
+  const firma = document.createElement("div");
+  firma.className = "autor";
+  firma.innerHTML = `hecho por <a href="https://github.com/fgmolteni" rel="author">Gabriel Molteni</a> · <a href="https://github.com/fgmolteni/learning-in-8-bit">código en GitHub</a>`;
+  pie.append(firma);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   montarBarra();
+  montarAutor();
   montarTemario();
   montarNavLeccion();
   montarQuiz();
