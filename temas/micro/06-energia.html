@@ -9,15 +9,15 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js" defer></script>
 <script src="../../assets/pixelmotor.js" defer></script>
-<script src="../../assets/escenas-chip-06.js" defer></script>
+<script src="../../assets/escenas-energia.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="chip" data-nivel="6">
+<body data-raiz="../../" data-curso="micro" data-nivel="6">
 
 <main class="leccion">
 <header>
   <span class="nivel-chip" data-n="06">nivel 06, 18 min de lectura</span>
   <h1>Energía, relojes y ciclo de vida</h1>
-  <p class="bajada">Un dispositivo a batería vive de dormir casi todo el tiempo. Este nivel recorre cómo se reparte el reloj, qué se apaga en cada modo de sueño, cómo se despierta el chip y qué le pasa al firmware a lo largo de su vida en el campo.</p>
+  <p class="bajada">Un dispositivo a batería vive de dormir casi todo el tiempo. Este nivel recorre cómo se reparte el reloj, qué se apaga en cada modo de sueño, cómo se despierta el micro y qué le pasa al firmware a lo largo de su vida en el campo.</p>
 </header>
 
 <div class="caja objetivos">
@@ -32,9 +32,9 @@
 
 <h2>El árbol de relojes</h2>
 
-<p>Todo lo que hace el chip late con algún reloj. El ESP32-S3 los reparte como las ramas de un árbol: pocas fuentes en la raíz y muchos divisores hasta llegar a cada bloque. Hay dos familias: los <strong>relojes rápidos</strong>, que mueven la CPU y los periféricos, y los <strong>relojes lentos</strong>, que siguen vivos cuando todo lo demás duerme.</p>
+<p>Todo lo que hace el micro late con algún reloj. El ESP32-S3 los reparte como las ramas de un árbol: pocas fuentes en la raíz y muchos divisores hasta llegar a cada bloque. Hay dos familias: los <strong>relojes rápidos</strong>, que mueven la CPU y los periféricos, y los <strong>relojes lentos</strong>, que siguen vivos cuando todo lo demás duerme.</p>
 
-<p>La raíz de los rápidos es un <strong>cristal externo de 40 MHz</strong>. Es obligatorio: sin él el chip no arranca. De ahí sale una <strong>PLL</strong>, un circuito que multiplica esa frecuencia hasta 320 o 480 MHz. La CPU elige su reloj entre el cristal, la PLL y un oscilador RC interno.</p>
+<p>La raíz de los rápidos es un <strong>cristal externo de 40 MHz</strong>. Es obligatorio: sin él el micro no arranca. De ahí sale una <strong>PLL</strong>, un circuito que multiplica esa frecuencia hasta 320 o 480 MHz. La CPU elige su reloj entre el cristal, la PLL y un oscilador RC interno.</p>
 
 <figure class="diagrama" data-titulo="fig-6.1">
   <svg viewBox="0 0 640 352" role="img" aria-label="Árbol de relojes del ESP32-S3: el cristal de 40 MHz alimenta la PLL de 320 o 480 MHz, que con divisores 2, 3 y 6 da el reloj de CPU de 80, 160 o 240 MHz y el reloj APB de 80 MHz. Los osciladores RC de 17,5 MHz y 136 kHz y el cristal opcional de 32 kHz alimentan los relojes lentos del dominio RTC.">
@@ -69,7 +69,7 @@
 
 <h2>Modos de consumo: la escalera</h2>
 
-<p>El chip se organiza en <strong>dominios de alimentación</strong> que se pueden cortar por separado: el dominio RTC (con la unidad de gestión de energía, o PMU, que nunca se apaga mientras haya batería), el dominio digital (núcleo, CPU, periféricos, lógica de radio) y el analógico (osciladores, PLL, RF). Un modo de sueño es una combinación de dominios apagados.</p>
+<p>El micro se organiza en <strong>dominios de alimentación</strong> que se pueden cortar por separado: el dominio RTC (con la unidad de gestión de energía, o PMU, que nunca se apaga mientras haya batería), el dominio digital (núcleo, CPU, periféricos, lógica de radio) y el analógico (osciladores, PLL, RF). Un modo de sueño es una combinación de dominios apagados.</p>
 
 <figure class="diagrama" data-titulo="fig-6.2">
   <canvas data-motor="chip06-escalera"></canvas>
@@ -114,7 +114,7 @@
     <tr><td>Deep-sleep con monitoreo periódico de sensor</td><td>18 µA</td></tr>
     <tr><td>Deep-sleep, memoria y periféricos RTC</td><td>8 µA</td></tr>
     <tr><td>Deep-sleep, solo memoria RTC</td><td>7 µA</td></tr>
-    <tr><td>Chip apagado</td><td>1 µA</td></tr>
+    <tr><td>Micro apagado</td><td>1 µA</td></tr>
   </tbody>
 </table>
 </div>
@@ -124,7 +124,7 @@
   <p>Son cifras del datasheet v2.2 en esas condiciones. La temperatura, la tensión de batería y la variante con PSRAM las mueven. Tampoco hay cifra oficial para Wi-Fi conectado con ahorro de energía: depende del router y de su intervalo de baliza, y hay que medirla.</p>
 </div>
 
-<h2>Cómo se despierta el chip y qué hace el ULP</h2>
+<h2>Cómo se despierta el micro y qué hace el ULP</h2>
 
 <p>Dormir sirve si se puede despertar a tiempo. Las fuentes de despertar son eventos que el dominio RTC sigue vigilando aunque la CPU no esté:</p>
 
@@ -154,7 +154,7 @@
   <svg viewBox="0 0 640 240" role="img" aria-label="La CPU y la SRAM duermen fuera del dominio RTC. Dentro del dominio RTC, el ULP lee los sensores y, cuando detecta algo, avisa a la unidad de gestión de energía, que despierta a la CPU.">
     <defs><pattern id="dzu" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern></defs><rect x="16" y="40" width="176" height="80" class="f1 s2" stroke-width="2"/><rect x="18" y="42" width="172" height="76" fill="url(#dzu)"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="191" y="39" width="2" height="2" class="f0"/><rect x="15" y="119" width="2" height="2" class="f0"/><rect x="191" y="119" width="2" height="2" class="f0"/><rect x="54" y="61" width="100" height="21" class="f1"/><text x="104" y="77" class="sv-tit f6" text-anchor="middle">CPU + SRAM</text><text x="104" y="95" class="sv-lbl f4" text-anchor="middle">dormidas</text><rect x="216" y="16" width="408" height="208" class="fn sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="224" y="36" class="sv-lbl fa3" text-anchor="start">DOMINIO RTC, SIGUE VIVO</text><rect x="248" y="56" width="144" height="64" class="fa1 sa3" stroke-width="2"/><rect x="247" y="55" width="2" height="2" class="f0"/><rect x="391" y="55" width="2" height="2" class="f0"/><rect x="247" y="119" width="2" height="2" class="f0"/><rect x="391" y="119" width="2" height="2" class="f0"/><text x="320" y="85" class="sv-tit f6" text-anchor="middle">ULP</text><text x="320" y="103" class="sv-lbl f4" text-anchor="middle">17,5 MHz, 8 KB</text><rect x="456" y="48" width="152" height="80" class="f1 s3" stroke-width="2"/><rect x="455" y="47" width="2" height="2" class="f0"/><rect x="607" y="47" width="2" height="2" class="f0"/><rect x="455" y="127" width="2" height="2" class="f0"/><rect x="607" y="127" width="2" height="2" class="f0"/><text x="532" y="76" class="sv-tit f6" text-anchor="middle">Sensores RTC</text><text x="532" y="94" class="sv-lbl f4" text-anchor="middle">ADC, I2C</text><text x="532" y="112" class="sv-lbl f4" text-anchor="middle">GPIO, táctil</text><rect x="248" y="160" width="144" height="48" class="f1 s3" stroke-width="2"/><rect x="247" y="159" width="2" height="2" class="f0"/><rect x="391" y="159" width="2" height="2" class="f0"/><rect x="247" y="207" width="2" height="2" class="f0"/><rect x="391" y="207" width="2" height="2" class="f0"/><text x="320" y="181" class="sv-tit f6" text-anchor="middle">PMU</text><text x="320" y="199" class="sv-lbl f4" text-anchor="middle">gestor de energía</text><polyline points="456,88 402,88" class="fn s4" stroke-width="2"/><rect x="400" y="80" width="2" height="16" class="f4"/><rect x="398" y="82" width="2" height="12" class="f4"/><rect x="396" y="84" width="2" height="8" class="f4"/><rect x="394" y="86" width="2" height="4" class="f4"/><rect x="392" y="87" width="2" height="2" class="f4"/><polyline points="320,120 320,150" class="fn s4" stroke-width="2"/><rect x="312" y="150" width="16" height="2" class="f4"/><rect x="314" y="152" width="12" height="2" class="f4"/><rect x="316" y="154" width="8" height="2" class="f4"/><rect x="318" y="156" width="4" height="2" class="f4"/><rect x="319" y="158" width="2" height="2" class="f4"/><polyline points="248,184 104,184 104,130" class="fn s4" stroke-width="2"/><rect x="96" y="128" width="16" height="2" class="f4"/><rect x="98" y="126" width="12" height="2" class="f4"/><rect x="100" y="124" width="8" height="2" class="f4"/><rect x="102" y="122" width="4" height="2" class="f4"/><rect x="103" y="120" width="2" height="2" class="f4"/><text x="424" y="80" class="sv-lbl f4" text-anchor="middle" font-size="16">lee</text><text x="328" y="146" class="sv-lbl fa3" text-anchor="start" font-size="16">despertar</text><text x="112" y="208" class="sv-lbl fa3" text-anchor="middle" font-size="16">la CPU vuelve a correr</text><rect width="8" height="8" class="fa4"><animate attributeName="x" values="452;420;388;364;340;316;316;316;316;316;292;268;244;220;196;172;148;124;100;100;100;100" dur="6.6s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="84;84;84;84;84;84;108;132;156;180;180;180;180;180;180;180;180;180;180;152;124;124" dur="6.6s" calcMode="discrete" repeatCount="indefinite"/></rect>
   </svg>
-  <figcaption><b>fig 6.3</b>El cuadradito es el aviso. El ULP lee los sensores del dominio RTC; solo si detecta lo que esperaba le pide a la PMU que despierte a la CPU. Todo el resto del tiempo, el chip duerme.</figcaption>
+  <figcaption><b>fig 6.3</b>El cuadradito es el aviso. El ULP lee los sensores del dominio RTC; solo si detecta lo que esperaba le pide a la PMU que despierte a la CPU. Todo el resto del tiempo, el micro duerme.</figcaption>
 </figure>
 
 <p>El ULP no es gratis: con el ULP corriendo, el deep-sleep sube de 7 u 8 µA a <strong>170 o 190 µA</strong>. Si en cambio trabaja de a ráfagas (se despierta por su temporizador, mide y vuelve a dormir) el promedio queda del orden de <strong>18 µA</strong>. Su ventaja está en evitar despertar 240 MHz y toda la flash para mirar un sensor, no en el reposo.</p>
@@ -166,7 +166,7 @@
 
 <h2>De la corriente a la autonomía</h2>
 
-<p>Cuánto dura una batería lo fija la <strong>corriente promedio</strong> del ciclo completo y no lo que consume el chip dormido: la carga total gastada en un ciclo (corriente por tiempo, sumando cada fase) dividida por la duración del ciclo. Esa carga es el <strong>área bajo la curva</strong> de corriente contra tiempo.</p>
+<p>Cuánto dura una batería lo fija la <strong>corriente promedio</strong> del ciclo completo y no lo que consume el micro dormido: la carga total gastada en un ciclo (corriente por tiempo, sumando cada fase) dividida por la duración del ciclo. Esa carga es el <strong>área bajo la curva</strong> de corriente contra tiempo.</p>
 
 <figure class="diagrama" data-titulo="fig-6.4 interactivo">
   <canvas data-motor="chip06-ciclo"></canvas>
@@ -176,11 +176,11 @@
 
 <p>La figura lo muestra: <strong>ahorrar microamperes en deep-sleep casi no cambia el resultado</strong>. Lo que domina es el tiempo despierto. Recortar un segundo de arranque o de conexión vale más que cualquier ajuste al reposo. Por eso conviene medir cuánto dura de verdad tu ciclo activo, incluido el arranque después de deep-sleep y la asociación a la red.</p>
 
-<p>Para experimentar con tus propios números, en el <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a> está la calculadora de batería y la curva de consumo de un ciclo con inferencia.</p>
+<p>Para experimentar con tus propios números, en el <a href="../borde/02-pipeline.html">IA en el borde, Tomo 2, nivel 2</a> está la calculadora de batería y la curva de consumo de un ciclo con inferencia.</p>
 
 <div class="caja ojo">
-  <h4>ojo: el chip no es toda la placa</h4>
-  <p>Los 7 u 8 µA son del chip. En una placa real suman el regulador de tensión, los sensores que no se apagan y las fugas: muchas veces el chip es una fracción chica del total dormido. Además, el pico de Wi-Fi de más de 300 mA obliga a que la fuente y el capacitor de desacople aguanten sin caída de tensión: si no, el detector de brownout reinicia el chip. Y descontá capacidad usable y autodescarga de la batería: la autonomía real es menor que la cuenta.</p>
+  <h4>ojo: el micro no es toda la placa</h4>
+  <p>Los 7 u 8 µA son del micro. En una placa real suman el regulador de tensión, los sensores que no se apagan y las fugas: muchas veces el micro es una fracción chica del total dormido. Además, el pico de Wi-Fi de más de 300 mA obliga a que la fuente y el capacitor de desacople aguanten sin caída de tensión: si no, el detector de brownout reinicia el micro. Y descontá capacidad usable y autodescarga de la batería: la autonomía real es menor que la cuenta.</p>
 </div>
 
 <h2>El ciclo de vida del firmware</h2>
@@ -201,12 +201,12 @@
 
 <figure class="diagrama" data-titulo="fig-6.5">
   <canvas data-motor="chip06-ota"></canvas>
-  <figcaption><b>fig 6.5</b>El mapa de la flash con dos ranuras, A y B. Se baja la imagen a la libre, otadata pasa a apuntar a ella y arranca a prueba (“nueva” y luego “pendiente de verificación” en la documentación de Espressif). El ciclo alterna dos finales: si la aplicación se marca válida, la actualización queda; si el chip se reinicia sin que se confirme, el bootloader hace <strong>rollback</strong> a la versión anterior y la nueva queda abortada.</figcaption>
+  <figcaption><b>fig 6.5</b>El mapa de la flash con dos ranuras, A y B. Se baja la imagen a la libre, otadata pasa a apuntar a ella y arranca a prueba (“nueva” y luego “pendiente de verificación” en la documentación de Espressif). El ciclo alterna dos finales: si la aplicación se marca válida, la actualización queda; si el micro se reinicia sin que se confirme, el bootloader hace <strong>rollback</strong> a la versión anterior y la nueva queda abortada.</figcaption>
 </figure>
 
 <p>La partición <strong>otadata</strong> es la que decide qué ranura arranca. Ocupa <strong>dos sectores de flash</strong> a propósito: cada uno guarda un contador y un estado, y vale el de contador mayor y válido. Si se corta la luz mientras se escribe uno, el otro sigue intacto.</p>
 
-<p>Con <strong>rollback</strong> activado, la imagen nueva arranca “a prueba”. Si la aplicación no se marca a sí misma como válida después de sus propias verificaciones (por ejemplo, conectarse al servidor) y el chip se reinicia, el bootloader vuelve a la imagen anterior. Es la red de seguridad contra un firmware que cuelga el equipo.</p>
+<p>Con <strong>rollback</strong> activado, la imagen nueva arranca “a prueba”. Si la aplicación no se marca a sí misma como válida después de sus propias verificaciones (por ejemplo, conectarse al servidor) y el micro se reinicia, el bootloader vuelve a la imagen anterior. Es la red de seguridad contra un firmware que cuelga el equipo.</p>
 
 <div class="caja dato">
   <h4>dato: anti-rollback</h4>
@@ -253,9 +253,9 @@
 
 <div class="caja quiz" data-ok="1">
   <h4>repaso</h4>
-  <p class="pregunta">Un sensor despierta al chip cada 10 minutos y lo mantiene 2 segundos a ~66 mA; el resto duerme a 8 µA. Si el tiempo despierto pasa a 10 segundos, ¿qué le pasa a la autonomía?</p>
+  <p class="pregunta">Un sensor despierta al micro cada 10 minutos y lo mantiene 2 segundos a ~66 mA; el resto duerme a 8 µA. Si el tiempo despierto pasa a 10 segundos, ¿qué le pasa a la autonomía?</p>
   <div class="opciones">
-    <button type="button" data-por-que="El deep-sleep aporta muy poca carga: 598 s a 8 µA son menos de 5 mA·s, contra ~132 mA·s del tramo activo. Dejar de dormir mejor no es lo que cambia.">Casi no cambia, porque el chip duerme la mayor parte del tiempo.</button>
+    <button type="button" data-por-que="El deep-sleep aporta muy poca carga: 598 s a 8 µA son menos de 5 mA·s, contra ~132 mA·s del tramo activo. Dejar de dormir mejor no es lo que cambia.">Casi no cambia, porque el micro duerme la mayor parte del tiempo.</button>
     <button type="button" data-por-que="El promedio pasa de ~0,23 mA a ~1,1 mA: la autonomía cae unas cinco veces. La corriente activa es unas 8000 veces la de reposo, así que el tiempo despierto domina la cuenta.">Cae unas cinco veces, porque el tiempo despierto domina el consumo.</button>
     <button type="button" data-por-que="El deep-sleep no consume más por dormir menos: el problema es que aumentó el tiempo a 66 mA. La corriente de reposo sigue siendo 8 µA.">Cae unas cinco veces, porque el deep-sleep pasa a consumir más.</button>
   </div>

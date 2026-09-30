@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: Temporizadores y PWM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-perifericos.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 17 min de lectura</span>
+  <h1>Temporizadores y PWM</h1>
+  <p class="bajada">Un contador, un divisor y un comparador alcanzan para medir el tiempo, generar un PWM y manejar un puente en H sin que la CPU intervenga. Este nivel los arma pieza por pieza.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Dibujar un temporizador (prescaler, contador, comparador, recarga) y calcular cuándo desborda.</li>
+    <li>Calcular el compromiso entre <strong>resolución y frecuencia</strong> de un PWM.</li>
+    <li>Explicar el <strong>registro sombra</strong> y el <strong>tiempo muerto</strong> de un puente en H.</li>
+    <li>Dimensionar un filtro RC para convertir un PWM en tensión y conocer sus límites.</li>
+  </ul>
+</div>
+
+<p>Medir el tiempo con un bucle de software es mala idea: la CPU queda ocupada esperando, cualquier interrupción estira la espera y el consumo no baja. Un <strong>temporizador de hardware</strong> es un circuito que cuenta pulsos de reloj por su cuenta, mientras la CPU hace otra cosa o duerme, y avisa en el instante exacto. Casi todo lo que tiene que ver con tiempo en un micro (el tic del sistema operativo, un PWM, una frecuencia de muestreo) sale de uno de estos contadores.</p>
+
+<h2>El temporizador por dentro</h2>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Diagrama de bloques de un temporizador: el reloj base entra a un prescaler que lo divide, el contador avanza con cada tick, un comparador lo compara con el valor de alarma y dispara un evento; la recarga automática vuelve el contador a cero">
+    <rect x="16" y="40" width="96" height="56" class="f0 s4" stroke-width="2"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="111" y="39" width="2" height="2" class="f0"/><rect x="15" y="95" width="2" height="2" class="f0"/><rect x="111" y="95" width="2" height="2" class="f0"/><text x="64" y="65" class="sv-tit f6" text-anchor="middle">Reloj</text><text x="64" y="83" class="sv-lbl f4" text-anchor="middle">80 MHz</text><line x1="112" y1="68" x2="134" y2="68" class="s4" stroke-width="2"/><rect x="134" y="60" width="2" height="16" class="f4"/><rect x="136" y="62" width="2" height="12" class="f4"/><rect x="138" y="64" width="2" height="8" class="f4"/><rect x="140" y="66" width="2" height="4" class="f4"/><rect x="142" y="67" width="2" height="2" class="f4"/><rect x="144" y="40" width="112" height="56" class="f1 s3" stroke-width="2"/><rect x="143" y="39" width="2" height="2" class="f0"/><rect x="255" y="39" width="2" height="2" class="f0"/><rect x="143" y="95" width="2" height="2" class="f0"/><rect x="255" y="95" width="2" height="2" class="f0"/><text x="200" y="65" class="sv-tit f6" text-anchor="middle">Prescaler</text><text x="200" y="83" class="sv-lbl f4" text-anchor="middle">÷ DIV</text><line x1="256" y1="68" x2="278" y2="68" class="s4" stroke-width="2"/><rect x="278" y="60" width="2" height="16" class="f4"/><rect x="280" y="62" width="2" height="12" class="f4"/><rect x="282" y="64" width="2" height="8" class="f4"/><rect x="284" y="66" width="2" height="4" class="f4"/><rect x="286" y="67" width="2" height="2" class="f4"/><text x="272" y="58" class="sv-lbl f4" text-anchor="middle" font-size="14">tick</text><rect x="288" y="40" width="112" height="56" class="f1 s3" stroke-width="2"/><rect x="287" y="39" width="2" height="2" class="f0"/><rect x="399" y="39" width="2" height="2" class="f0"/><rect x="287" y="95" width="2" height="2" class="f0"/><rect x="399" y="95" width="2" height="2" class="f0"/><text x="344" y="65" class="sv-tit f6" text-anchor="middle">Contador</text><text x="344" y="83" class="sv-lbl f4" text-anchor="middle">N bits</text><line x1="400" y1="68" x2="422" y2="68" class="s4" stroke-width="2"/><rect x="422" y="60" width="2" height="16" class="f4"/><rect x="424" y="62" width="2" height="12" class="f4"/><rect x="426" y="64" width="2" height="8" class="f4"/><rect x="428" y="66" width="2" height="4" class="f4"/><rect x="430" y="67" width="2" height="2" class="f4"/><rect x="432" y="40" width="112" height="56" class="fa1 sa3" stroke-width="2"/><rect x="431" y="39" width="2" height="2" class="f0"/><rect x="543" y="39" width="2" height="2" class="f0"/><rect x="431" y="95" width="2" height="2" class="f0"/><rect x="543" y="95" width="2" height="2" class="f0"/><text x="488" y="65" class="sv-tit f6" text-anchor="middle">Comparador</text><text x="488" y="83" class="sv-lbl fa3" text-anchor="middle">¿= alarma?</text><line x1="544" y1="68" x2="606" y2="68" class="sa3" stroke-width="2"/><rect x="606" y="60" width="2" height="16" class="fa3"/><rect x="608" y="62" width="2" height="12" class="fa3"/><rect x="610" y="64" width="2" height="8" class="fa3"/><rect x="612" y="66" width="2" height="4" class="fa3"/><rect x="614" y="67" width="2" height="2" class="fa3"/><text x="580" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="14">evento</text><rect x="432" y="128" width="112" height="40" class="f1 s2" stroke-width="2"/><rect x="431" y="127" width="2" height="2" class="f0"/><rect x="543" y="127" width="2" height="2" class="f0"/><rect x="431" y="167" width="2" height="2" class="f0"/><rect x="543" y="167" width="2" height="2" class="f0"/><text x="488" y="154" class="sv-tit f4" text-anchor="middle">Alarma</text><line x1="488" y1="128" x2="488" y2="106" class="s4" stroke-width="2"/><rect x="480" y="104" width="16" height="2" class="f4"/><rect x="482" y="102" width="12" height="2" class="f4"/><rect x="484" y="100" width="8" height="2" class="f4"/><rect x="486" y="98" width="4" height="2" class="f4"/><rect x="487" y="96" width="2" height="2" class="f4"/><polyline points="560,68 560,184 344,184 344,106" class="fn sa3" stroke-width="2"/><rect x="336" y="104" width="16" height="2" class="fa3"/><rect x="338" y="102" width="12" height="2" class="fa3"/><rect x="340" y="100" width="8" height="2" class="fa3"/><rect x="342" y="98" width="4" height="2" class="fa3"/><rect x="343" y="96" width="2" height="2" class="fa3"/><text x="452" y="200" class="sv-lbl fa3" text-anchor="middle" font-size="14">recarga automática: vuelve a 0 sin esperar a la CPU</text>
+  </svg>
+  <figcaption><b>fig 2.1</b>Un temporizador de hardware son cuatro bloques. El prescaler baja la frecuencia del reloj, el contador acumula ticks, el comparador vigila el valor de alarma y, al coincidir, dispara un evento. La recarga automática (en acento) reinicia la cuenta en el mismo ciclo, sin depender de cuánto tarde la CPU en atender.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>Prescaler.</strong> Divide el reloj base: con 80 MHz y DIV = 80, cada tick dura 1 µs. Define la resolución temporal.</li>
+  <li><strong>Contador.</strong> Una cadena de flip-flops que suma (o resta) uno por tick. Puede contar en diente de sierra (sube y vuelve a cero) o en triángulo (sube y baja), que es el modo preferido en control de motores.</li>
+  <li><strong>Comparador.</strong> Lógica que compara el contador con un registro de alarma. En el ciclo en que coinciden dispara una interrupción o una señal directa hacia un pin u otro periférico.</li>
+  <li><strong>Recarga automática.</strong> Al llegar a la alarma, el contador vuelve a su valor inicial en el mismo ciclo. Si lo tuviera que recargar la CPU, la latencia de la interrupción variaría el período (<em>jitter</em>).</li>
+</ul>
+
+<p>El tiempo máximo antes de desbordar es 2<sup>N</sup> ticks. Un contador de 16 bits a 1 MHz da la vuelta cada 65,5 ms; uno de 54 bits, a la misma frecuencia, tardaría del orden de 570 años.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el reloj de péndulo</h4>
+  <p>El péndulo es el cristal: oscila rápido. Los engranajes reductores son el prescaler. El cuadrante que avanza es el contador. Una leva en el minuto 45 que hace sonar una campanita es el comparador. Y el cuadrante, al ser redondo, vuelve solo al cero: la recarga automática.</p>
+</div>
+
+<h2>PWM: una tensión hecha de ceros y unos</h2>
+
+<p>Para regular la potencia de una carga se puede usar un transistor en su zona lineal, pero disipa mucho calor. El <strong>PWM</strong> hace lo contrario: el transistor solo está cortado (no pasa corriente) o saturado (casi no cae tensión), y en los dos casos disipa poco. Lo que se regula es qué fracción del período pasa encendido, el <strong>ciclo de trabajo</strong> D. El valor medio es D × V<sub>pico</sub>, y si la carga es lenta (la inercia de un motor, la masa térmica de un calefactor, el ojo frente a un LED) responde a ese promedio.</p>
+
+<p>El circuito es un temporizador: un contador que recorre de 0 a 2<sup>bits</sup> − 1 y un comparador que mantiene la salida en alto mientras el contador esté por debajo del umbral.</p>
+
+<figure class="diagrama" data-titulo="fig-2.2 interactivo">
+  <canvas data-motor="per-pwm"></canvas>
+  <div class="controles" data-ctl="pwm"></div>
+  <figcaption><b>fig 2.2</b>Arriba, el contador en escalera y el umbral en punteado. Abajo, la salida. Con pocos bits el ciclo de trabajo se redondea al escalón más cercano (probá 4 bits y 40 %). Al subir los bits, el contador tiene más marcas que recorrer en cada período y la frecuencia cae; el cálculo asume el reloj de 80 MHz sin divisor.</figcaption>
+</figure>
+
+<h3>El compromiso resolución contra frecuencia</h3>
+<p>En palabras: la <strong>frecuencia del PWM es la del reloj, dividida por el divisor, dividida por dos elevado a la cantidad de bits</strong>. Cada bit extra duplica los escalones, pero el contador tiene que recorrer el doble de marcas y la frecuencia cae a la mitad. Con 80 MHz y sin divisor:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Frecuencia</th><th>Resolución máxima</th><th>Niveles</th></tr></thead>
+  <tbody>
+    <tr><td>1 kHz</td><td>16 bits (el S3 se queda en 14, su tope)</td><td>65 536</td></tr>
+    <tr><td>5 kHz</td><td>13 bits</td><td>8192</td></tr>
+    <tr><td>20 kHz</td><td>11 bits</td><td>2048</td></tr>
+    <tr><td>40 kHz</td><td>10 bits</td><td>1024</td></tr>
+    <tr><td>1 MHz</td><td>6 bits</td><td>64</td></tr>
+    <tr><td>40 MHz</td><td>1 bit</td><td>2 (solo 50 %)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<ul>
+  <li><strong>Motores:</strong> entre 1 y 10 kHz el bobinado vibra y silba. Por encima de <strong>20 kHz</strong> deja de oírse, y ahí quedan 11 bits.</li>
+  <li><strong>LEDs:</strong> el ojo percibe el brillo en forma logarítmica, así que el extremo bajo necesita escalones finos (12 a 14 bits). Como el parpadeo deja de verse por encima de unos cientos de Hz, conviene una frecuencia baja, de 1 a 5 kHz, para ganar bits.</li>
+</ul>
+
+<h3>Cambiar el ciclo sin romper un período</h3>
+<p>Si la CPU cambia el umbral mientras el contador está a mitad de camino, puede aparecer un período anómalo. Los PWM de hardware lo evitan con un <strong>registro sombra</strong>: la CPU escribe en una copia y el comparador sigue usando el valor viejo hasta que el contador vuelve a cero, donde se copia el nuevo.</p>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 264" role="img" aria-label="Dos cronogramas: sin registro sombra, bajar el umbral de 80 a 20 cuando el contador va por 50 deja la salida en alto todo el período; con registro sombra el valor nuevo espera al comienzo del período siguiente">
+    <text x="16" y="44" class="sv-tit f6" text-anchor="start" font-size="16">sin sombra</text><polyline points="128,64 288,16 288,64 288,64 448,16 448,64 448,64 608,16" class="fn s4" stroke-width="2"/><line x1="128" y1="26" x2="368" y2="26" class="s5" stroke-width="2" stroke-dasharray="4 4"/><line x1="368" y1="55" x2="608" y2="55" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><line x1="368" y1="12" x2="368" y2="132" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><polyline points="128,80 256,80 256,112 288,112 288,80 480,80 480,112 608,112" class="fn sa3" stroke-width="2"/><text x="376" y="134" class="sv-lbl fa3" text-anchor="start" font-size="14">queda en 1 todo el período</text><text x="16" y="172" class="sv-tit f6" text-anchor="start" font-size="16">con sombra</text><polyline points="128,192 288,144 288,192 288,192 448,144 448,192 448,192 608,144" class="fn s4" stroke-width="2"/><line x1="128" y1="154" x2="368" y2="154" class="s5" stroke-width="2" stroke-dasharray="4 4"/><line x1="368" y1="183" x2="608" y2="183" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><line x1="368" y1="140" x2="368" y2="260" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><polyline points="128,208 256,208 256,240 288,240 288,208 416,208 416,240 448,240 448,208 480,208 480,240 608,240" class="fn s5" stroke-width="2"/><text x="368" y="12" class="sv-lbl fa3" text-anchor="middle" font-size="14">la CPU escribe 20 %</text>
+  </svg>
+  <figcaption><b>fig 2.3</b>La CPU baja el ciclo de trabajo de 80 % a 20 % justo cuando el contador va por la mitad (línea punteada vertical). Sin registro sombra, el comparador ya pasó la marca nueva y la salida queda en alto todo el período: un pulso del 100 %. Con registro sombra, el valor nuevo espera y se aplica recién al empezar el período siguiente.</figcaption>
+</figure>
+
+<h2>LEDC: el PWM de propósito general</h2>
+
+<p>El bloque <strong>LEDC</strong> separa dos cosas: los <strong>timers</strong>, que fijan frecuencia y resolución, y los <strong>canales</strong>, que fijan el ciclo de trabajo de cada pin. Varios canales pueden compartir un timer, así quedan sincronizados en fase con distinto brillo cada uno (una tira RGB, por ejemplo). Dos detalles de hardware:</p>
+
+<ul>
+  <li><strong>Divisor fraccionario.</strong> El divisor se expresa como A + B/256: el circuito alterna entre dividir por A y por A + 1 para que el promedio dé la frecuencia pedida, aunque no sea una división entera del reloj.</li>
+  <li><strong>Fade por hardware.</strong> Cada canal puede sumar un paso al ciclo de trabajo cada tantos períodos: rampas de brillo sin que la CPU intervenga.</li>
+</ul>
+
+<h2>MCPWM y el tiempo muerto</h2>
+
+<p>Para puentes en H, inversores y fuentes conmutadas hay un bloque más completo, el <strong>MCPWM</strong>. Cada unidad tiene tres timers y tres operadores; cada operador da un <strong>par de salidas</strong> (A y B) para los dos transistores de una rama.</p>
+
+<figure class="diagrama" data-titulo="fig-2.4">
+  <svg viewBox="0 0 640 264" role="img" aria-label="Medio puente H con un transistor alto y uno bajo; cronograma de sus compuertas con intervalos de tiempo muerto en los que ambos están apagados">
+    <line x1="40" y1="24" x2="136" y2="24" class="s5" stroke-width="2"/><text x="40" y="18" class="sv-lbl f4" text-anchor="start" font-size="14">+V</text><line x1="40" y1="240" x2="136" y2="240" class="s5" stroke-width="2"/><text x="40" y="258" class="sv-lbl f4" text-anchor="start" font-size="14">GND</text><rect x="64" y="48" width="48" height="48" class="f1 s3" stroke-width="2"/><rect x="63" y="47" width="2" height="2" class="f0"/><rect x="111" y="47" width="2" height="2" class="f0"/><rect x="63" y="95" width="2" height="2" class="f0"/><rect x="111" y="95" width="2" height="2" class="f0"/><text x="88" y="69" class="sv-tit f6" text-anchor="middle" font-size="18">A</text><text x="88" y="87" class="sv-lbl f4" text-anchor="middle" font-size="14">alto</text><rect x="64" y="168" width="48" height="48" class="f1 s3" stroke-width="2"/><rect x="63" y="167" width="2" height="2" class="f0"/><rect x="111" y="167" width="2" height="2" class="f0"/><rect x="63" y="215" width="2" height="2" class="f0"/><rect x="111" y="215" width="2" height="2" class="f0"/><text x="88" y="189" class="sv-tit f6" text-anchor="middle" font-size="18">B</text><text x="88" y="207" class="sv-lbl f4" text-anchor="middle" font-size="14">bajo</text><line x1="88" y1="24" x2="88" y2="48" class="s4" stroke-width="2"/><line x1="88" y1="96" x2="88" y2="168" class="s4" stroke-width="2"/><line x1="88" y1="216" x2="88" y2="240" class="s4" stroke-width="2"/><line x1="88" y1="132" x2="136" y2="132" class="s4" stroke-width="2"/><rect x="136" y="116" width="56" height="32" class="f0 s4" stroke-width="2"/><rect x="135" y="115" width="2" height="2" class="f0"/><rect x="191" y="115" width="2" height="2" class="f0"/><rect x="135" y="147" width="2" height="2" class="f0"/><rect x="191" y="147" width="2" height="2" class="f0"/><text x="164" y="138" class="sv-tit f6" text-anchor="middle" font-size="14">motor</text><text x="288" y="60" class="sv-tit f6" text-anchor="end" font-size="16">PWM A</text><text x="288" y="140" class="sv-tit f6" text-anchor="end" font-size="16">PWM B</text><polyline points="304,40 416,40 416,72 544,72 544,40 624,40" class="fn s5" stroke-width="2"/><polyline points="304,152 440,152 440,120 520,120 520,152 624,152" class="fn s5" stroke-width="2"/><rect x="416" y="24" width="24" height="180" class="fa1 sa3" stroke-width="2"/><rect x="520" y="24" width="24" height="180" class="fa1 sa3" stroke-width="2"/><text x="428" y="196" class="sv-tag fa3" text-anchor="middle" font-size="14">TM</text><text x="532" y="196" class="sv-tag fa3" text-anchor="middle" font-size="14">TM</text><text x="464" y="236" class="sv-lbl fa3" text-anchor="middle" font-size="14">TM: los dos apagados, nunca conducen juntos</text>
+  </svg>
+  <figcaption><b>fig 2.4</b>Un medio puente: el transistor A conecta la carga a +V y el B a masa. Si los dos conducen a la vez hay un cortocircuito de la fuente. Las franjas en acento son el <strong>tiempo muerto</strong>: después de apagar uno se espera antes de encender el otro, para que el primero termine de apagarse.</figcaption>
+</figure>
+
+<p>Un transistor de potencia tarda más en apagarse que en empezar a encenderse, por las capacidades de compuerta que hay que descargar. Si se cambiara de uno al otro en el mismo instante, habría un lapso de decenas a cientos de ns con los dos conduciendo: el <em>shoot-through</em>, un cortocircuito de la fuente que calienta o destruye los transistores. El generador de <strong>tiempo muerto</strong> del MCPWM retrasa por separado el flanco de subida y el de bajada de cada salida. El valor lo decide el transistor: su tiempo de apagado más un margen, del orden de 100 ns a 1 µs.</p>
+
+<p>Cada operador suma dos protecciones: un <strong>manejador de fallas</strong>, que fuerza las salidas a un estado seguro cuando un pin de emergencia se activa (por ejemplo, un comparador de sobrecorriente), sin esperar a la CPU; y un módulo de <strong>captura</strong>, que registra el instante de los flancos de una señal externa, útil con los sensores Hall de un motor sin escobillas.</p>
+
+<div class="caja analogia">
+  <h4>analogía: la esclusa de aire</h4>
+  <p>Para salir de una nave al espacio hay dos compuertas. Antes de abrir la de afuera, la de adentro tiene que estar cerrada y trabada, y hay un momento en que las dos están cerradas. Si se abrieran juntas aunque sea un instante, el aire se escapa. El tiempo muerto es esa pausa con las dos cerradas.</p>
+</div>
+
+<h2>De PWM a tensión: el filtro RC</h2>
+
+<p>Un PWM seguido de un filtro pasa-bajos es un DAC barato. Una onda cuadrada de ciclo D tiene una componente continua D × VDD más armónicos en la frecuencia del PWM y sus múltiplos; el RC deja pasar la continua y atenúa el resto.</p>
+
+<figure class="diagrama" data-titulo="fig-2.5">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Salida PWM que cambia de 25 % a 75 % de ciclo de trabajo y su versión filtrada por un RC: la tensión sube exponencialmente hacia el nuevo valor medio y conserva un pequeño rizado">
+    <text x="16" y="60" class="sv-tit f6" text-anchor="start" font-size="16">PWM</text><text x="16" y="118" class="sv-tit f6" text-anchor="start" font-size="16">filtrada</text><polyline points="96,24 102,24 102,80 120,80 120,24 126,24 126,80 144,80 144,24 150,24 150,80 168,80 168,24 174,24 174,80 192,80 192,24 198,24 198,80 216,80 216,24 222,24 222,80 240,80 240,24 246,24 246,80 264,80 264,24 270,24 270,80 288,80 288,24 294,24 294,80 300,80 300,24 306,24 306,80 312,80 312,24 330,24 330,80 336,80 336,24 354,24 354,80 360,80 360,24 378,24 378,80 384,80 384,24 402,24 402,80 408,80 408,24 426,24 426,80 432,80 432,24 450,24 450,80 456,80 456,24 474,24 474,80 480,80 480,24 498,24 498,80 504,80 504,24 522,24 522,80 528,80 528,24 546,24 546,80 552,80 552,24 570,24 570,80 576,80 576,24 594,24 594,80 600,80 600,24 618,24 618,80 624,80" class="fn s4" stroke-width="2"/><polyline points="96,184 98,182 100,180 102,181 104,182 106,183 108,184 110,185 112,185 114,186 116,187 118,188 120,185 122,183 124,181 126,182 128,183 130,184 132,185 134,185 136,186 138,187 140,188 142,188 144,186 146,184 148,182 150,183 152,183 154,184 156,185 158,186 160,187 162,187 164,188 166,189 168,187 170,184 172,182 174,183 176,184 178,185 180,186 182,186 184,187 186,188 188,188 190,189 192,187 194,185 196,182 198,183 200,184 202,185 204,186 206,187 208,187 210,188 212,189 214,189 216,187 218,185 220,183 222,184 224,184 226,185 228,186 230,187 232,187 234,188 236,189 238,189 240,187 242,185 244,183 246,184 248,184 250,185 252,186 254,187 256,188 258,188 260,189 262,190 264,187 266,185 268,183 270,184 272,185 274,185 276,186 278,187 280,188 282,188 284,189 286,190 288,187 290,185 292,183 294,184 296,185 298,185 300,183 302,181 304,179 306,180 308,181 310,182 312,180 314,178 316,176 318,174 320,172 322,171 324,169 326,167 328,166 330,167 332,169 334,170 336,168 338,167 340,165 342,164 344,162 346,161 348,159 350,158 352,157 354,159 356,160 358,162 360,161 362,159 364,158 366,157 368,155 370,154 372,153 374,152 376,151 378,153 380,155 382,157 384,155 386,154 388,153 390,152 392,151 394,150 396,149 398,148 400,147 402,149 404,151 406,153 408,152 410,151 412,150 414,149 416,148 418,147 420,146 422,145 424,144 426,147 428,149 430,151 432,150 434,149 436,148 438,147 440,146 442,145 444,144 446,144 448,143 450,145 452,147 454,149 456,148 458,147 460,146 462,145 464,145 466,144 468,143 470,142 472,142 474,144 476,146 478,148 480,147 482,146 484,145 486,145 488,144 490,143 492,142 494,142 496,141 498,143 500,145 502,147 504,146 506,146 508,145 510,144 512,143 514,142 516,142 518,141 520,140 522,143 524,145 526,147 528,146 530,145 532,144 534,144 536,143 538,142 540,141 542,141 544,140 546,142 548,144 550,147 552,146 554,145 556,144 558,143 560,143 562,142 564,141 566,140 568,140 570,142 572,144 574,146 576,146 578,145 580,144 582,143 584,142 586,142 588,141 590,140 592,140 594,142 596,144 598,146 600,145 602,145 604,144 606,143 608,142 610,141 612,141 614,140 616,139 618,142 620,144 622,146" class="fn sa3" stroke-width="2"/><line x1="96" y1="186" x2="624" y2="186" class="s3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="190" class="sv-lbl f4" text-anchor="end" font-size="14">25 %</text><line x1="96" y1="142" x2="624" y2="142" class="s3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="146" class="sv-lbl f4" text-anchor="end" font-size="14">75 %</text><line x1="300" y1="16" x2="300" y2="216" class="s3" stroke-width="2" stroke-dasharray="2 4"/><text x="308" y="124" class="sv-lbl f4" text-anchor="start" font-size="14">cambio</text>
+  </svg>
+  <figcaption><b>fig 2.5</b>Un PWM (arriba) que pasa de 25 % a 75 % y la tensión después de un filtro RC (abajo, en acento). El valor medio sigue al ciclo de trabajo, pero con dos defectos: un rizado a la frecuencia del PWM y una subida exponencial que tarda unas cinco constantes de tiempo en asentarse.</figcaption>
+</figure>
+
+<p>El diseño es un compromiso. El rizado pico a pico vale del orden de <strong>VDD × D × (1 − D) / (f<sub>PWM</sub> × R × C)</strong>, con su peor caso en D = 50 %. Para achicarlo hay que subir RC, pero el tiempo de asentamiento es de unas <strong>5 × R × C</strong>. Un ejemplo: a 20 kHz con R = 10 kΩ y C = 1 µF (RC = 10 ms), el rizado a 50 % es de unos 4 mV y cada cambio tarda unos 50 ms en asentarse.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el filtro no puede entregar corriente</h4>
+  <p>Visto desde afuera, el RC tiene una impedancia de salida igual a R. Cualquier carga forma un divisor y cambia la tensión. Si la salida va a algo que consume, poné un amplificador operacional como seguidor; con un filtro activo de segundo orden, además, la atenuación pasa de 20 a 40 dB por década y se puede asentar más rápido con el mismo rizado.</p>
+</div>
+
+<h2>En el ESP32 y en el ESP32-S3</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>Timer Group</b></td><td>4 timers de 64 bits (2 grupos × 2), prescaler de 16 bits</td><td>4 timers de 54 bits (2 grupos × 2), prescaler de 16 bits</td></tr>
+    <tr><td><b>System Timer</b></td><td>no tiene</td><td>contador de 52 bits a 16 MHz con 3 comparadores: el tic del sistema operativo</td></tr>
+    <tr><td><b>LEDC</b></td><td>16 canales (8 de alta velocidad + 8 de baja) y 8 timers; hasta 20 bits</td><td>8 canales y 4 timers; hasta 14 bits</td></tr>
+    <tr><td><b>MCPWM</b></td><td colspan="2">2 unidades, cada una con 3 timers, 3 operadores (6 salidas), fallas y captura. El reloj base puede ser de 160 MHz: pasos de 6,25 ns</td></tr>
+    <tr><td><b>Tensión analógica</b></td><td>tiene DAC de 8 bits; el PWM filtrado es una alternativa</td><td>sin DAC: PWM filtrado, sigma-delta o DAC externo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Un temporizador divide el reloj, cuenta, compara y se recarga solo: el tiempo lo mide el hardware, no la CPU.</li>
+    <li>Frecuencia de PWM = reloj ÷ divisor ÷ 2<sup>bits</sup>: cada bit extra divide la frecuencia por dos.</li>
+    <li>El registro sombra aplica los cambios al empezar el período; el tiempo muerto evita que las dos llaves de una rama conduzcan juntas.</li>
+    <li>Un PWM filtrado es un DAC lento: menos rizado exige más RC y más tiempo de asentamiento, y necesita un seguidor si hay carga.</li>
+    <li>El ESP32 tiene más canales de LEDC (16) y más resolución (20 bits); el S3 suma un System Timer de 52 bits.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Necesitás un PWM de 40 kHz con el reloj de 80 MHz y sin divisor. ¿Cuál es la resolución máxima?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Con 11 bits el contador recorre 2048 marcas y la frecuencia queda en 80 MHz / 2048 ≈ 39 kHz, por debajo de los 40 kHz pedidos.">11 bits: 2048 niveles.</button>
+    <button type="button" data-por-que="Correcto: 80 MHz / 40 kHz = 2000 cuentas por período. La potencia de dos que entra es 2<sup>10</sup> = 1024, así que quedan 10 bits, con escalones de alrededor de 0,1 %.">10 bits: 1024 niveles.</button>
+    <button type="button" data-por-que="Ese es el tope del contador, pero a 40 kHz no hay tiempo de recorrer 16 384 marcas: saldrían unos 4,9 kHz.">14 bits: el máximo del LEDC del S3.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: LEDC (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/ledc.html">docs.espressif.com/…/ledc.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: MCPWM (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/mcpwm.html">docs.espressif.com/…/mcpwm.html</a></li>
+    <li>Texas Instruments. <em>Using PWM Output as a Digital-to-Analog Converter (SPRAA88)</em>. <a href="https://www.ti.com/lit/an/spraa88a/spraa88a.pdf">ti.com/lit/an/spraa88a/spraa88a.pdf</a></li>
+  </ol>
+  <p class="nota">El rango útil de tiempo muerto depende del transistor y del driver de compuerta; las cifras de rizado y asentamiento son aproximaciones de primer orden.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit, micro-esp, tomo-02, nivel-02</footer>
+</body>
+</html>

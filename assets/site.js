@@ -1,29 +1,50 @@
 // Learning in 8-bit — comportamiento común (tema, barra, navegación, progreso, quiz)
 
+// Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 const CURSOS = {
-  chip: {
-    titulo: "El chip por dentro",
+  micro: {
+    titulo: "El microcontrolador por dentro", seccion: "micro",
     niveles: [
       { f: "01-familia-esp.html", t: "La familia ESP", d: "Qué es un microcontrolador y quién es quién entre ESP8266, ESP32, S3, C6 y P4." },
-      { f: "02-arquitectura.html", t: "Anatomía del ESP32-S3", d: "Núcleos, buses, periféricos, arranque y la extensión vectorial PIE." },
-      { f: "03-memoria.html", t: "La memoria manda", d: "SRAM, PSRAM, flash y caché: dónde vive cada byte de una red neuronal." },
-      { f: "04-perifericos.html", t: "Periféricos", d: "Pines, PWM, ADC y buses serie: cómo el chip toca el mundo." },
-      { f: "05-tiempo-real.html", t: "Tiempo real", d: "Interrupciones, tareas y colas: cómo el chip hace varias cosas a tiempo." },
+      { f: "02-anatomia-esp32.html", t: "Anatomía del ESP32", d: "El clásico: dos LX6, 520 KB de SRAM, memoria por QSPI y los periféricos que solo él tiene." },
+      { f: "03-anatomia-esp32s3.html", t: "Anatomía del ESP32-S3", d: "Dos LX7, buses, memoria octal, cámara por DMA y la extensión vectorial PIE." },
+      { f: "04-memoria.html", t: "La memoria manda", d: "SRAM, PSRAM, flash y caché: dónde vive cada byte de una red neuronal." },
+      { f: "05-tiempo-real.html", t: "Tiempo real", d: "Interrupciones, tareas y colas: cómo el micro hace varias cosas a tiempo." },
       { f: "06-energia.html", t: "Energía y ciclo de vida", d: "Relojes, modos de sueño y cómo se actualiza el firmware sin romperlo." },
     ],
   },
+  mundo: {
+    titulo: "Tocar el mundo", seccion: "micro",
+    niveles: [
+      { f: "01-pin.html", t: "El pin por dentro", d: "La celda de E/S, push-pull y open-drain, la matriz de GPIO y los pines de arranque." },
+      { f: "02-temporizadores-pwm.html", t: "Temporizadores y PWM", d: "Contador, prescaler y comparador: PWM, tiempo muerto y puentes en H." },
+      { f: "03-adc.html", t: "El ADC", d: "Aproximaciones sucesivas por dentro, errores, atenuación y calibración." },
+      { f: "04-dac-touch.html", t: "DAC y sensor táctil", d: "Redes resistivas, sigma-delta y el oscilador de relajación que siente un dedo." },
+      { f: "05-rmt-pcnt.html", t: "Generar y contar pulsos", d: "RMT para trenes de pulsos e infrarrojo; PCNT para encoders en cuadratura." },
+    ],
+  },
+  datos: {
+    titulo: "Mover y procesar datos", seccion: "micro",
+    niveles: [
+      { f: "01-uart.html", t: "UART", d: "La trama, el sobremuestreo, el error de baud rate y las FIFO." },
+      { f: "02-spi-i2c.html", t: "SPI e I2C", d: "El registro de desplazamiento contra el open-drain: velocidad, pull-ups y arbitraje." },
+      { f: "03-i2s.html", t: "I2S", d: "Audio digital: relojes de bit y de palabra, TDM y micrófonos PDM." },
+      { f: "04-dma.html", t: "DMA", d: "Descriptores enlazados, ráfagas y coherencia de caché: mover datos sin la CPU." },
+      { f: "05-pie.html", t: "El acelerador vectorial PIE", d: "SIMD de 128 bits, acumuladores anchos y saturación: cómo multiplica de a 16." },
+    ],
+  },
   redes: {
-    titulo: "Redes que ven",
+    titulo: "Redes que ven", seccion: "ia",
     niveles: [
       { f: "01-cnn.html", t: "¿Qué es una CNN?", d: "Convolución, filtros, pooling y cuántas cuentas hace cada capa." },
       { f: "02-cuantizacion.html", t: "Encoger la red", d: "Cuantización int8, pruning y otros trucos para que quepa y corra." },
     ],
   },
   borde: {
-    titulo: "Inteligencia en el borde",
+    titulo: "Inteligencia en el borde", seccion: "ia",
     niveles: [
-      { f: "01-frameworks.html", t: "Del modelo al chip", d: "TFLite Micro, ESP-NN, ESP-DL y el viaje de un modelo hasta la flash." },
-      { f: "02-pipeline.html", t: "Todo junto", d: "Cámara → inferencia → decisión: casos reales, tiempos y cómo elegir chip." },
+      { f: "01-frameworks.html", t: "Del modelo al micro", d: "TFLite Micro, ESP-NN, ESP-DL y el viaje de un modelo hasta la flash." },
+      { f: "02-pipeline.html", t: "Todo junto", d: "Cámara → inferencia → decisión: casos reales, tiempos y cómo elegir micro." },
     ],
   },
 };
@@ -102,6 +123,17 @@ function montarBarra() {
 
 // ---- progreso del curso ----
 const clave = (c) => "hechos:" + c;
+// el tomo "chip" pasó a "micro" (archivos renombrados); se migra una vez
+{
+  const viejo = LS.get(clave("chip"), null);
+  if (viejo) {
+    const ren = { "02-arquitectura.html": "03-anatomia-esp32s3.html", "03-memoria.html": "04-memoria.html" };
+    const act = LS.get(clave("micro"), []);
+    viejo.map((f) => ren[f] || f).forEach((f) => act.includes(f) || act.push(f));
+    LS.set(clave("micro"), act);
+    try { localStorage.removeItem(clave("chip")); } catch {}
+  }
+}
 
 function montarTemario() {
   const ol = document.querySelector("[data-temario]");
@@ -118,7 +150,8 @@ function montarTemario() {
       </a>
     </li>`).join("");
   const total = document.querySelector("[data-avance]");
-  if (total) total.textContent = `${hechos.length} / ${CURSOS[id].niveles.length}`;
+  const n = CURSOS[id].niveles.filter((x) => hechos.includes(x.f)).length;
+  if (total) total.textContent = `${n} / ${CURSOS[id].niveles.length}`;
 }
 
 function montarNavLeccion() {
@@ -131,9 +164,10 @@ function montarNavLeccion() {
   const f = curso.niveles[i].f;
   const hechos = LS.get(clave(b.curso), []);
   // último nivel: ofrece el primer nivel del tomo siguiente (misma profundidad de carpetas)
-  const ids = Object.keys(CURSOS), prox = CURSOS[ids[ids.indexOf(b.curso) + 1]];
+  const ids = Object.keys(CURSOS), idProx = ids[ids.indexOf(b.curso) + 1];
+  const prox = CURSOS[idProx]?.seccion === curso.seccion ? CURSOS[idProx] : null;
   const finTomo = prox
-    ? `<a href="../${ids[ids.indexOf(b.curso) + 1]}/${prox.niveles[0].f}"><small>siguiente tomo →</small><span>${prox.titulo}</span></a>`
+    ? `<a href="../${idProx}/${prox.niveles[0].f}"><small>siguiente tomo →</small><span>${prox.titulo}</span></a>`
     : `<a href="index.html"><small>fin del tomo →</small><span>Temario</span></a>`;
 
   cont.innerHTML = `
@@ -145,10 +179,11 @@ function montarNavLeccion() {
       ${sig ? `<a href="${sig.f}"><small>siguiente →</small><span>${sig.t}</span></a>` : finTomo}
     </nav>`;
   cont.querySelector("[data-completar]").onclick = (e) => {
-    const h = LS.get(clave(b.curso), []);
-    if (!h.includes(f)) h.push(f);
+    let h = LS.get(clave(b.curso), []);
+    const hecho = !h.includes(f);
+    h = hecho ? [...h, f] : h.filter((x) => x !== f);
     LS.set(clave(b.curso), h);
-    e.target.textContent = "[✓] nivel completado";
+    e.target.textContent = hecho ? "[✓] nivel completado" : "[ ] marcar nivel como completado";
   };
 }
 

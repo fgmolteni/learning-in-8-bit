@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 5: El acelerador vectorial PIE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/diagramas.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/escenas-tomo.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="datos" data-nivel="5">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="05">nivel 05, 14 min de lectura</span>
+  <h1>El acelerador vectorial PIE</h1>
+  <p class="bajada">Dieciséis multiplicadores detrás de una sola instrucción: registros de 128 bits, acumuladores con margen, saturación por hardware y el problema de alimentarlos desde la memoria.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar la diferencia entre un procesador <strong>escalar</strong> y uno <strong>SIMD</strong>.</li>
+    <li>Describir los registros Q y cómo se parten según el tamaño del dato.</li>
+    <li>Explicar los <strong>bits de guarda</strong> de un acumulador y la <strong>saturación</strong> al volver a 8 bits.</li>
+    <li>Estimar el techo teórico de PIE y por qué la memoria lo limita.</li>
+  </ul>
+</div>
+
+<p>Filtrar una señal, calcular una FFT o evaluar una red neuronal se reduce a repetir millones de veces la misma operación: <strong>multiplicar y acumular</strong> (MAC). El ESP32-S3 agregó a cada núcleo LX7 una unidad para hacer esa operación de a muchos datos a la vez, la <strong>PIE</strong> (<em>Processor Instruction Extensions</em>). Este nivel la abre como bloque de hardware; su papel dentro del micro está en la ficha del S3 (<a href="../micro/03-anatomia-esp32s3.html">Tomo 1, nivel 3</a>).</p>
+
+<h2>Escalar contra SIMD</h2>
+
+<p>Un procesador escalar hace una operación por instrucción: para 16 productos, un bucle de 16 vueltas, y en cada vuelta leer, multiplicar, sumar, mover punteros, descontar el contador y saltar. La mayor parte del trabajo es administración.</p>
+
+<p>Una unidad <strong>SIMD</strong> (una instrucción, muchos datos) pone varios multiplicadores y sumadores idénticos en paralelo, cada uno en su <strong>carril</strong> dentro de un registro ancho. Una sola instrucción, decodificada una vez, los hace trabajar a todos juntos.</p>
+
+<figure class="diagrama" data-titulo="fig-5.1">
+  <canvas data-widget="simd" width="640" height="216"></canvas>
+  <figcaption><b>fig 5.1</b>Carrera de 64 productos. Arriba, un núcleo escalar; abajo, el mismo núcleo usando PIE. Cada casilla es un producto peso × entrada ya sumado al acumulador. Es el caso ideal: en la práctica, cargar los datos también cuesta ciclos.</figcaption>
+</figure>
+
+<h2>Los registros de 128 bits</h2>
+
+<figure class="diagrama" data-titulo="fig-5.2">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Un registro Q de 128 bits visto de tres maneras: 16 elementos de 8 bits, 8 de 16 bits o 4 de 32 bits">
+    <text x="16" y="50" class="sv-tit f6" text-anchor="start" font-size="16">16 × 8 bits</text><rect x="128" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="159" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="190" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="221" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="252" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="283" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="314" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="345" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="376" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="407" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="438" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="469" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="500" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="531" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="562" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><rect x="593" y="24" width="31" height="36" class="fa1 sa3" stroke-width="2"/><text x="16" y="106" class="sv-tit f6" text-anchor="start" font-size="16">8 × 16 bits</text><rect x="128" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="190" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="252" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="314" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="376" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="438" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="500" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><rect x="562" y="80" width="62" height="36" class="f1 s3" stroke-width="2"/><text x="159" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e7</text><text x="221" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e6</text><text x="283" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e5</text><text x="345" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e4</text><text x="407" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e3</text><text x="469" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e2</text><text x="531" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e1</text><text x="593" y="104" class="sv-lbl f4" text-anchor="middle" font-size="14">e0</text><text x="16" y="162" class="sv-tit f6" text-anchor="start" font-size="16">4 × 32 bits</text><rect x="128" y="136" width="124" height="36" class="f1 s3" stroke-width="2"/><rect x="252" y="136" width="124" height="36" class="f1 s3" stroke-width="2"/><rect x="376" y="136" width="124" height="36" class="f1 s3" stroke-width="2"/><rect x="500" y="136" width="124" height="36" class="f1 s3" stroke-width="2"/><text x="190" y="160" class="sv-lbl f4" text-anchor="middle" font-size="14">e3</text><text x="314" y="160" class="sv-lbl f4" text-anchor="middle" font-size="14">e2</text><text x="438" y="160" class="sv-lbl f4" text-anchor="middle" font-size="14">e1</text><text x="562" y="160" class="sv-lbl f4" text-anchor="middle" font-size="14">e0</text><text x="376" y="196" class="sv-lbl f4" text-anchor="middle" font-size="14">q0 … q7: ocho registros de 128 bits</text>
+  </svg>
+  <figcaption><b>fig 5.2</b>Cada uno de los ocho registros Q de PIE tiene 128 bits, y la instrucción decide cómo leerlos: 16 números de 8 bits (en acento, el caso de las redes cuantizadas), 8 de 16 bits (audio, FFT) o 4 de 32.</figcaption>
+</figure>
+
+<p>Hay además instrucciones de carga que traen <strong>16 bytes contiguos</strong> de la memoria a un registro Q y avanzan el puntero en el mismo paso, para que el bucle no pierda instrucciones actualizando direcciones.</p>
+
+<h2>La MAC vectorial y los bits de guarda</h2>
+
+<p>Multiplicar dos números de 8 bits da un resultado de 16; sumar muchos de esos productos hace crecer el número. Si el acumulador tuviera justo 16 bits, se desbordaría a la segunda suma y el signo se invertiría. Por eso los acumuladores tienen <strong>bits de guarda</strong>: bits de más, arriba, que dan margen para acumular.</p>
+
+<figure class="diagrama" data-titulo="fig-5.3">
+  <svg viewBox="0 0 640 256" role="img" aria-label="Camino de datos de una instrucción MAC vectorial: dos registros Q de 16 bytes entran a 16 multiplicadores de 8 por 8 bits; cada producto de 16 bits se suma a su acumulador de 20 bits en QACC">
+    <rect x="16" y="24" width="200" height="40" class="f1 s3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="215" y="23" width="2" height="2" class="f0"/><rect x="15" y="63" width="2" height="2" class="f0"/><rect x="215" y="63" width="2" height="2" class="f0"/><text x="116" y="50" class="sv-tit f6" text-anchor="middle" font-size="16">q0: 16 entradas</text><rect x="424" y="24" width="200" height="40" class="f1 s3" stroke-width="2"/><rect x="423" y="23" width="2" height="2" class="f0"/><rect x="623" y="23" width="2" height="2" class="f0"/><rect x="423" y="63" width="2" height="2" class="f0"/><rect x="623" y="63" width="2" height="2" class="f0"/><text x="524" y="50" class="sv-tit f6" text-anchor="middle" font-size="16">q1: 16 pesos</text><rect x="40" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="54" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="54" y1="132" x2="54" y2="164" class="s4" stroke-width="2"/><rect x="40" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="76" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="90" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="90" y1="132" x2="90" y2="164" class="s4" stroke-width="2"/><rect x="76" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="112" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="126" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="126" y1="132" x2="126" y2="164" class="s4" stroke-width="2"/><rect x="112" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="148" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="162" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="162" y1="132" x2="162" y2="164" class="s4" stroke-width="2"/><rect x="148" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="184" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="198" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="198" y1="132" x2="198" y2="164" class="s4" stroke-width="2"/><rect x="184" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="220" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="234" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="234" y1="132" x2="234" y2="164" class="s4" stroke-width="2"/><rect x="220" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="256" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="270" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="270" y1="132" x2="270" y2="164" class="s4" stroke-width="2"/><rect x="256" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="292" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="306" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="306" y1="132" x2="306" y2="164" class="s4" stroke-width="2"/><rect x="292" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="328" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="342" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="342" y1="132" x2="342" y2="164" class="s4" stroke-width="2"/><rect x="328" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="364" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="378" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="378" y1="132" x2="378" y2="164" class="s4" stroke-width="2"/><rect x="364" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="400" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="414" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="414" y1="132" x2="414" y2="164" class="s4" stroke-width="2"/><rect x="400" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="436" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="450" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="450" y1="132" x2="450" y2="164" class="s4" stroke-width="2"/><rect x="436" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="472" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="486" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="486" y1="132" x2="486" y2="164" class="s4" stroke-width="2"/><rect x="472" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="508" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="522" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="522" y1="132" x2="522" y2="164" class="s4" stroke-width="2"/><rect x="508" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="544" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="558" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="558" y1="132" x2="558" y2="164" class="s4" stroke-width="2"/><rect x="544" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><rect x="580" y="104" width="28" height="28" class="fa1 sa3" stroke-width="2"/><text x="594" y="124" class="sv-tit fa3" text-anchor="middle" font-size="16">×</text><line x1="594" y1="132" x2="594" y2="164" class="s4" stroke-width="2"/><rect x="580" y="164" width="28" height="40" class="f1 s4" stroke-width="2"/><line x1="116" y1="64" x2="116" y2="94" class="s4" stroke-width="2"/><rect x="108" y="94" width="16" height="2" class="f4"/><rect x="110" y="96" width="12" height="2" class="f4"/><rect x="112" y="98" width="8" height="2" class="f4"/><rect x="114" y="100" width="4" height="2" class="f4"/><rect x="115" y="102" width="2" height="2" class="f4"/><line x1="524" y1="64" x2="524" y2="94" class="s4" stroke-width="2"/><rect x="516" y="94" width="16" height="2" class="f4"/><rect x="518" y="96" width="12" height="2" class="f4"/><rect x="520" y="98" width="8" height="2" class="f4"/><rect x="522" y="100" width="4" height="2" class="f4"/><rect x="523" y="102" width="2" height="2" class="f4"/><line x1="116" y1="84" x2="524" y2="84" class="s3" stroke-width="2" stroke-dasharray="2 4"/><text x="320" y="96" class="sv-lbl fa3" text-anchor="middle" font-size="14">16 multiplicadores de 8 × 8 bits</text><text x="320" y="228" class="sv-lbl f4" text-anchor="middle" font-size="14">QACC: 16 acumuladores de 20 bits (16 del producto + 4 de guarda)</text>
+  </svg>
+  <figcaption><b>fig 5.3</b>Una sola instrucción de PIE: los 16 bytes de un registro se multiplican por los 16 de otro en 16 multiplicadores en paralelo, y cada producto se suma a su propio acumulador. Un producto de 8 × 8 bits ocupa 16 bits; los 4 bits extra de cada acumulador de 20 bits son el margen para sumar sin desbordar.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>QACC</strong> son dos registros de 160 bits (QACC_H y QACC_L). Con datos de 8 bits funcionan como 16 acumuladores de 20 bits; con datos de 16 bits, como 8 acumuladores de 40.</li>
+  <li><strong>ACCX</strong> es un acumulador de 40 bits que suma todos los carriles en un solo valor: el producto punto completo.</li>
+</ul>
+
+<div class="caja analogia">
+  <h4>analogía: el margen de un amplificador</h4>
+  <p>Los bits de guarda son como el margen de alimentación de un amplificador: si la señal sube un poco más de lo previsto, no recorta. Con 4 bits de guarda se pueden sumar del orden de 16 productos máximos sin salirse; después hay que sacar el resultado.</p>
+</div>
+
+<h2>Volver a 8 bits: desplazar y saturar</h2>
+
+<p>En una red cuantizada, el resultado de cada neurona tiene que volver a int8 para la capa siguiente (<a href="../redes/02-cuantizacion.html">IA en el borde, Tomo 1, nivel 2</a>). Eso requiere dividir por una escala, en la práctica un desplazamiento a la derecha, y recortar al rango. Hecho con instrucciones comunes serían comparaciones y saltos por cada número.</p>
+
+<figure class="diagrama" data-titulo="fig-5.4">
+  <svg viewBox="0 0 640 208" role="img" aria-label="Un acumulador con 1000 se desplaza a la derecha 3 bits y da 125, que entra en 8 bits; otro con 2000 da 250, que se satura a 127">
+    <rect x="16" y="24" width="144" height="56" class="f1 s3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="159" y="23" width="2" height="2" class="f0"/><rect x="15" y="79" width="2" height="2" class="f0"/><rect x="159" y="79" width="2" height="2" class="f0"/><text x="88" y="49" class="sv-tit f6" text-anchor="middle">acumulador</text><text x="88" y="67" class="sv-lbl f4" text-anchor="middle">1000</text><line x1="160" y1="52" x2="206" y2="52" class="s4" stroke-width="2"/><rect x="206" y="44" width="2" height="16" class="f4"/><rect x="208" y="46" width="2" height="12" class="f4"/><rect x="210" y="48" width="2" height="8" class="f4"/><rect x="212" y="50" width="2" height="4" class="f4"/><rect x="214" y="51" width="2" height="2" class="f4"/><text x="188" y="44" class="sv-lbl f4" text-anchor="middle" font-size="14">≫ 3</text><rect x="216" y="24" width="144" height="56" class="f1 s3" stroke-width="2"/><rect x="215" y="23" width="2" height="2" class="f0"/><rect x="359" y="23" width="2" height="2" class="f0"/><rect x="215" y="79" width="2" height="2" class="f0"/><rect x="359" y="79" width="2" height="2" class="f0"/><text x="288" y="49" class="sv-tit f6" text-anchor="middle">desplazado</text><text x="288" y="67" class="sv-lbl f4" text-anchor="middle">125</text><line x1="360" y1="52" x2="406" y2="52" class="s4" stroke-width="2"/><rect x="406" y="44" width="2" height="16" class="f4"/><rect x="408" y="46" width="2" height="12" class="f4"/><rect x="410" y="48" width="2" height="8" class="f4"/><rect x="412" y="50" width="2" height="4" class="f4"/><rect x="414" y="51" width="2" height="2" class="f4"/><text x="388" y="76" class="sv-lbl f4" text-anchor="middle" font-size="12">recorte</text><rect x="416" y="24" width="144" height="56" class="f1 s3" stroke-width="2"/><rect x="415" y="23" width="2" height="2" class="f0"/><rect x="559" y="23" width="2" height="2" class="f0"/><rect x="415" y="79" width="2" height="2" class="f0"/><rect x="559" y="79" width="2" height="2" class="f0"/><text x="488" y="49" class="sv-tit f6" text-anchor="middle">int8</text><text x="488" y="67" class="sv-lbl f4" text-anchor="middle">125</text><rect x="16" y="112" width="144" height="56" class="f1 s3" stroke-width="2"/><rect x="15" y="111" width="2" height="2" class="f0"/><rect x="159" y="111" width="2" height="2" class="f0"/><rect x="15" y="167" width="2" height="2" class="f0"/><rect x="159" y="167" width="2" height="2" class="f0"/><text x="88" y="137" class="sv-tit f6" text-anchor="middle">acumulador</text><text x="88" y="155" class="sv-lbl f4" text-anchor="middle">2000</text><line x1="160" y1="140" x2="206" y2="140" class="s4" stroke-width="2"/><rect x="206" y="132" width="2" height="16" class="f4"/><rect x="208" y="134" width="2" height="12" class="f4"/><rect x="210" y="136" width="2" height="8" class="f4"/><rect x="212" y="138" width="2" height="4" class="f4"/><rect x="214" y="139" width="2" height="2" class="f4"/><text x="188" y="132" class="sv-lbl f4" text-anchor="middle" font-size="14">≫ 3</text><rect x="216" y="112" width="144" height="56" class="f1 s3" stroke-width="2"/><rect x="215" y="111" width="2" height="2" class="f0"/><rect x="359" y="111" width="2" height="2" class="f0"/><rect x="215" y="167" width="2" height="2" class="f0"/><rect x="359" y="167" width="2" height="2" class="f0"/><text x="288" y="137" class="sv-tit f6" text-anchor="middle">desplazado</text><text x="288" y="155" class="sv-lbl f4" text-anchor="middle">250</text><line x1="360" y1="140" x2="406" y2="140" class="s4" stroke-width="2"/><rect x="406" y="132" width="2" height="16" class="f4"/><rect x="408" y="134" width="2" height="12" class="f4"/><rect x="410" y="136" width="2" height="8" class="f4"/><rect x="412" y="138" width="2" height="4" class="f4"/><rect x="414" y="139" width="2" height="2" class="f4"/><text x="388" y="164" class="sv-lbl f4" text-anchor="middle" font-size="12">recorte</text><rect x="416" y="112" width="144" height="56" class="fa1 sa3" stroke-width="2"/><rect x="415" y="111" width="2" height="2" class="f0"/><rect x="559" y="111" width="2" height="2" class="f0"/><rect x="415" y="167" width="2" height="2" class="f0"/><rect x="559" y="167" width="2" height="2" class="f0"/><text x="488" y="137" class="sv-tit f6" text-anchor="middle">int8</text><text x="488" y="155" class="sv-lbl fa3" text-anchor="middle">127</text><text x="568" y="146" class="sv-lbl fa3" text-anchor="start" font-size="14">saturado</text><text x="320" y="200" class="sv-lbl f4" text-anchor="middle" font-size="14">rango de int8: de −128 a 127</text>
+  </svg>
+  <figcaption><b>fig 5.4</b>Para volver a 8 bits, el resultado se desplaza a la derecha (deshace la escala de la cuantización) y se recorta al rango de int8. Si el número no entra (2000 ≫ 3 = 250), en vez de dar la vuelta a un valor negativo se queda en el máximo, 127. PIE hace el desplazamiento y el recorte en la misma instrucción.</figcaption>
+</figure>
+
+<p>El recorte simétrico es además una función de activación: recortar a un rango fijo es lo que hace ReLU6 una vez cuantizada. PIE la aplica en el mismo paso de empaquetar los 16 resultados.</p>
+
+<h2>Alimentar a la bestia</h2>
+
+<p>Dieciséis multiplicadores por instrucción no sirven si la memoria no los alimenta. Si el bus trae 4 bytes por ciclo y la unidad consume 16, la unidad espera. Por eso importan el <strong>ancho del camino a memoria</strong> y la <strong>alineación</strong>: un vector que empieza en una dirección múltiplo de 16 se lee de una vez; uno desalineado necesita más accesos y reacomodar bytes (PIE tiene instrucciones para datos desalineados, pero cuestan más).</p>
+
+<figure class="diagrama" data-titulo="fig-5.5 interactivo">
+  <canvas data-motor="simd-stalls"></canvas>
+  <div class="controles" data-ctl="simd-stalls"></div>
+  <figcaption><b>fig 5.5</b>El mismo trabajo con los 16 lanes a la vista. Arriba, el ideal: 4 ciclos, todos multiplicando. Abajo, el esquema real: antes de cada bloque hay cargas desde SRAM (C) y, con datos desalineados, ciclos perdidos (P). Los lanes quedan ociosos buena parte del tiempo: alimentarlos pesa tanto como calcular. Ciclos ilustrativos; el compilador real solapa cargas y cálculo.</figcaption>
+</figure>
+
+<div class="caja dato">
+  <h4>la cuenta del techo</h4>
+  <p>240 millones de ciclos por segundo × 16 MAC por instrucción = <strong>3,84 mil millones de MAC por segundo</strong> por núcleo, como máximo teórico; con los dos núcleos, el doble. En una red real, las cargas, los bordes de la imagen y las capas que no se vectorizan bien bajan mucho esa cifra.</p>
+</div>
+
+<h2>Por qué acelera una convolución</h2>
+
+<p>Una capa convolucional calcula, para cada píxel de salida, la suma de pesos × entradas en una ventana de K × K por los canales de entrada. Es exactamente un producto punto largo: el caso ideal para PIE. Las bibliotecas optimizadas de Espressif (ESP-NN, ESP-DL) reordenan pesos y activaciones en memoria para que cada carga traiga 16 valores útiles y alineados, y así la unidad pase la mayor parte del tiempo multiplicando.</p>
+
+<h2>En el ESP32 y en el ESP32-S3</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32 (LX6)</th><th>ESP32-S3 (LX7 + PIE)</th></tr></thead>
+  <tbody>
+    <tr><td><b>Registros vectoriales</b></td><td>no tiene</td><td>8 de 128 bits (q0 a q7)</td></tr>
+    <tr><td><b>Multiplicación</b></td><td>escalar: un producto por instrucción (con una opción MAC de 16 bits y acumuladores de 40)</td><td>16 productos de 8 bits u 8 de 16 bits por instrucción</td></tr>
+    <tr><td><b>Acumuladores</b></td><td>escalares</td><td>QACC (16 × 20 bits o 8 × 40 bits) y ACCX (40 bits)</td></tr>
+    <tr><td><b>Saturación</b></td><td>por software</td><td>por hardware, al empaquetar</td></tr>
+    <tr><td><b>Carga desde memoria</b></td><td>de a 32 bits</td><td>de a 128 bits, con avance del puntero</td></tr>
+    <tr><td><b>Techo teórico en int8</b></td><td>del orden de un producto por ciclo</td><td>3,84 GMAC/s por núcleo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo: las mejoras reales son menores que el techo</h4>
+  <p>El cociente entre 16 productos por instrucción y 1 no es la aceleración real de una red. Las cargas de memoria, los bordes y las capas poco vectorizables se comen parte de la ventaja. Espressif publica mejoras de varias veces para sus kernels optimizados frente al código genérico; el número exacto depende de la capa.</p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>SIMD: una instrucción, muchos datos. PIE hace 16 productos de 8 bits (u 8 de 16) por instrucción.</li>
+    <li>Ocho registros Q de 128 bits se leen como 16 × 8, 8 × 16 o 4 × 32 bits según la instrucción.</li>
+    <li>Los acumuladores tienen bits de guarda (QACC: 16 × 20 bits con datos de 8) y ACCX suma todos los carriles.</li>
+    <li>Desplazar y saturar por hardware devuelve los resultados a int8 sin comparaciones ni saltos.</li>
+    <li>El techo es 3,84 GMAC/s por núcleo; la alineación y el ancho de la memoria deciden cuánto se aprovecha.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Por qué a PIE le conviene que los pesos de una red sean de 8 bits y no de 32?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La precisión no mejora al bajar bits; al contrario. La razón es el ancho de los registros.">Porque 8 bits es más preciso que 32 bits.</button>
+    <button type="button" data-por-que="Correcto: con 8 bits cada instrucción hace 16 productos; con 32, 4. Además los datos ocupan cuatro veces menos memoria y ancho de bus, que es lo que suele limitar.">Porque en un registro de 128 bits entran 16 valores de 8 bits, contra 4 de 32: cuatro veces más trabajo por instrucción.</button>
+    <button type="button" data-por-que="La flash guarda cualquier cosa; el motivo es el ancho de los registros vectoriales.">Porque la flash no puede guardar números de 32 bits.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-NN: kernels de redes neuronales optimizados</em>. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>Espressif Systems. <em>ESP-DSP: biblioteca de procesamiento de señales</em>. <a href="https://github.com/espressif/esp-dsp">github.com/espressif/esp-dsp</a></li>
+    <li>Cadence. <em>Tensilica Xtensa LX Processors</em>. <a href="https://www.cadence.com/en_US/home/tools/ip/tensilica-ip/xtensa-lx-processors.html">cadence.com/…/xtensa-lx-processors.html</a></li>
+  </ol>
+  <p class="nota">El techo de 3,84 GMAC/s es teórico; las cifras de ciclos de la figura 5.5 son ilustrativas.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit, micro-esp, tomo-03, nivel-05</footer>
+</body>
+</html>

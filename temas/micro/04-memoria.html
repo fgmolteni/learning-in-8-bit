@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 3: La memoria manda</title>
+<title>Nivel 4: La memoria manda</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -12,11 +12,11 @@
 <script src="../../assets/pixelmotor.js" defer></script>
 <script src="../../assets/escenas-tomo.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="chip" data-nivel="3">
+<body data-raiz="../../" data-curso="micro" data-nivel="4">
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="03">nivel 03, 14 min de lectura</span>
+  <span class="nivel-chip" data-n="04">nivel 04, 14 min de lectura</span>
   <h1>La memoria manda</h1>
   <p class="bajada">En un microcontrolador, lo que limita a una red neuronal casi nunca es la velocidad de cálculo: es dónde están los datos y cuánto tarda en llegar cada byte.</p>
 </header>
@@ -42,9 +42,9 @@
   <li><strong>Flash externa:</strong> donde vive el programa y los pesos. Muchos MB, solo lectura durante la ejecución, y todavía más lenta.</li>
 </ul>
 
-<figure class="diagrama" data-titulo="fig-3.1">
+<figure class="diagrama" data-titulo="fig-4.1">
   <canvas data-widget="memoria" width="640" height="248"></canvas>
-  <figcaption><b>fig 3.1</b>Cuatro mensajeros buscan un byte en distintos niveles. La longitud de cada pista está en escala logarítmica; mirá cuántos bytes trae cada uno en el mismo tiempo. Latencias aproximadas en ciclos de CPU a 240 MHz (orden de magnitud, sin caché): registro, en el núcleo; SRAM, en el chip; PSRAM, fuera por bus octal; flash, fuera por bus SPI.</figcaption>
+  <figcaption><b>fig 4.1</b>Cuatro mensajeros buscan un byte en distintos niveles. La longitud de cada pista está en escala logarítmica; mirá cuántos bytes trae cada uno en el mismo tiempo. Latencias aproximadas en ciclos de CPU a 240 MHz (orden de magnitud, sin caché): registro, en el núcleo; SRAM, en el micro; PSRAM, fuera por bus octal; flash, fuera por bus SPI.</figcaption>
 </figure>
 
 <div class="caja ojo">
@@ -66,10 +66,10 @@
 </ul>
 <p><strong>Leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo.</p>
 
-<figure class="diagrama" data-titulo="fig-3.2 interactivo">
+<figure class="diagrama" data-titulo="fig-4.2 interactivo">
   <canvas data-motor="mem-cache" data-bits="mixto"></canvas>
   <div class="controles" data-ctl="mem-cache"></div>
-  <figcaption><b>fig 3.2</b>Lectura de la flash a través de la caché. En modo secuencial, cada fallo trae una línea de 8 palabras y las siguientes lecturas son aciertos (~1-2 ciclos). En modo salteado casi todos son fallos: la CPU queda en espera (STALL) unas decenas de ciclos mientras la línea viaja por el bus SPI. Las barras comparan los ciclos reales con el caso ideal de aciertos; son órdenes de magnitud, no mediciones.</figcaption>
+  <figcaption><b>fig 4.2</b>Lectura de la flash a través de la caché. En modo secuencial, cada fallo trae una línea de 8 palabras y las siguientes lecturas son aciertos (~1-2 ciclos). En modo salteado casi todos son fallos: la CPU queda en espera (STALL) unas decenas de ciclos mientras la línea viaja por el bus SPI. Las barras comparan los ciclos reales con el caso ideal de aciertos; son órdenes de magnitud, no mediciones.</figcaption>
 </figure>
 
 <h2>Pesos y activaciones: dos datos muy distintos</h2>
@@ -108,10 +108,10 @@
 
 <p>El truco que lo hace viable es que <strong>la salida de una capa solo hace falta hasta que la siguiente capa termina de leerla</strong>. Un planificador analiza de antemano cuándo “vive” cada tensor y los acomoda para que los que no se superponen en el tiempo compartan las mismas direcciones.</p>
 
-<figure class="diagrama" data-titulo="fig-3.3">
+<figure class="diagrama" data-titulo="fig-4.3">
   <canvas data-widget="arena" width="640" height="328"></canvas>
   <div class="controles"></div>
-  <figcaption><b>fig 3.3</b>Cada columna es el momento en que se calcula una capa. El bloque de contorno brillante es la salida que se está escribiendo; los demás son buffers que siguen vivos. Compará el pico de memoria con y sin reutilización.</figcaption>
+  <figcaption><b>fig 4.3</b>Cada columna es el momento en que se calcula una capa. El bloque de contorno brillante es la salida que se está escribiendo; los demás son buffers que siguen vivos. Compará el pico de memoria con y sin reutilización.</figcaption>
 </figure>
 
 <div class="caja analogia">
@@ -128,10 +128,10 @@
 
 <p>De los 512 KB del S3, una parte se va antes de escribir una línea de tu aplicación: pilas, código que debe correr desde RAM (interrupciones, drivers), variables globales y FreeRTOS. Luego vienen las radios, que son golosas: la pila Wi-Fi y la de Bluetooth LE se llevan cada una del orden de <strong>50 a 100 KB</strong>, según cómo se configuren sus buffers.</p>
 
-<figure class="diagrama" data-titulo="fig-3.4">
+<figure class="diagrama" data-titulo="fig-4.4">
   <canvas data-widget="presupuesto" width="640" height="200"></canvas>
   <div class="controles"></div>
-  <figcaption><b>fig 3.4</b>Prendé y apagá las radios para ver cuánta SRAM queda para la red. El tramado representa la memoria libre. Valores aproximados: dependen de la configuración de ESP-IDF. Lo libre debe alcanzar para el tensor arena, el buffer de imagen y tu programa.</figcaption>
+  <figcaption><b>fig 4.4</b>Prendé y apagá las radios para ver cuánta SRAM queda para la red. El tramado representa la memoria libre. Valores aproximados: dependen de la configuración de ESP-IDF. Lo libre debe alcanzar para el tensor arena, el buffer de imagen y tu programa.</figcaption>
 </figure>
 
 <h3>Dos configuraciones típicas</h3>
@@ -176,6 +176,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit, tomo-01, nivel-03</footer>
+<footer class="pie">learning-in-8-bit, tomo-01, nivel-04</footer>
 </body>
 </html>

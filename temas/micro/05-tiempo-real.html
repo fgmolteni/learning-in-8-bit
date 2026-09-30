@@ -11,15 +11,15 @@
 <script src="../../assets/diagramas.js" defer></script>
 <script src="../../assets/pixelmotor.js" defer></script>
 <script src="../../assets/pixelmicro.js" defer></script>
-<script src="../../assets/escenas-chip-05.js" defer></script>
+<script src="../../assets/escenas-tiempo-real.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="chip" data-nivel="5">
+<body data-raiz="../../" data-curso="micro" data-nivel="5">
 
 <main class="leccion">
 <header>
   <span class="nivel-chip" data-n="05">nivel 05, 18 min de lectura</span>
   <h1>Tiempo real: interrupciones y tareas</h1>
-  <p class="bajada">Un chip que ve, decide y además mantiene el Wi-Fi vivo hace muchas cosas a la vez con dos núcleos. Este nivel cuenta cómo se reparte el tiempo: quién interrumpe a quién, quién espera y qué pasa cuando algo se cuelga.</p>
+  <p class="bajada">Un micro que ve, decide y además mantiene el Wi-Fi vivo hace muchas cosas a la vez con dos núcleos. Este nivel cuenta cómo se reparte el tiempo: quién interrumpe a quién, quién espera y qué pasa cuando algo se cuelga.</p>
 </header>
 
 <div class="caja objetivos">
@@ -36,7 +36,7 @@
 
 <h2>Preguntar o esperar el aviso</h2>
 
-<p>Hay dos maneras de enterarse de que algo pasó afuera del chip: un botón, un byte que llega por la UART, el final de una transferencia de DMA. La primera es <strong>sondear</strong>: el programa mira una y otra vez si el evento ya ocurrió. La segunda es la <strong>interrupción</strong>: el periférico levanta una línea y el núcleo deja lo que estaba haciendo para atenderlo.</p>
+<p>Hay dos maneras de enterarse de que algo pasó afuera del micro: un botón, un byte que llega por la UART, el final de una transferencia de DMA. La primera es <strong>sondear</strong>: el programa mira una y otra vez si el evento ya ocurrió. La segunda es la <strong>interrupción</strong>: el periférico levanta una línea y el núcleo deja lo que estaba haciendo para atenderlo.</p>
 
 <div class="caja analogia">
   <h4>analogía: el timbre</h4>
@@ -137,7 +137,7 @@
     <text x="606" y="261" class="sv-lbl f6" text-anchor="middle" font-size="16">NMI</text>
     <text x="536" y="286" class="sv-lbl f4" text-anchor="middle" font-size="16">nivel = prioridad →</text>
     </svg>
-  <figcaption><b>fig 5.1</b>Las fuentes de los periféricos (izquierda) entran a la matriz y salen hacia las interrupciones de cada núcleo (derecha). En el ejemplo, la interfaz de cámara está conectada al nivel 3 de los dos núcleos: la misma fuente, dos destinos. En este chip la prioridad está cableada a la interrupción de destino, así que <strong>elegir a cuál conectás una fuente es elegir su prioridad</strong>.</figcaption>
+  <figcaption><b>fig 5.1</b>Las fuentes de los periféricos (izquierda) entran a la matriz y salen hacia las interrupciones de cada núcleo (derecha). En el ejemplo, la interfaz de cámara está conectada al nivel 3 de los dos núcleos: la misma fuente, dos destinos. En este micro la prioridad está cableada a la interrupción de destino, así que <strong>elegir a cuál conectás una fuente es elegir su prioridad</strong>.</figcaption>
 </figure>
 
 <h3>Niveles, tipos y anidamiento</h3>
@@ -186,13 +186,13 @@
 
 <h2>Por qué la rutina vive en IRAM</h2>
 
-<p>Como viste en el <a href="03-memoria.html">nivel 3</a>, tu programa se ejecuta desde la flash externa a través de una caché. Pero cuando hay que <strong>escribir o borrar la flash</strong> (guardar un parámetro, actualizar el firmware, escribir un archivo), la flash no puede estar leyéndose a la vez. El sistema <strong>apaga la caché</strong> y frena las tareas que dependen de ella.</p>
+<p>Como viste en el <a href="04-memoria.html">nivel 4</a>, tu programa se ejecuta desde la flash externa a través de una caché. Pero cuando hay que <strong>escribir o borrar la flash</strong> (guardar un parámetro, actualizar el firmware, escribir un archivo), la flash no puede estar leyéndose a la vez. El sistema <strong>apaga la caché</strong> y frena las tareas que dependen de ella.</p>
 
 <p>Una rutina normal, ubicada en flash, queda inutilizable en esa ventana. Si igual llega la interrupción, el resultado es una excepción fatal por acceso con la caché apagada (la fila 3 de la fig 5.2). Una rutina <strong>segura para IRAM</strong> sigue funcionando, con una condición: <strong>todo</strong> lo que toca (su código, sus constantes, sus datos y cada función que llame) tiene que estar en la RAM interna.</p>
 
 <div class="caja dato">
   <h4>dato: el precio de la IRAM</h4>
-  <p>La IRAM sale del mismo pool de SRAM interna que el tensor arena y los buffers de DMA. Cada byte de rutina que vive ahí es un byte menos para la red. Además, el código en IRAM nunca falla en la caché de instrucciones, así que responde con menos dispersión aun sin escrituras de flash. La duración de la ventana con la caché apagada depende de la memoria flash usada: la hoja de datos de tu chip tiene los números.</p>
+  <p>La IRAM sale del mismo pool de SRAM interna que el tensor arena y los buffers de DMA. Cada byte de rutina que vive ahí es un byte menos para la red. Además, el código en IRAM nunca falla en la caché de instrucciones, así que responde con menos dispersión aun sin escrituras de flash. La duración de la ventana con la caché apagada depende de la memoria flash usada: la hoja de datos de tu micro tiene los números.</p>
 </div>
 
 <h3>Interrupciones y dos núcleos</h3>
@@ -282,7 +282,7 @@
 
 <h3>Por qué la inferencia va anclada al núcleo 1</h3>
 
-<p>Una inferencia es un cálculo largo y sin cesión: unos 54 ms en el caso QVGA del Tomo III, con las unidades vectoriales de PIE ocupadas todo el tiempo. Cada paquete Wi-Fi, cada beacon y cada reintento genera ráfagas de rutinas de interrupción y de trabajo de prioridad 22 o 23. Si la inferencia compartiera núcleo con el Wi-Fi, ocurrirían dos cosas malas: la desalojaría cada ráfaga (tiempo <strong>variable</strong>), o, si tuviera prioridad alta, <strong>atrasaría</strong> al Wi-Fi hasta perder paquetes.</p>
+<p>Una inferencia es un cálculo largo y sin cesión: unos 54 ms en el caso QVGA de IA en el borde, Tomo 2, con las unidades vectoriales de PIE ocupadas todo el tiempo. Cada paquete Wi-Fi, cada beacon y cada reintento genera ráfagas de rutinas de interrupción y de trabajo de prioridad 22 o 23. Si la inferencia compartiera núcleo con el Wi-Fi, ocurrirían dos cosas malas: la desalojaría cada ráfaga (tiempo <strong>variable</strong>), o, si tuviera prioridad alta, <strong>atrasaría</strong> al Wi-Fi hasta perder paquetes.</p>
 
 <figure class="diagrama" data-titulo="fig-5.4 interactivo">
   <canvas data-motor="chip05-gantt"></canvas>
@@ -294,7 +294,7 @@
 
 <div class="caja ojo">
   <h4>ojo: "núcleo dedicado" no es "núcleo sin interrupciones"</h4>
-  <p>Cuando en el <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
+  <p>Cuando en el <a href="../borde/02-pipeline.html">IA en el borde, Tomo 2, nivel 2</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
 </div>
 
 <h2>Cómo se hablan las tareas</h2>
@@ -392,7 +392,7 @@
 
 <h2>Cierre: el doble buffer del pipeline</h2>
 
-<p>Todo lo anterior se junta en el pipeline del <a href="../borde/02-pipeline.html">Tomo III, nivel 2</a>: captura, preparación, inferencia y decisión. La <strong>cámara con DMA</strong> llena un buffer sin CPU y, al terminar el cuadro, levanta una <strong>interrupción</strong>. La rutina (corta, en IRAM) solo <strong>avisa</strong> a una tarea con una notificación. La tarea de inferencia, anclada al núcleo 1, corre sus 54 ms sin que el Wi-Fi la moleste.</p>
+<p>Todo lo anterior se junta en el pipeline del <a href="../borde/02-pipeline.html">IA en el borde, Tomo 2, nivel 2</a>: captura, preparación, inferencia y decisión. La <strong>cámara con DMA</strong> llena un buffer sin CPU y, al terminar el cuadro, levanta una <strong>interrupción</strong>. La rutina (corta, en IRAM) solo <strong>avisa</strong> a una tarea con una notificación. La tarea de inferencia, anclada al núcleo 1, corre sus 54 ms sin que el Wi-Fi la moleste.</p>
 
 <p>El <strong>doble buffer</strong> es lo que evita que cámara e inferencia se pisen: mientras el DMA llena el A, la IA procesa el B. Se sincronizan con dos colas de punteros (libres y llenas), como en la fig 5.5. Así el dueño del buffer es siempre uno solo, sin mutex y sin copiar la imagen.</p>
 

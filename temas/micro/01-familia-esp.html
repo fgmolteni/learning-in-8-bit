@@ -10,20 +10,20 @@
 <script src="../../assets/site.js" defer></script>
 <script src="../../assets/diagramas.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="chip" data-nivel="1">
+<body data-raiz="../../" data-curso="micro" data-nivel="1">
 
 <main class="leccion">
 <header>
   <span class="nivel-chip" data-n="01">nivel 01, 12 min de lectura</span>
   <h1>La familia ESP</h1>
-  <p class="bajada">Antes de meter una red neuronal en un chip hay que conocer al chip. Empezamos por lo más básico: qué es un microcontrolador y por qué hay tantos ESP distintos.</p>
+  <p class="bajada">Antes de meter una red neuronal en un micro hay que conocer al micro. Empezamos por lo más básico: qué es un microcontrolador y por qué hay tantos ESP distintos.</p>
 </header>
 
 <div class="caja objetivos">
   <h4>al terminar este nivel vas a poder…</h4>
   <ul>
     <li>Explicar la diferencia real entre un microcontrolador y un microprocesador.</li>
-    <li>Ubicar cada chip de la familia ESP en su línea de tiempo y en su nicho.</li>
+    <li>Ubicar cada variante de la familia ESP en su línea de tiempo y en su nicho.</li>
     <li>Justificar por qué el <strong>ESP32-S3</strong> y el <strong>ESP32-P4</strong> son los candidatos para correr CNN.</li>
   </ul>
 </div>
@@ -65,13 +65,13 @@
 
 <p>Para redes neuronales esto tiene una consecuencia directa que vamos a ver a lo largo de los tres tomos: <strong>en un MCU la memoria rápida es chiquita</strong>. Una CNN tiene que caber, o al menos organizarse, dentro de unos cientos de kilobytes.</p>
 
-<h2>Diez años de chips ESP</h2>
+<h2>Diez años de micros ESP</h2>
 
-<p>Espressif, una empresa de Shanghái, se hizo famosa en 2014 con el <strong>ESP8266</strong>: un chip con Wi-Fi que costaba monedas y que al principio se usaba como “módem” de otros microcontroladores. Desde entonces la familia se abrió en ramas con objetivos distintos.</p>
+<p>Espressif, una empresa de Shanghái, se hizo famosa en 2014 con el <strong>ESP8266</strong>: un micro con Wi-Fi que costaba monedas y que al principio se usaba como “módem” de otros microcontroladores. Desde entonces la familia se abrió en ramas con objetivos distintos.</p>
 
 <figure class="diagrama" data-titulo="fig-1.2">
   <canvas data-widget="familia" width="640" height="336"></canvas>
-  <figcaption><b>fig 1.2</b>Selección de personaje. Hacé clic en un chip (o usá las flechas del teclado con el diagrama enfocado) para ver sus atributos. Los valores son de las hojas de datos de Espressif; la barra de “ayuda para IA” es una valoración cualitativa.</figcaption>
+  <figcaption><b>fig 1.2</b>Selección de personaje. Hacé clic en una variante (o usá las flechas del teclado con el diagrama enfocado) para ver sus atributos. Los valores son de las hojas de datos de Espressif; la barra de “ayuda para IA” es una valoración cualitativa.</figcaption>
 </figure>
 
 <h3>Las tres ramas</h3>
@@ -83,7 +83,7 @@
 
 <div class="caja dato">
   <h4>dato: el salto del s3</h4>
-  <p>El ESP32-S3 agrega una extensión llamada <strong>PIE</strong> con registros de 128 bits. Una sola instrucción puede multiplicar y acumular <strong>16 pares de números de 8 bits</strong> a la vez. Una red neuronal es, en el fondo, millones de multiplicaciones y sumas, así que esto cambia todo. Lo vemos en detalle en el <a href="02-arquitectura.html">nivel 2</a>.</p>
+  <p>El ESP32-S3 agrega una extensión llamada <strong>PIE</strong> con registros de 128 bits. Una sola instrucción puede multiplicar y acumular <strong>16 pares de números de 8 bits</strong> a la vez. Una red neuronal es, en el fondo, millones de multiplicaciones y sumas, así que esto cambia todo. Lo vemos en detalle en el <a href="03-anatomia-esp32s3.html">nivel 3</a>.</p>
 </div>
 
 <h2>¿Cuál sirve para una CNN?</h2>
@@ -92,7 +92,7 @@
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th>Chip</th><th>Cómputo</th><th>Memoria</th><th>Cámara</th><th>Veredicto para CNN</th></tr></thead>
+  <thead><tr><th>Variante</th><th>Cómputo</th><th>Memoria</th><th>Cámara</th><th>Veredicto para CNN</th></tr></thead>
   <tbody>
     <tr><td>ESP8266</td><td>1 núcleo, sin SIMD</td><td>~160 KB, sin PSRAM</td><td>No</td><td>No</td></tr>
     <tr><td>ESP32</td><td>2 núcleos, sin SIMD</td><td>520 KB + PSRAM</td><td>Paralela (DVP)</td><td>Redes muy chicas, lento</td></tr>
@@ -105,7 +105,7 @@
 
 <div class="caja ojo">
   <h4>ojo: las cifras de consumo</h4>
-  <p>Las corrientes activas dependen muchísimo de qué esté haciendo el chip (transmitir por Wi-Fi puede pasar los 300 mA en picos). Tomá los rangos de la tabla como órdenes de magnitud, no como datos de diseño: para eso siempre la hoja de datos del chip y del módulo concreto.</p>
+  <p>Las corrientes activas dependen muchísimo de qué esté haciendo el micro (transmitir por Wi-Fi puede pasar los 300 mA en picos). Tomá los rangos de la tabla como órdenes de magnitud, no como datos de diseño: para eso siempre la hoja de datos del micro y del módulo concreto.</p>
 </div>
 
 <div class="caja clave">
@@ -119,7 +119,7 @@
 
 <div class="caja quiz" data-ok="2">
   <h4>repaso</h4>
-  <p class="pregunta">Querés hacer un sensor Zigbee a pila que detecte vibraciones anómalas en un motor. ¿Qué chip elegís?</p>
+  <p class="pregunta">Querés hacer un sensor Zigbee a pila que detecte vibraciones anómalas en un motor. ¿Qué micro elegís?</p>
   <div class="opciones">
     <button type="button" data-por-que="El P4 no tiene radio y consume mucho más: está pensado para multimedia.">ESP32-P4</button>
     <button type="button" data-por-que="El S3 no tiene radio 802.15.4 (Zigbee/Thread) y sus instrucciones vectoriales sobran para una señal 1D.">ESP32-S3</button>

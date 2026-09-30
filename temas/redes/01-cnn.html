@@ -36,7 +36,7 @@
 
 <h2>Una imagen es una tabla de números</h2>
 
-<p>Para el chip, una foto es una grilla de alto × ancho números. En escala de grises cada píxel es un byte, de 0 (negro) a 255 (blanco). En color hay tres grillas superpuestas, una por canal (rojo, verde y azul). Esa “profundidad” se llama <strong>canales</strong>.</p>
+<p>Para el micro, una foto es una grilla de alto × ancho números. En escala de grises cada píxel es un byte, de 0 (negro) a 255 (blanco). En color hay tres grillas superpuestas, una por canal (rojo, verde y azul). Esa “profundidad” se llama <strong>canales</strong>.</p>
 
 <figure class="diagrama" data-titulo="fig-1.1">
   <canvas data-widget="pixeles" width="640" height="272"></canvas>
@@ -117,7 +117,7 @@
 
 <h2>Cuánto cuesta una capa</h2>
 
-<p>Para saber si una red entra y corre a tiempo en el chip hay que contar dos cosas por capa:</p>
+<p>Para saber si una red entra y corre a tiempo en el micro hay que contar dos cosas por capa:</p>
 <ul>
   <li><strong>Parámetros</strong> (memoria): cada filtro tiene kernel × kernel × canales de entrada coeficientes, más un sesgo. Se multiplica por la cantidad de filtros (canales de salida).</li>
   <li><strong>MACs</strong> (tiempo): cada punto de la salida necesita kernel × kernel × canales de entrada multiplicaciones-acumulaciones. Se multiplica por alto × ancho de la salida y por los canales de salida.</li>
@@ -192,6 +192,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit, tomo-02, nivel-01</footer>
+<footer class="pie">learning-in-8-bit, ia-borde, tomo-01, nivel-01</footer>
 </body>
 </html>

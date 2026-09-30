@@ -1,6 +1,6 @@
-// Escenas del Tomo I, nivel 04 (periféricos) sobre PixelMotor + PixelMicro:
+// Escenas de periféricos (Tomos 2 y 3 de Microcontroladores) sobre PixelMotor + PixelMicro:
 // matriz de GPIO, PWM (LEDC), conversión SAR del ADC y cronogramas UART / I2C / SPI.
-// Estética plana (v3): texto bitmap, estructura en 16, trazas finas en 32. Cifras del datasheet del S3.
+// Estética plana (v3): texto bitmap, estructura en 16, trazas finas en 32. Cifras de los datasheets del ESP32 y del S3.
 (() => {
 const PM = window.PixelMotor, MI = window.PixelMicro;
 const fondo = (m) => m.en(8, () => m.limpiar("n0"));
@@ -31,14 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =====================================================================================
-// chip04-matriz · la matriz de GPIO lleva una señal de periférico a cualquier pin (PixelMicro)
+// per-matriz · la matriz de GPIO lleva una señal de periférico a cualquier pin (PixelMicro)
 // =====================================================================================
 const SENALES = ["UART TX", "I2C SDA", "SPI MOSI", "LEDC PWM"];
 const PINES = ["IO4", "IO5", "IO12", "IO18"];
 const COLX = [88, 120, 152, 184], FILAY = [28, 52, 76, 100];
 const RUTAS = [[0, 1], [1, 3], [2, 0], [3, 2], [1, 0], [0, 3]], T_RUTA = 3.2;
 
-PM.escena("chip04-matriz", {
+PM.escena("per-matriz", {
   alto: 176, tFijo: 1.6,
   descripcion: "Matriz de GPIO: cuatro señales de periférico (UART TX, I2C SDA, SPI MOSI, PWM de LEDC) a la izquierda, cuatro pines del ESP32-S3 abajo. Cada pocos segundos la matriz cierra un cruce distinto y la señal viaja hasta otro pin; el atajo IO MUX evita la matriz.",
   dibujar(m, t) {
@@ -75,9 +75,9 @@ PM.escena("chip04-matriz", {
 });
 
 // =====================================================================================
-// chip04-pwm · contador + comparador = salida PWM; la resolución cuesta frecuencia (LEDC)
+// per-pwm · contador + comparador = salida PWM; la resolución cuesta frecuencia (LEDC)
 // =====================================================================================
-PM.escena("chip04-pwm", {
+PM.escena("per-pwm", {
   alto: 172, tFijo: 1.2,
   descripcion: "PWM por contador: arriba un contador en diente de sierra con un umbral que fija el ciclo de trabajo; abajo la salida, alta mientras el contador está por debajo del umbral. Con pocos bits el ciclo se redondea a un escalón; con más bits la frecuencia baja.",
   dibujar(m, t) {
@@ -134,10 +134,10 @@ PM.escena("chip04-pwm", {
 });
 
 // =====================================================================================
-// chip04-sar · ADC de aproximaciones sucesivas: 12 comparaciones, un bit por paso
+// per-sar · ADC de aproximaciones sucesivas: 12 comparaciones, un bit por paso
 // =====================================================================================
 const T_PASO = 0.7, N_BITS = 12, T_FIN = 2.4;
-PM.escena("chip04-sar", {
+PM.escena("per-sar", {
   alto: 176, tFijo: 4,
   descripcion: "Conversión SAR de 12 bits: en cada paso el ADC prueba un valor en su DAC interno, lo compara con la tensión de entrada y conserva o descarta el bit, del más significativo al menos significativo. Los 12 pasos arman el resultado en el registro.",
   dibujar(m, t) {
@@ -193,7 +193,7 @@ PM.escena("chip04-sar", {
 });
 
 // =====================================================================================
-// chip04-buses · cronogramas de UART, I2C y SPI mandando el mismo byte (PixelMicro)
+// per-buses · cronogramas de UART, I2C y SPI mandando el mismo byte (PixelMicro)
 // =====================================================================================
 const BITS = (v, n, msb) => Array.from({ length: n }, (_, i) => (msb ? (v >> (n - 1 - i)) : (v >> i)) & 1);
 const B_DATO = BITS(0xA5, 8, true), B_DATO_LSB = BITS(0xA5, 8, false), B_DIR = [...BITS(0x3C, 7, true), 0], B_MISO = BITS(0x3C, 8, true);
@@ -214,7 +214,7 @@ function spi(u) {                                    // 10 ranuras: CS alto, 8 b
   return { cs: 0, sck: p >= 0.5 ? 1 : 0, mosi: B_DATO[s - 1], miso: B_MISO[s - 1] };
 }
 
-PM.escena("chip04-buses", {
+PM.escena("per-buses", {
   alto: 208, tFijo: 5,
   descripcion: "Tres cronogramas que se dibujan de izquierda a derecha. UART: una línea, bit de inicio, ocho datos, bit de parada, sin reloj. I2C: reloj y datos compartidos, condición de inicio, dirección, confirmación, dato, confirmación, parada. SPI: reloj, dos líneas de datos y selección de chip, ocho pulsos de reloj.",
   dibujar(m, t) {

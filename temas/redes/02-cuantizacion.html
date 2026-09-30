@@ -24,7 +24,7 @@
   <ul>
     <li>Explicar qué es la <strong>cuantización</strong> y qué significan la escala y el punto cero.</li>
     <li>Distinguir cuantización <strong>por tensor</strong> y <strong>por canal</strong>, y saber cuál conviene.</li>
-    <li>Contar cómo el chip hace toda la inferencia con <strong>enteros puros</strong>.</li>
+    <li>Contar cómo el micro hace toda la inferencia con <strong>enteros puros</strong>.</li>
     <li>Elegir entre cuantizar después de entrenar (PTQ) o durante el entrenamiento (QAT).</li>
     <li>Reconocer otras técnicas: poda, destilación y fusión de capas.</li>
   </ul>
@@ -73,11 +73,11 @@
   <figcaption><b>fig 2.2</b>Tres filtros con pesos de tamaños muy distintos. La barra es el total de escalones del int8 simétrico (de −127 a 127); la parte llena es lo que usa cada filtro y el tramado, lo que desperdicia. Alterná entre una escala para todo el tensor y una por canal, y mirá cómo cambia el error del filtro chico.</figcaption>
 </figure>
 
-<p>La solución estándar es <strong>una escala por canal de salida</strong> (<strong>por canal</strong>). No cuesta casi nada: como la convolución calcula un canal de salida completo antes de pasar al siguiente, el chip solo carga una escala nueva al empezar cada canal. TensorFlow Lite Micro y ESP-NN lo usan por defecto en convoluciones.</p>
+<p>La solución estándar es <strong>una escala por canal de salida</strong> (<strong>por canal</strong>). No cuesta casi nada: como la convolución calcula un canal de salida completo antes de pasar al siguiente, el micro solo carga una escala nueva al empezar cada canal. TensorFlow Lite Micro y ESP-NN lo usan por defecto en convoluciones.</p>
 
 <h2>Todo con enteros</h2>
 
-<p>Las escalas son números con coma, pero el chip las aplica sin usar la unidad de punto flotante, con un truco de punto fijo:</p>
+<p>Las escalas son números con coma, pero el micro las aplica sin usar la unidad de punto flotante, con un truco de punto fijo:</p>
 
 <figure class="diagrama" data-titulo="fig-2.3">
   <svg viewBox="0 0 640 168" role="img" aria-label="Cadena entera: multiplicar y acumular, multiplicar por un entero fijo, desplazar bits, sumar punto cero y saturar a 8 bits">
@@ -272,6 +272,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit, tomo-02, nivel-02</footer>
+<footer class="pie">learning-in-8-bit, ia-borde, tomo-01, nivel-02</footer>
 </body>
 </html>

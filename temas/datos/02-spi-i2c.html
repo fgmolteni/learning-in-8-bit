@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: SPI e I2C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-perifericos.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="datos" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 17 min de lectura</span>
+  <h1>SPI e I2C</h1>
+  <p class="bajada">Dos buses para hablar con otros chips, construidos sobre dos ideas eléctricas opuestas: un anillo de registros con salidas push-pull y un par de cables open-drain con una resistencia.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar SPI como dos <strong>registros de desplazamiento en anillo</strong> y sus cuatro modos.</li>
+    <li>Explicar por qué el viaje de ida y vuelta limita la velocidad de SPI.</li>
+    <li>Calcular el rango de <strong>pull-up</strong> de un bus I2C a partir de su capacidad.</li>
+    <li>Leer una transacción I2C: inicio, dirección, ACK, parada, arbitraje y estiramiento del reloj.</li>
+  </ul>
+</div>
+
+<p>SPI e I2C son los dos buses para hablar con otros chips de la misma placa. Resuelven el mismo problema con ideas opuestas: <strong>SPI</strong> apuesta a la velocidad con salidas push-pull y un cable de selección por dispositivo; <strong>I2C</strong> apuesta a usar solo dos cables para todos, con salidas open-drain y direcciones. Entender la electrónica de cada uno explica todas sus reglas.</p>
+
+<h2>SPI: dos registros en anillo</h2>
+
+<p>SPI es sincrónico: el maestro genera el reloj <strong>SCK</strong> y elige con qué esclavo habla bajando su <strong>CS</strong>. Los datos van por <strong>MOSI</strong> (del maestro al esclavo) y <strong>MISO</strong> (del esclavo al maestro).</p>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Maestro y esclavo SPI, cada uno con un registro de desplazamiento de 8 bits; MOSI une la salida del maestro con la entrada del esclavo y MISO cierra el anillo; el maestro genera SCK y baja CS">
+    <text x="32" y="62" class="sv-tit f6" text-anchor="start" font-size="16">maestro</text><rect x="32" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="46" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="60" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="74" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="88" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="102" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="116" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="130" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="144" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="158" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="172" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="186" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="200" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="214" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="228" y="72" width="28" height="32" class="f1 s4" stroke-width="2"/><text x="242" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><text x="384" y="62" class="sv-tit f6" text-anchor="start" font-size="16">esclavo</text><rect x="384" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="398" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="412" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="426" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="440" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="454" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="468" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="482" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="496" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="510" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="524" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="538" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="552" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="566" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="580" y="72" width="28" height="32" class="fa1 sa3" stroke-width="2"/><text x="594" y="94" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><polyline points="256,88 312,88 312,88 374,88" class="fn sa3" stroke-width="2"/><rect x="374" y="80" width="2" height="16" class="fa3"/><rect x="376" y="82" width="2" height="12" class="fa3"/><rect x="378" y="84" width="2" height="8" class="fa3"/><rect x="380" y="86" width="2" height="4" class="fa3"/><rect x="382" y="87" width="2" height="2" class="fa3"/><text x="320" y="80" class="sv-lbl fa3" text-anchor="middle" font-size="14">MOSI</text><polyline points="608,88 624,88 624,136 16,136 16,88 22,88" class="fn s4" stroke-width="2"/><rect x="22" y="80" width="2" height="16" class="f4"/><rect x="24" y="82" width="2" height="12" class="f4"/><rect x="26" y="84" width="2" height="8" class="f4"/><rect x="28" y="86" width="2" height="4" class="f4"/><rect x="30" y="87" width="2" height="2" class="f4"/><text x="320" y="156" class="sv-lbl f4" text-anchor="middle" font-size="14">MISO</text><line x1="144" y1="184" x2="486" y2="184" class="s4" stroke-width="2"/><rect x="486" y="176" width="2" height="16" class="f4"/><rect x="488" y="178" width="2" height="12" class="f4"/><rect x="490" y="180" width="2" height="8" class="f4"/><rect x="492" y="182" width="2" height="4" class="f4"/><rect x="494" y="183" width="2" height="2" class="f4"/><text x="320" y="176" class="sv-lbl f4" text-anchor="middle" font-size="14">SCK: un bit sale y uno entra por flanco</text><line x1="144" y1="216" x2="486" y2="216" class="sa3" stroke-width="2"/><rect x="486" y="208" width="2" height="16" class="fa3"/><rect x="488" y="210" width="2" height="12" class="fa3"/><rect x="490" y="212" width="2" height="8" class="fa3"/><rect x="492" y="214" width="2" height="4" class="fa3"/><rect x="494" y="215" width="2" height="2" class="fa3"/><text x="320" y="208" class="sv-lbl fa3" text-anchor="middle" font-size="14">CS en 0: este esclavo escucha</text>
+  </svg>
+  <figcaption><b>fig 2.1</b>SPI por dentro: dos registros de desplazamiento en anillo. En cada pulso de SCK, el bit de un extremo del maestro sale por MOSI hacia el esclavo y el bit del extremo del esclavo vuelve por MISO. Después de 8 pulsos, los dos registros intercambiaron su contenido: SPI siempre transmite y recibe a la vez.</figcaption>
+</figure>
+
+<p>Como es un anillo, SPI es <strong>full-duplex por naturaleza</strong>: para leer un byte, el maestro tiene que mandar uno aunque sea de relleno, porque es el reloj que lo acompaña lo que trae el dato de vuelta. Cuando CS está en alto, el esclavo pone su MISO en alta impedancia y otro esclavo puede usar el cable.</p>
+
+<h3>Cuatro modos</h3>
+
+<figure class="diagrama" data-titulo="fig-2.2">
+  <svg viewBox="0 0 640 256" role="img" aria-label="Los cuatro modos de SPI: CPOL fija el nivel de reposo del reloj y CPHA si se muestrea en el primer o en el segundo flanco">
+    <text x="16" y="30" class="sv-tit f6" text-anchor="start" font-size="16">modo 0: CPOL 0, CPHA 0</text><polyline points="24,68 72,68 72,44 96,44 96,68 120,68 120,44 144,44 144,68 168,68 168,44 192,44 192,68 216,68 216,44 240,44 240,68 312,68" class="fn s5" stroke-width="2"/><line x1="72" y1="40" x2="72" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="68" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="120" y1="40" x2="120" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="116" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="168" y1="40" x2="168" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="164" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="216" y1="40" x2="216" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="212" y="92" width="8" height="8" class="fa3" stroke-width="0"/><text x="24" y="116" class="sv-lbl fa3" text-anchor="start" font-size="14">muestra</text><text x="328" y="30" class="sv-tit f6" text-anchor="start" font-size="16">modo 1: CPOL 0, CPHA 1</text><polyline points="336,68 384,68 384,44 408,44 408,68 432,68 432,44 456,44 456,68 480,68 480,44 504,44 504,68 528,68 528,44 552,44 552,68 624,68" class="fn s5" stroke-width="2"/><line x1="408" y1="40" x2="408" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="404" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="456" y1="40" x2="456" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="452" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="504" y1="40" x2="504" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="500" y="92" width="8" height="8" class="fa3" stroke-width="0"/><line x1="552" y1="40" x2="552" y2="116" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="548" y="92" width="8" height="8" class="fa3" stroke-width="0"/><text x="336" y="116" class="sv-lbl fa3" text-anchor="start" font-size="14">muestra</text><text x="16" y="150" class="sv-tit f6" text-anchor="start" font-size="16">modo 2: CPOL 1, CPHA 0</text><polyline points="24,164 72,164 72,188 96,188 96,164 120,164 120,188 144,188 144,164 168,164 168,188 192,188 192,164 216,164 216,188 240,188 240,164 312,164" class="fn s5" stroke-width="2"/><line x1="72" y1="160" x2="72" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="68" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="120" y1="160" x2="120" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="116" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="168" y1="160" x2="168" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="164" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="216" y1="160" x2="216" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="212" y="212" width="8" height="8" class="fa3" stroke-width="0"/><text x="24" y="236" class="sv-lbl fa3" text-anchor="start" font-size="14">muestra</text><text x="328" y="150" class="sv-tit f6" text-anchor="start" font-size="16">modo 3: CPOL 1, CPHA 1</text><polyline points="336,164 384,164 384,188 408,188 408,164 432,164 432,188 456,188 456,164 480,164 480,188 504,188 504,164 528,164 528,188 552,188 552,164 624,164" class="fn s5" stroke-width="2"/><line x1="408" y1="160" x2="408" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="404" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="456" y1="160" x2="456" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="452" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="504" y1="160" x2="504" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="500" y="212" width="8" height="8" class="fa3" stroke-width="0"/><line x1="552" y1="160" x2="552" y2="236" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="548" y="212" width="8" height="8" class="fa3" stroke-width="0"/><text x="336" y="236" class="sv-lbl fa3" text-anchor="start" font-size="14">muestra</text>
+  </svg>
+  <figcaption><b>fig 2.2</b>SPI no fija un único flanco: CPOL dice si el reloj descansa en 0 o en 1, y CPHA si el dato se muestrea en el primer flanco de cada ciclo o en el segundo (los cuadrados en acento). Maestro y esclavo tienen que usar el mismo modo; los más comunes son el 0 y el 3.</figcaption>
+</figure>
+
+<h3>Más líneas, más velocidad</h3>
+<p>Las memorias y las pantallas necesitan más ancho de banda. La solución fue ensanchar el bus en modo semidúplex: <strong>dual</strong> (2 líneas de datos), <strong>quad</strong> (4) y <strong>octal</strong> (8). Además, en <strong>doble tasa (DDR)</strong> se transfiere en los dos flancos del reloj. Un bus octal DDR a 40 MHz mueve 2 bytes por ciclo: 80 MB/s. A esas velocidades, el esclavo acompaña los datos con una señal <strong>DQS</strong> que marca cuándo leerlos.</p>
+
+<h3>El límite: el viaje de ida y vuelta</h3>
+<p>En full-duplex, el maestro emite un flanco de SCK, el reloj viaja hasta el esclavo, el esclavo tarda unos nanosegundos en poner su bit en MISO, el bit vuelve, y todo eso tiene que llegar antes del flanco de muestreo del maestro. A 80 MHz el período es de 12,5 ns: no hay margen para pistas largas ni para los sincronizadores de la matriz de GPIO (<a href="../mundo/01-pin.html">Tomo 2, nivel 1</a>). Por eso las velocidades máximas se dan con pines directos, en semidúplex o con ciclos de espera que le dan tiempo al esclavo.</p>
+
+<div class="caja analogia">
+  <h4>analogía: dos engranajes y una correa</h4>
+  <p>El maestro gira su engranaje y la correa (SCK) arrastra al del esclavo diente por diente. Cada diente que sale de una rueda entra en la otra. Nadie tiene que adivinar la velocidad, porque el reloj viaja con los datos.</p>
+</div>
+
+<h2>I2C: dos cables y una resistencia</h2>
+
+<p>I2C usa dos líneas compartidas por todos los dispositivos: <strong>SDA</strong> (datos) y <strong>SCL</strong> (reloj). Cada dispositivo tiene una dirección de 7 bits y todas las salidas son <strong>open-drain</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 240" role="img" aria-label="Bus open-drain: una resistencia de pull-up a VDD, la capacidad del bus a masa y dos dispositivos que solo pueden conectar la línea a masa con un transistor">
+    <line x1="64" y1="24" x2="576" y2="24" class="s5" stroke-width="2"/><text x="56" y="30" class="sv-lbl f4" text-anchor="end" font-size="14">VDD</text><rect x="114" y="40" width="12" height="40" class="f1 s4" stroke-width="2"/><line x1="120" y1="24" x2="120" y2="40" class="s4" stroke-width="2"/><line x1="120" y1="80" x2="120" y2="112" class="s4" stroke-width="2"/><text x="136" y="64" class="sv-tit f6" text-anchor="start" font-size="16">Rp</text><line x1="64" y1="112" x2="576" y2="112" class="sa3" stroke-width="4"/><text x="584" y="118" class="sv-tit fa3" text-anchor="start" font-size="16">SDA</text><line x1="208" y1="112" x2="208" y2="144" class="s4" stroke-width="2"/><rect x="192" y="144" width="32" height="4" class="f5" stroke-width="0"/><rect x="192" y="156" width="32" height="4" class="f5" stroke-width="0"/><line x1="208" y1="160" x2="208" y2="216" class="s4" stroke-width="2"/><text x="232" y="160" class="sv-tit f6" text-anchor="start" font-size="16">Cb</text><line x1="352" y1="112" x2="352" y2="144" class="s4" stroke-width="2"/><rect x="320" y="144" width="64" height="40" class="f1 s2" stroke-width="2"/><rect x="319" y="143" width="2" height="2" class="f0"/><rect x="383" y="143" width="2" height="2" class="f0"/><rect x="319" y="183" width="2" height="2" class="f0"/><rect x="383" y="183" width="2" height="2" class="f0"/><text x="352" y="170" class="sv-tit f4" text-anchor="middle" font-size="16">N</text><line x1="352" y1="184" x2="352" y2="216" class="s4" stroke-width="2"/><text x="352" y="236" class="sv-lbl f4" text-anchor="middle" font-size="14">disp. 1: suelta (1)</text><line x1="496" y1="112" x2="496" y2="144" class="s4" stroke-width="2"/><rect x="464" y="144" width="64" height="40" class="fa1 sa3" stroke-width="2"/><rect x="463" y="143" width="2" height="2" class="f0"/><rect x="527" y="143" width="2" height="2" class="f0"/><rect x="463" y="183" width="2" height="2" class="f0"/><rect x="527" y="183" width="2" height="2" class="f0"/><text x="496" y="170" class="sv-tit f6" text-anchor="middle" font-size="16">N</text><line x1="496" y1="184" x2="496" y2="216" class="s4" stroke-width="2"/><text x="496" y="236" class="sv-lbl fa3" text-anchor="middle" font-size="14">disp. 2: tira (0)</text><line x1="64" y1="216" x2="576" y2="216" class="s5" stroke-width="2"/><text x="360" y="96" class="sv-lbl fa3" text-anchor="middle" font-size="14">la línea queda en 0: gana el que tira</text>
+  </svg>
+  <figcaption><b>fig 2.3</b>En I2C nadie empuja a 1. Cada dispositivo solo puede conectar la línea a masa con su transistor; el 1 lo pone la resistencia R<sub>p</sub>. Si uno suelta y otro tira, la línea queda en 0 sin cortocircuito: es una AND cableada. La capacidad del bus C<sub>b</sub> hace que la subida sea lenta.</figcaption>
+</figure>
+
+<p>De ahí salen todas las propiedades del bus: nunca hay cortocircuito aunque dos hablen a la vez, un dispositivo lento puede frenar a todos, y dos maestros pueden competir sin árbitro. El precio es la velocidad: la bajada la hace un transistor en nanosegundos, pero la subida es un RC pasivo.</p>
+
+<h3>El tiempo de subida manda</h3>
+
+<p>La norma mide la subida entre 0,3 y 0,7 VDD, y en un RC eso vale <strong>0,85 × R<sub>p</sub> × C<sub>b</sub></strong>. La capacidad del bus suma la de cada pin (del orden de 5 a 10 pF), las pistas y los cables, con un máximo de 400 pF.</p>
+
+<figure class="diagrama" data-titulo="fig-2.4">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Tres curvas de subida de una línea I2C de 100 pF con pull-ups de 2,2 kilohm, 4,7 kilohm y 45 kilohm frente al semiperíodo alto del reloj a 400 kHz y el umbral de 0,7 VDD">
+    <line x1="96" y1="200" x2="608" y2="200" class="s4" stroke-width="2"/><line x1="96" y1="200" x2="96" y2="32" class="s4" stroke-width="2"/><line x1="96" y1="83" x2="608" y2="83" class="s3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="88" class="sv-lbl f4" text-anchor="end" font-size="14">0,7 VDD</text><line x1="352" y1="200" x2="352" y2="32" class="s3" stroke-width="2" stroke-dasharray="2 4"/><text x="352" y="220" class="sv-lbl f4" text-anchor="middle" font-size="14">1250 ns: SCL alto a 400 kHz</text><polyline points="96,200 104,173 112,150 120,131 128,115 136,102 144,90 152,81 160,73 168,66 176,61 184,56 192,52 200,49 208,46 216,44 224,42 232,41 240,39 248,38 256,37 264,37 272,36 280,35 288,35 296,34 304,34 312,34 320,34 328,33 336,33 344,33 352,33 360,33 368,33 376,33 384,33 392,33 400,33 408,33 416,33 424,33 432,33 440,33 448,33 456,33 464,33 472,33 480,33 488,33 496,33 504,33 512,33 520,33 528,33 536,33 544,33 552,33 560,33 568,33 576,33 584,33 592,33 600,33 608,33" class="fn s5" stroke-width="2"/><text x="154" y="65" class="sv-lbl f4" text-anchor="end" font-size="14">2,2 k</text><polyline points="96,200 104,187 112,175 120,163 128,153 136,143 144,135 152,126 160,119 168,112 176,106 184,100 192,94 200,90 208,85 216,81 224,77 232,73 240,70 248,67 256,64 264,62 272,59 280,57 288,55 296,54 304,52 312,50 320,49 328,48 336,46 344,45 352,44 360,43 368,42 376,42 384,41 392,40 400,40 408,39 416,39 424,38 432,38 440,37 448,37 456,36 464,36 472,36 480,36 488,35 496,35 504,35 512,35 520,35 528,34 536,34 544,34 552,34 560,34 568,34 576,34 584,34 592,33 600,33 608,33" class="fn s4" stroke-width="2"/><text x="248" y="90" class="sv-lbl f4" text-anchor="start" font-size="14">4,7 k</text><polyline points="96,200 104,199 112,198 120,196 128,195 136,193 144,192 152,191 160,189 168,188 176,187 184,185 192,184 200,183 208,181 216,180 224,179 232,177 240,176 248,175 256,174 264,173 272,171 280,170 288,169 296,168 304,167 312,165 320,164 328,163 336,162 344,161 352,160 360,159 368,158 376,156 384,155 392,154 400,153 408,152 416,151 424,150 432,149 440,148 448,147 456,146 464,145 472,144 480,143 488,142 496,141 504,140 512,139 520,139 528,138 536,137 544,136 552,135 560,134 568,133 576,132 584,131 592,131 600,130 608,129" class="fn sa3" stroke-width="2"/><text x="604" y="119" class="sv-lbl fa3" text-anchor="end" font-size="14">45 k</text>
+  </svg>
+  <figcaption><b>fig 2.4</b>La misma línea de 100 pF con tres pull-ups. Con 2,2 kΩ la subida (de 0,3 a 0,7 VDD) dura unos 190 ns; con 4,7 kΩ, unos 400 ns, más de lo que permite el modo rápido (300 ns). Con los 45 kΩ internos del micro (en acento) ni siquiera llega al umbral antes de que el reloj vuelva a bajar.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>R<sub>p</sub> máxima:</strong> la que cumple el tiempo de subida. A 400 kHz la norma pide 300 ns: con 100 pF, R<sub>p</sub> ≤ 3,5 kΩ.</li>
+  <li><strong>R<sub>p</sub> mínima:</strong> la que el transistor puede bajar. La norma garantiza 3 mA con 0,4 V: a 3,3 V, R<sub>p</sub> ≥ unos 970 Ω.</li>
+</ul>
+
+<p>Los pull-ups internos de 45 kΩ quedan muy lejos: con 100 pF la subida tarda unos 3,8 µs. Un bus I2C necesita <strong>resistencias externas</strong>, típicamente de 2,2 a 4,7 kΩ.</p>
+
+<h3>El protocolo en el osciloscopio</h3>
+
+<figure class="diagrama" data-titulo="fig-2.5">
+  <svg viewBox="0 0 640 208" role="img" aria-label="Cronograma I2C: condición de inicio, 7 bits de dirección, bit de lectura o escritura, ACK del esclavo y condición de parada">
+    <text x="16" y="44" class="sv-tit f6" text-anchor="start" font-size="16">SCL</text><text x="16" y="124" class="sv-tit f6" text-anchor="start" font-size="16">SDA</text><polyline points="74,24 118,24 118,64 140,64 140,24 162,24 162,64 184,64 184,24 206,24 206,64 228,64 228,24 250,24 250,64 272,64 272,24 294,24 294,64 316,64 316,24 338,24 338,64 360,64 360,24 382,24 382,64 404,64 404,24 426,24 426,64 448,64 448,24 470,24 470,64 492,64 492,24 514,24 514,64 536,64 536,24 580,24" class="fn s5" stroke-width="2"/><polyline points="74,104 96,104 96,144 118,144 118,104 162,104 162,144 206,144 206,104 250,104 250,144 338,144 338,104 426,104 426,144 558,144 558,104 580,104" class="fn sa3" stroke-width="2"/><text x="140" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A6</text><text x="184" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A5</text><text x="228" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A4</text><text x="272" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A3</text><text x="316" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A2</text><text x="360" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A1</text><text x="404" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">A0</text><text x="448" y="168" class="sv-lbl f4" text-anchor="middle" font-size="14">R/W</text><text x="492" y="168" class="sv-lbl fa3" text-anchor="middle" font-size="14">ACK</text><text x="96" y="196" class="sv-lbl fa3" text-anchor="middle" font-size="14">inicio</text><text x="536" y="196" class="sv-lbl fa3" text-anchor="middle" font-size="14">parada</text>
+  </svg>
+  <figcaption><b>fig 2.5</b>Una transacción mínima. El <strong>inicio</strong> es SDA bajando con SCL en alto; la <strong>parada</strong>, SDA subiendo con SCL en alto: son las únicas veces que SDA cambia con el reloj alto. En el medio, siete bits de dirección, uno de lectura o escritura y, en el noveno pulso, el esclavo baja SDA para confirmar (<strong>ACK</strong>).</figcaption>
+</figure>
+
+<p>La regla de oro: SDA solo cambia con SCL en bajo. Un cambio con SCL en alto es una señal de control (inicio o parada). Un <strong>inicio repetido</strong> sin parada previa permite, por ejemplo, escribir el número de registro y enseguida leerlo sin soltar el bus.</p>
+
+<figure class="diagrama" data-titulo="fig-2.6 animada">
+  <canvas data-motor="per-buses"></canvas>
+  <figcaption><b>fig 2.6</b>Los tres cronogramas se dibujan a la vez y transmiten el mismo byte. La UART no tiene reloj: se apoya en el bit de inicio y en una velocidad acordada. El I2C agrega un reloj y le suma confirmaciones (A) tras cada byte. En SPI el reloj empuja un bit por cada línea de datos, y la selección de chip (CS) marca el mensaje.</figcaption>
+</figure>
+
+<h3>Arbitraje y estiramiento del reloj</h3>
+
+<figure class="diagrama" data-titulo="fig-2.7">
+  <svg viewBox="0 0 640 216" role="img" aria-label="Arbitraje entre dos maestros I2C: los dos mandan bits a la vez; en el tercer bit el maestro 1 quiere un 1 y el maestro 2 un 0; la línea queda en 0 y el maestro 1 se retira">
+    <text x="16" y="44" class="sv-tit f6" text-anchor="start" font-size="16">maestro 1</text><polyline points="144,24 192,24 192,56 240,56 240,24 528,24" class="fn s3" stroke-width="2"/><text x="16" y="108" class="sv-tit f6" text-anchor="start" font-size="16">maestro 2</text><polyline points="144,88 192,88 192,120 288,120 288,88 384,88 384,120 432,120 432,88 528,88" class="fn s5" stroke-width="2"/><text x="16" y="172" class="sv-tit f6" text-anchor="start" font-size="16">SDA real</text><polyline points="144,152 192,152 192,184 288,184 288,152 384,152 384,184 432,184 432,152 528,152" class="fn sa3" stroke-width="2"/><rect x="240" y="16" width="48" height="176" class="fn sa3" stroke-width="2"/><text x="296" y="78" class="sv-lbl fa3" text-anchor="start" font-size="14">M1 lee 0 donde puso 1: se retira</text>
+  </svg>
+  <figcaption><b>fig 2.7</b>Dos maestros arrancan a la vez. Mientras mandan los mismos bits, no pasa nada. En el tercero, el maestro 1 suelta la línea (1) y el 2 la baja (0): la línea queda en 0. El maestro 1 lee algo distinto de lo que mandó, entiende que perdió y deja de transmitir; el 2 sigue sin enterarse. Nadie pierde datos.</figcaption>
+</figure>
+
+<p>La misma lógica permite que un esclavo lento <strong>estire el reloj</strong>: mantiene SCL en bajo hasta estar listo, y el maestro, que ve que la línea no sube, espera. El riesgo es un esclavo colgado que no suelta SCL: todo el bus se congela. Los controladores modernos tienen un <strong>tiempo máximo</strong> en bajo que aborta la transacción.</p>
+
+<div class="caja analogia">
+  <h4>analogía: la subasta en voz baja</h4>
+  <p>Dos compradores recitan números a la vez mientras escuchan la sala. El “cero” se oye más fuerte que el “uno”. Si uno dijo “uno” pero oye “cero”, entiende que el otro tiene prioridad, se calla y lo deja terminar sin interrumpirlo.</p>
+</div>
+
+<h2>¿SPI o I2C?</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>SPI</th><th>I2C</th></tr></thead>
+  <tbody>
+    <tr><td><b>Velocidad</b></td><td>decenas de Mbit/s; más con quad u octal</td><td>100 y 400 kbit/s (1 Mbit/s en Fast-mode Plus)</td></tr>
+    <tr><td><b>Cables</b></td><td>3 + un CS por esclavo</td><td>2 para todos</td></tr>
+    <tr><td><b>Salidas</b></td><td>push-pull: flancos rápidos</td><td>open-drain: la subida depende de R<sub>p</sub> × C<sub>b</sub></td></tr>
+    <tr><td><b>Protocolo</b></td><td>ninguno: solo bits</td><td>inicio, dirección, ACK por byte, parada</td></tr>
+    <tr><td><b>Varios maestros</b></td><td>no estándar</td><td>nativo, con arbitraje</td></tr>
+    <tr><td><b>Uso típico</b></td><td>pantallas, memorias, tarjetas, ADC rápidos</td><td>sensores, relojes, EEPROM, gestión de energía</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>En el ESP32 y en el ESP32-S3</h2>
+
+<p>Los dos tienen cuatro controladores SPI: SPI0 y SPI1 son de la flash y la PSRAM y no se usan para periféricos; SPI2 y SPI3 son de propósito general. Y los dos tienen dos controladores I2C.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>SPI de usuario</b></td><td>SPI2 (HSPI) y SPI3 (VSPI)</td><td>SPI2 (FSPI) y SPI3</td></tr>
+    <tr><td><b>Velocidad del SPI</b></td><td>hasta 80 MHz como maestro por los pines directos</td><td>hasta 80 MHz como maestro; 60 MHz como esclavo</td></tr>
+    <tr><td><b>Líneas de datos</b></td><td>hasta 4</td><td>hasta 8 en SPI2; octal DDR hasta 40 MHz</td></tr>
+    <tr><td><b>DMA del SPI</b></td><td>propio de cada controlador</td><td>GDMA central</td></tr>
+    <tr><td><b>I2C</b></td><td>100/400 kbit/s; hasta 5 MHz según los pull-ups</td><td>100/400 kbit/s; hasta 800 kbit/s según los pull-ups; filtros de glitches configurables</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>SPI son dos registros en anillo: siempre transmite y recibe a la vez; CPOL y CPHA fijan reposo y flanco de muestreo.</li>
+    <li>Quad, octal y DDR multiplican el ancho de banda; el límite de SPI full-duplex es el tiempo de ida y vuelta.</li>
+    <li>I2C es open-drain: nunca hay cortocircuito, pero la subida es un RC de 0,85 × R<sub>p</sub> × C<sub>b</sub>.</li>
+    <li>R<sub>p</sub> tiene un máximo (tiempo de subida) y un mínimo (corriente de bajada): los pull-ups internos no sirven.</li>
+    <li>Inicio y parada son los únicos cambios de SDA con SCL alto; el arbitraje y el estiramiento del reloj salen del open-drain.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Un bus I2C a 400 kHz tiene 150 pF. ¿Qué pull-up elegís?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Con 45 kΩ y 150 pF la subida tarda más de 5 µs; a 400 kHz el reloj pasa 1,25 µs en alto y la línea no llega al umbral.">Los internos de 45 kΩ, para ahorrar componentes.</button>
+    <button type="button" data-por-que="Correcto: el máximo sale de 300 ns / (0,85 × 150 pF) ≈ 2,36 kΩ, y el mínimo de (3,3 − 0,4) V / 3 mA ≈ 970 Ω. Un valor comercial de 1,8 o 2,2 kΩ queda en el medio.">Una de 1,8 a 2,2 kΩ.</button>
+    <button type="button" data-por-que="Con 470 Ω el transistor tendría que absorber unos 6 mA para bajar la línea, el doble de lo que garantiza la norma, y la tensión en bajo podría no bajar de 0,4 V.">Una de 470 Ω, para que suba lo más rápido posible.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: SPI Master Driver (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html">docs.espressif.com/…/spi_master.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: I2C (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/i2c.html">docs.espressif.com/…/i2c.html</a></li>
+    <li>NXP. <em>UM10204: I2C-bus specification and user manual</em>. <a href="https://www.nxp.com/docs/en/user-guide/UM10204.pdf">nxp.com/docs/en/user-guide/UM10204.pdf</a></li>
+    <li>Texas Instruments. <em>I2C Bus Pullup Resistor Calculation (SLVA689)</em>. <a href="https://www.ti.com/lit/an/slva689/slva689.pdf">ti.com/lit/an/slva689/slva689.pdf</a></li>
+  </ol>
+  <p class="nota">Las velocidades del SPI del ESP32 salen de la guía de ESP-IDF (el datasheet no las fija); los límites de tiempo de subida y corriente son los de la norma I2C.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit, micro-esp, tomo-03, nivel-02</footer>
+</body>
+</html>

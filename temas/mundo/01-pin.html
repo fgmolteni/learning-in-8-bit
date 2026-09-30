@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1: El pin por dentro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-perifericos.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01, 16 min de lectura</span>
+  <h1>El pin por dentro</h1>
+  <p class="bajada">Todo lo que el micro siente o hace pasa por una celda de entrada/salida: dos transistores, dos resistencias débiles, un comparador con histéresis y una red de conmutación que decide qué periférico llega a qué pin.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Dibujar la celda de E/S y explicar <strong>push-pull</strong>, <strong>open-drain</strong> y alta impedancia.</li>
+    <li>Explicar por qué una entrada necesita <strong>histéresis</strong> y qué tan débiles son los pull internos.</li>
+    <li>Distinguir el <strong>IO MUX</strong> de la <strong>matriz de GPIO</strong> y cuándo conviene cada uno.</li>
+    <li>Reconocer los <strong>strapping pins</strong> y los pines del dominio RTC de cada micro.</li>
+  </ul>
+</div>
+
+<p>Un microcontrolador calcula en un mundo protegido: tensiones de núcleo de alrededor de 1,1 V, pistas microscópicas y corrientes de microamperes. Afuera lo esperan cables largos, pulsadores con rebote, cargas inductivas y descargas electrostáticas. El circuito que hace de frontera entre los dos mundos es la <strong>celda de entrada/salida</strong>, y hay una por cada pin.</p>
+
+<h2>La celda por dentro</h2>
+
+<p>La celda cumple cuatro trabajos: <strong>adaptar niveles</strong> (de la lógica interna a 3,3 V con corriente suficiente), <strong>conmutar el sentido</strong> (hablar, escuchar o soltar la línea), <strong>limpiar</strong> las señales lentas o ruidosas y <strong>protegerse</strong> de sobretensiones. Cuatro señales de control la gobiernan: <strong>IE</strong> habilita el buffer de entrada, <strong>OE</strong> habilita el driver de salida, <strong>WPU</strong> y <strong>WPD</strong> conectan resistencias débiles a VDD y a GND.</p>
+
+<figure class="diagrama" data-titulo="fig-1.1">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Esquema eléctrico de un pin: driver de salida push-pull con un transistor PMOS a VDD y uno NMOS a GND controlados por dato y habilitación de salida; resistencias débiles de 45 kiloohm conmutables a VDD y a GND; buffer de entrada con habilitación IE que lleva el nivel del pin a la lógica">
+    <line x1="280" y1="32" x2="500" y2="32" class="s5" stroke-width="2"/><line x1="280" y1="248" x2="500" y2="248" class="s5" stroke-width="2"/><text x="272" y="38" class="sv-lbl f4" text-anchor="end">VDD 3,3 V</text><text x="272" y="254" class="sv-lbl f4" text-anchor="end">GND</text><line x1="300" y1="140" x2="580" y2="140" class="s4" stroke-width="2"/><rect x="580" y="124" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="579" y="123" width="2" height="2" class="f0"/><rect x="619" y="123" width="2" height="2" class="f0"/><rect x="579" y="155" width="2" height="2" class="f0"/><rect x="619" y="155" width="2" height="2" class="f0"/><text x="600" y="145" class="sv-tit f6" text-anchor="middle">PAD</text><line x1="324" y1="32" x2="324" y2="60" class="s4" stroke-width="2"/><rect x="292" y="60" width="64" height="48" class="f1 s3" stroke-width="2"/><rect x="291" y="59" width="2" height="2" class="f0"/><rect x="355" y="59" width="2" height="2" class="f0"/><rect x="291" y="107" width="2" height="2" class="f0"/><rect x="355" y="107" width="2" height="2" class="f0"/><text x="324" y="80" class="sv-tit f6" text-anchor="middle">PMOS</text><text x="324" y="98" class="sv-lbl f4" text-anchor="middle">a VDD</text><line x1="324" y1="108" x2="324" y2="140" class="s4" stroke-width="2"/><rect x="321" y="137" width="6" height="6" class="f4"/><line x1="324" y1="140" x2="324" y2="172" class="s4" stroke-width="2"/><rect x="292" y="172" width="64" height="48" class="f1 s3" stroke-width="2"/><rect x="291" y="171" width="2" height="2" class="f0"/><rect x="355" y="171" width="2" height="2" class="f0"/><rect x="291" y="219" width="2" height="2" class="f0"/><rect x="355" y="219" width="2" height="2" class="f0"/><text x="324" y="192" class="sv-tit f6" text-anchor="middle">NMOS</text><text x="324" y="210" class="sv-lbl f4" text-anchor="middle">a GND</text><line x1="324" y1="220" x2="324" y2="248" class="s4" stroke-width="2"/><line x1="444" y1="32" x2="444" y2="60" class="s4" stroke-width="2"/><rect x="412" y="60" width="64" height="48" class="f1 s2" stroke-width="2"/><rect x="411" y="59" width="2" height="2" class="f0"/><rect x="475" y="59" width="2" height="2" class="f0"/><rect x="411" y="107" width="2" height="2" class="f0"/><rect x="475" y="107" width="2" height="2" class="f0"/><text x="444" y="80" class="sv-tit f6" text-anchor="middle">WPU</text><text x="444" y="98" class="sv-lbl f4" text-anchor="middle">45 kohm</text><line x1="444" y1="108" x2="444" y2="140" class="s4" stroke-width="2"/><rect x="441" y="137" width="6" height="6" class="f4"/><line x1="444" y1="140" x2="444" y2="172" class="s4" stroke-width="2"/><rect x="412" y="172" width="64" height="48" class="f1 s2" stroke-width="2"/><rect x="411" y="171" width="2" height="2" class="f0"/><rect x="475" y="171" width="2" height="2" class="f0"/><rect x="411" y="219" width="2" height="2" class="f0"/><rect x="475" y="219" width="2" height="2" class="f0"/><text x="444" y="192" class="sv-tit f6" text-anchor="middle">WPD</text><text x="444" y="210" class="sv-lbl f4" text-anchor="middle">45 kohm</text><line x1="444" y1="220" x2="444" y2="248" class="s4" stroke-width="2"/><rect x="88" y="96" width="136" height="96" class="f1 s3" stroke-width="2"/><rect x="87" y="95" width="2" height="2" class="f0"/><rect x="223" y="95" width="2" height="2" class="f0"/><rect x="87" y="191" width="2" height="2" class="f0"/><rect x="223" y="191" width="2" height="2" class="f0"/><text x="156" y="132" class="sv-tit f6" text-anchor="middle">tri-state</text><text x="156" y="152" class="sv-lbl f4" text-anchor="middle">dato + OE</text><text x="156" y="212" class="sv-lbl f4" text-anchor="middle">OE = 0: alta Z</text><line x1="24" y1="120" x2="80" y2="120" class="s4" stroke-width="2"/><rect x="80" y="112" width="2" height="16" class="f4"/><rect x="82" y="114" width="2" height="12" class="f4"/><rect x="84" y="116" width="2" height="8" class="f4"/><rect x="86" y="118" width="2" height="4" class="f4"/><rect x="88" y="119" width="2" height="2" class="f4"/><text x="24" y="110" class="sv-lbl f4" text-anchor="start">dato</text><line x1="24" y1="168" x2="80" y2="168" class="s4" stroke-width="2"/><rect x="80" y="160" width="2" height="16" class="f4"/><rect x="82" y="162" width="2" height="12" class="f4"/><rect x="84" y="164" width="2" height="8" class="f4"/><rect x="86" y="166" width="2" height="4" class="f4"/><rect x="88" y="167" width="2" height="2" class="f4"/><text x="24" y="158" class="sv-lbl f4" text-anchor="start">OE</text><polyline points="224,120 260,120 260,84 284,84" class="fn s4" stroke-width="2"/><rect x="284" y="76" width="2" height="16" class="f4"/><rect x="286" y="78" width="2" height="12" class="f4"/><rect x="288" y="80" width="2" height="8" class="f4"/><rect x="290" y="82" width="2" height="4" class="f4"/><rect x="292" y="83" width="2" height="2" class="f4"/><polyline points="224,168 260,168 260,196 284,196" class="fn s4" stroke-width="2"/><rect x="284" y="188" width="2" height="16" class="f4"/><rect x="286" y="190" width="2" height="12" class="f4"/><rect x="288" y="192" width="2" height="8" class="f4"/><rect x="290" y="194" width="2" height="4" class="f4"/><rect x="292" y="195" width="2" height="2" class="f4"/><polyline points="540,140 540,284 476,284" class="fn sa3" stroke-width="2"/><rect x="537" y="137" width="6" height="6" class="fa3"/><rect x="472" y="272" width="4" height="24" class="fa3" stroke-width="0"/><rect x="468" y="273" width="4" height="22" class="fa3" stroke-width="0"/><rect x="464" y="274" width="4" height="20" class="fa3" stroke-width="0"/><rect x="460" y="275" width="4" height="18" class="fa3" stroke-width="0"/><rect x="456" y="276" width="4" height="16" class="fa3" stroke-width="0"/><rect x="452" y="277" width="4" height="14" class="fa3" stroke-width="0"/><rect x="448" y="278" width="4" height="12" class="fa3" stroke-width="0"/><rect x="444" y="279" width="4" height="10" class="fa3" stroke-width="0"/><text x="460" y="266" class="sv-tag fa3" text-anchor="middle">IE</text><line x1="444" y1="284" x2="200" y2="284" class="sa3" stroke-width="2"/><rect x="198" y="276" width="2" height="16" class="fa3"/><rect x="196" y="278" width="2" height="12" class="fa3"/><rect x="194" y="280" width="2" height="8" class="fa3"/><rect x="192" y="282" width="2" height="4" class="fa3"/><rect x="190" y="283" width="2" height="2" class="fa3"/><text x="32" y="290" class="sv-lbl fa3" text-anchor="start">a la lógica</text><text x="624" y="64" class="sv-lbl f4" text-anchor="end">VIH ≥ 0,75 VDD</text><text x="624" y="84" class="sv-lbl f4" text-anchor="end">VIL ≤ 0,25 VDD</text><text x="548" y="214" class="sv-lbl fa3" text-anchor="start">lee el pin</text>
+
+  </svg>
+  <figcaption><b>fig 1.1</b>Una celda de E/S. Arriba y abajo, los dos transistores del driver de salida: uno tira hacia VDD y otro hacia GND. Con OE en cero, ninguno conduce y el pin queda en alta impedancia. Las resistencias de 45 kΩ son débiles a propósito. En acento, el camino de lectura: el buffer de entrada lleva el nivel a la lógica.</figcaption>
+</figure>
+
+<h3>Empujar, tirar o soltar</h3>
+<p>La salida normal es <strong>push-pull</strong>: para un “1” conduce el transistor de arriba y el pin <em>entrega</em> corriente; para un “0” conduce el de abajo y el pin la <em>absorbe</em>. Los dos tienen una resistencia de encendido baja, así que los flancos son rápidos.</p>
+
+<p>En <strong>open-drain</strong> el transistor de arriba no participa. El pin solo puede bajar la línea: el “1” lo pone una resistencia externa. Parece una limitación, pero tiene dos ventajas: varios dispositivos pueden compartir el mismo cable sin cortocircuito (si uno suelta y otro baja, gana el que baja), y la resistencia puede ir a otra tensión, lo que traduce niveles. Es la base del I2C (<a href="../datos/02-spi-i2c.html">Tomo 3, nivel 2</a>).</p>
+
+<figure class="diagrama" data-titulo="fig-1.2">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Cuatro estados de la salida: push-pull en 1 (conduce el transistor de arriba), push-pull en 0 (conduce el de abajo), open-drain en 1 (ninguno conduce y sube la resistencia externa) y alta impedancia (ninguno conduce)">
+    <text x="86" y="24" class="sv-tit f6" text-anchor="middle" font-size="18">push-pull, 1</text><line x1="24" y1="40" x2="148" y2="40" class="s5" stroke-width="2"/><text x="24" y="56" class="sv-lbl f4" text-anchor="start" font-size="14">VDD</text><line x1="24" y1="200" x2="148" y2="200" class="s5" stroke-width="2"/><text x="24" y="220" class="sv-lbl f4" text-anchor="start" font-size="14">GND</text><rect x="44" y="64" width="48" height="36" class="fa1 sa3" stroke-width="2"/><rect x="43" y="63" width="2" height="2" class="f0"/><rect x="91" y="63" width="2" height="2" class="f0"/><rect x="43" y="99" width="2" height="2" class="f0"/><rect x="91" y="99" width="2" height="2" class="f0"/><text x="68" y="88" class="sv-tit f6" text-anchor="middle">P</text><rect x="44" y="140" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="43" y="139" width="2" height="2" class="f0"/><rect x="91" y="139" width="2" height="2" class="f0"/><rect x="43" y="175" width="2" height="2" class="f0"/><rect x="91" y="175" width="2" height="2" class="f0"/><text x="68" y="164" class="sv-tit f4" text-anchor="middle">N</text><line x1="68" y1="40" x2="68" y2="64" class="s4" stroke-width="2"/><line x1="68" y1="100" x2="68" y2="140" class="s4" stroke-width="2"/><line x1="68" y1="176" x2="68" y2="200" class="s4" stroke-width="2"/><line x1="68" y1="120" x2="134" y2="120" class="s4" stroke-width="2"/><rect x="134" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><line x1="76" y1="108" x2="110" y2="108" class="sa3" stroke-width="2"/><rect x="110" y="100" width="2" height="16" class="fa3"/><rect x="112" y="102" width="2" height="12" class="fa3"/><rect x="114" y="104" width="2" height="8" class="fa3"/><rect x="116" y="106" width="2" height="4" class="fa3"/><rect x="118" y="107" width="2" height="2" class="fa3"/><text x="242" y="24" class="sv-tit f6" text-anchor="middle" font-size="18">push-pull, 0</text><line x1="180" y1="40" x2="304" y2="40" class="s5" stroke-width="2"/><text x="180" y="56" class="sv-lbl f4" text-anchor="start" font-size="14">VDD</text><line x1="180" y1="200" x2="304" y2="200" class="s5" stroke-width="2"/><text x="180" y="220" class="sv-lbl f4" text-anchor="start" font-size="14">GND</text><rect x="200" y="64" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="199" y="63" width="2" height="2" class="f0"/><rect x="247" y="63" width="2" height="2" class="f0"/><rect x="199" y="99" width="2" height="2" class="f0"/><rect x="247" y="99" width="2" height="2" class="f0"/><text x="224" y="88" class="sv-tit f4" text-anchor="middle">P</text><rect x="200" y="140" width="48" height="36" class="fa1 sa3" stroke-width="2"/><rect x="199" y="139" width="2" height="2" class="f0"/><rect x="247" y="139" width="2" height="2" class="f0"/><rect x="199" y="175" width="2" height="2" class="f0"/><rect x="247" y="175" width="2" height="2" class="f0"/><text x="224" y="164" class="sv-tit f6" text-anchor="middle">N</text><line x1="224" y1="40" x2="224" y2="64" class="s4" stroke-width="2"/><line x1="224" y1="100" x2="224" y2="140" class="s4" stroke-width="2"/><line x1="224" y1="176" x2="224" y2="200" class="s4" stroke-width="2"/><line x1="224" y1="120" x2="290" y2="120" class="s4" stroke-width="2"/><rect x="290" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><line x1="276" y1="132" x2="242" y2="132" class="sa3" stroke-width="2"/><rect x="240" y="124" width="2" height="16" class="fa3"/><rect x="238" y="126" width="2" height="12" class="fa3"/><rect x="236" y="128" width="2" height="8" class="fa3"/><rect x="234" y="130" width="2" height="4" class="fa3"/><rect x="232" y="131" width="2" height="2" class="fa3"/><text x="398" y="24" class="sv-tit f6" text-anchor="middle" font-size="18">open-drain, 1</text><line x1="336" y1="40" x2="460" y2="40" class="s5" stroke-width="2"/><text x="336" y="56" class="sv-lbl f4" text-anchor="start" font-size="14">VDD</text><line x1="336" y1="200" x2="460" y2="200" class="s5" stroke-width="2"/><text x="336" y="220" class="sv-lbl f4" text-anchor="start" font-size="14">GND</text><rect x="356" y="64" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="355" y="63" width="2" height="2" class="f0"/><rect x="403" y="63" width="2" height="2" class="f0"/><rect x="355" y="99" width="2" height="2" class="f0"/><rect x="403" y="99" width="2" height="2" class="f0"/><text x="380" y="79" class="sv-tit f4" text-anchor="middle" font-size="14">no</text><text x="380" y="97" class="sv-lbl f4" text-anchor="middle" font-size="14">está</text><rect x="356" y="140" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="355" y="139" width="2" height="2" class="f0"/><rect x="403" y="139" width="2" height="2" class="f0"/><rect x="355" y="175" width="2" height="2" class="f0"/><rect x="403" y="175" width="2" height="2" class="f0"/><text x="380" y="164" class="sv-tit f4" text-anchor="middle">N</text><line x1="380" y1="40" x2="380" y2="64" class="s4" stroke-width="2"/><line x1="380" y1="100" x2="380" y2="140" class="s4" stroke-width="2"/><line x1="380" y1="176" x2="380" y2="200" class="s4" stroke-width="2"/><line x1="380" y1="120" x2="446" y2="120" class="s4" stroke-width="2"/><rect x="446" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><rect x="436" y="48" width="12" height="40" class="f1 s4" stroke-width="2"/><line x1="442" y1="40" x2="442" y2="48" class="s4" stroke-width="2"/><line x1="442" y1="88" x2="442" y2="112" class="s4" stroke-width="2"/><text x="428" y="70" class="sv-lbl fa3" text-anchor="end" font-size="14">R ext</text><line x1="454" y1="92" x2="454" y2="98" class="sa3" stroke-width="2"/><rect x="446" y="98" width="16" height="2" class="fa3"/><rect x="448" y="100" width="12" height="2" class="fa3"/><rect x="450" y="102" width="8" height="2" class="fa3"/><rect x="452" y="104" width="4" height="2" class="fa3"/><rect x="453" y="106" width="2" height="2" class="fa3"/><text x="554" y="24" class="sv-tit f6" text-anchor="middle" font-size="18">alta Z</text><line x1="492" y1="40" x2="616" y2="40" class="s5" stroke-width="2"/><text x="492" y="56" class="sv-lbl f4" text-anchor="start" font-size="14">VDD</text><line x1="492" y1="200" x2="616" y2="200" class="s5" stroke-width="2"/><text x="492" y="220" class="sv-lbl f4" text-anchor="start" font-size="14">GND</text><rect x="512" y="64" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="511" y="63" width="2" height="2" class="f0"/><rect x="559" y="63" width="2" height="2" class="f0"/><rect x="511" y="99" width="2" height="2" class="f0"/><rect x="559" y="99" width="2" height="2" class="f0"/><text x="536" y="88" class="sv-tit f4" text-anchor="middle">P</text><rect x="512" y="140" width="48" height="36" class="f1 s2" stroke-width="2"/><rect x="511" y="139" width="2" height="2" class="f0"/><rect x="559" y="139" width="2" height="2" class="f0"/><rect x="511" y="175" width="2" height="2" class="f0"/><rect x="559" y="175" width="2" height="2" class="f0"/><text x="536" y="164" class="sv-tit f4" text-anchor="middle">N</text><line x1="536" y1="40" x2="536" y2="64" class="s4" stroke-width="2"/><line x1="536" y1="100" x2="536" y2="140" class="s4" stroke-width="2"/><line x1="536" y1="176" x2="536" y2="200" class="s4" stroke-width="2"/><line x1="536" y1="120" x2="602" y2="120" class="s4" stroke-width="2"/><rect x="602" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/>
+  </svg>
+  <figcaption><b>fig 1.2</b>Los cuatro estados de una salida. En push-pull siempre conduce uno de los dos transistores (en acento) y la corriente sale o entra por el pin. En open-drain el de arriba no existe: el “1” lo pone una resistencia externa. En alta impedancia no conduce ninguno y el pin queda libre para que otro lo maneje.</figcaption>
+</figure>
+
+<div class="caja analogia">
+  <h4>analogía: dos canillas y una palanca</h4>
+  <p>Push-pull es una palanca con dos canillas: una llena el canal desde un tanque (VDD), la otra lo vacía a la cloaca (GND), y siempre está abierta una sola. Open-drain es tener solo la canilla de desagüe: para llenar dependés de una manguerita externa (el pull-up). Alta impedancia es cerrar las dos: el nivel lo decide otro.</p>
+</div>
+
+<h3>El buffer de entrada y la histéresis</h3>
+<p>Un inversor CMOS común tiene un solo umbral, cerca de la mitad de VDD. Con una señal lenta (un capacitor que se carga, un botón con una resistencia) la tensión pasa un buen rato cerca del umbral y cualquier ruido de milivolts la cruza varias veces: la salida repiquetea. Además, mientras la entrada está en la zona intermedia conducen los dos transistores del inversor y circula corriente de VDD a GND.</p>
+
+<p>La solución es un comparador con <strong>histéresis</strong> (disparador Schmitt): realimentación positiva que separa el umbral de subida del de bajada. La salida pasa a 1 al cruzar el umbral alto y no vuelve a 0 hasta cruzar el bajo. El datasheet de los dos micros garantiza que se lee “1” por encima de <strong>0,75 × VDD</strong> (≈ 2,48 V) y “0” por debajo de <strong>0,25 × VDD</strong> (≈ 0,83 V); entre medio, la lectura no está definida.</p>
+
+<figure class="diagrama" data-titulo="fig-1.3">
+  <svg viewBox="0 0 640 288" role="img" aria-label="Una rampa lenta con ruido cruza la mitad de la alimentación. Un comparador con un solo umbral da muchos pulsos falsos; uno con histéresis cambia una sola vez al cruzar el umbral alto">
+    <line x1="96" y1="50" x2="624" y2="50" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="55" class="sv-lbl fa3" text-anchor="end" font-size="14">0,75 VDD</text><line x1="96" y1="76" x2="624" y2="76" class="s3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="81" class="sv-lbl f4" text-anchor="end" font-size="14">0,5 VDD</text><line x1="96" y1="102" x2="624" y2="102" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="88" y="107" class="sv-lbl fa3" text-anchor="end" font-size="14">0,25 VDD</text><polyline points="96,123 100,126 104,116 108,126 112,117 116,119 120,124 124,115 128,124 132,115 136,122 140,121 144,114 148,105 152,118 156,115 160,107 164,101 168,107 172,110 176,98 180,115 184,99 188,109 192,111 196,111 200,107 204,96 208,108 212,99 216,98 220,102 224,98 228,107 232,106 236,103 240,93 244,97 248,99 252,93 256,95 260,97 264,87 268,88 272,96 276,89 280,89 284,82 288,84 292,92 296,78 300,94 304,87 308,80 312,91 316,84 320,92 324,79 328,77 332,80 336,73 340,83 344,75 348,77 352,76 356,78 360,70 364,68 368,76 372,71 376,82 380,69 384,70 388,63 392,65 396,75 400,72 404,66 408,77 412,69 416,73 420,74 424,74 428,60 432,72 436,69 440,65 444,56 448,70 452,62 456,60 460,53 464,53 468,52 472,62 476,59 480,59 484,49 488,47 492,61 496,60 500,58 504,58 508,52 512,50 516,55 520,59 524,51 528,51 532,47 536,39 540,43 544,46 548,43 552,41 556,52 560,36 564,38 568,35 572,36 576,43 580,42 584,47 588,36 592,46 596,46 600,42 604,42 608,38 612,43 616,43 620,40 624,40" class="fn s6" stroke-width="2"/><text x="16" y="20" class="sv-tit f6" text-anchor="start" font-size="18">entrada</text><text x="16" y="172" class="sv-tit f6" text-anchor="start" font-size="18">un umbral</text><polyline points="96,196 336,196 336,156 340,156 340,196 344,196 344,156 348,156 348,196 360,196 360,156 368,156 368,196 372,196 372,156 376,156 376,196 380,196 380,156 408,156 408,196 412,196 412,156 628,156" class="fn s5" stroke-width="2"/><text x="16" y="244" class="sv-tit f6" text-anchor="start" font-size="18">histéresis</text><polyline points="96,268 484,268 484,228 628,228" class="fn sa3" stroke-width="2"/>
+  </svg>
+  <figcaption><b>fig 1.3</b>Una señal lenta con ruido (arriba). Con un solo umbral en la mitad, cada pico de ruido que lo cruza es un pulso falso (medio). Con histéresis, la salida solo pasa a 1 al superar el umbral alto y no vuelve a 0 hasta bajar del umbral bajo (abajo): un único flanco limpio.</figcaption>
+</figure>
+
+<p>IE también tiene un uso de consumo: un pin sin usar que queda flotando y con la entrada habilitada puede oscilar con el ruido y gastar energía en cada transición. Deshabilitar la entrada, o fijar el pin con un pull, lo evita.</p>
+
+<h3>Pull-up y pull-down débiles</h3>
+<p>Las resistencias internas valen del orden de <strong>45 kΩ</strong>. A 3,3 V entregan unos 73 µA: alcanza para que un pin libre no flote o para leer un pulsador a masa, pero no para una línea rápida. Con 100 pF de cable, la constante de tiempo es 45 kΩ × 100 pF = 4,5 µs, y la línea tarda unos 6 µs en llegar a 0,75 × VDD. A 400 kHz, el reloj de I2C pasa solo 1,25 µs en alto: la línea no llega a subir.</p>
+
+<h3>Fuerza de salida y ruido</h3>
+<p>El driver se puede configurar en cuatro niveles de fuerza, del orden de 5, 10, 20 y 40 mA nominales. Más fuerza da flancos más rápidos, pero no es gratis. El encapsulado tiene inductancias parásitas de algunos nanohenrios en cada conexión, y un cambio brusco de corriente genera una tensión <strong>L × di/dt</strong>: la masa interna “rebota” respecto de la de la placa y los flancos rápidos irradian. Regla: la menor fuerza que cumpla con la velocidad que necesitás.</p>
+
+<div class="caja ojo">
+  <h4>ojo: los pines no toleran 5 V</h4>
+  <p>Cada pin tiene diodos de protección hacia VDD y hacia GND pensados para descargas breves, no para corriente continua. Si le aplicás 5 V, el diodo de arriba conduce y empuja corriente hacia la alimentación de 3,3 V; con corriente sostenida puede disparar el <em>latch-up</em>, un tiristor parásito del CMOS que cortocircuita VDD y GND hasta que cortes la alimentación. El máximo absoluto es 3,6 V: para 5 V usá un divisor o un traductor de nivel.</p>
+</div>
+
+<h2>IO MUX y la matriz de GPIO</h2>
+
+<p>Un micro con decenas de periféricos necesita cientos de señales, pero tiene unas pocas decenas de pines. Fijar cada señal a un pin desperdiciaría pines. La solución son dos capas de conmutación:</p>
+
+<ol>
+  <li><strong>El IO MUX</strong>: un multiplexor junto a cada pin que elige entre unas pocas funciones fijas (el bus de la flash, JTAG, la UART de consola) o la “función GPIO”. La ruta directa no agrega retardos.</li>
+  <li><strong>La matriz de GPIO</strong>: un conmutador “todos con todos”. Cualquier señal de salida de periférico puede ir a cualquier pin, y cualquier pin puede alimentar a cualquier entrada de periférico, incluso a varias a la vez.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-1.4 animada">
+  <canvas data-motor="per-matriz"></canvas>
+  <figcaption><b>fig 1.4</b>La matriz cierra un cruce entre una señal de periférico (filas) y un pin (columnas). Cada pocos segundos cambia la ruta y la misma señal aparece en otro pin, sin tocar el hardware. Los cuatro pines son un ejemplo sobre un ESP32-S3; el ESP32 funciona igual.</figcaption>
+</figure>
+
+<h3>El precio de la flexibilidad</h3>
+<p>Una señal que entra por la matriz es asíncrona respecto del reloj interno (APB, 80 MHz), así que pasa por un <strong>sincronizador</strong> de dos flip-flops para evitar la metaestabilidad, y opcionalmente por un <strong>filtro</strong> que descarta pulsos de menos de dos ciclos (unos 25 ns). Eso agrega unos pocos ciclos de APB de latencia.</p>
+
+<p>Para un botón da igual. Para un SPI rápido, no: el reloj sale por un pin, el dato vuelve por otro y el retardo de ida y vuelta se come parte del período. Por eso las interfaces más rápidas (la flash, el SPI a 80 MHz) usan los pines directos del IO MUX, y por la matriz el límite práctico es bastante menor; la cifra exacta para tu caso está en el datasheet.</p>
+
+<div class="caja analogia">
+  <h4>analogía: la central telefónica</h4>
+  <p>La matriz es la central con su panel de conexiones: une cualquier teléfono (periférico) con cualquier línea externa (pin). El IO MUX son unas pocas líneas directas, cableadas, para las llamadas que no toleran la demora de pasar por la central.</p>
+</div>
+
+<h2>Pines de arranque</h2>
+
+<p>Al soltar el reset, el micro todavía no ejecutó nada y tiene que decidir cosas: ¿arranca el programa de la flash o espera uno nuevo por la UART? ¿Con qué tensión alimenta la flash? Dedicarle un pin fijo a cada pregunta sería caro. En cambio, algunos pines, los <strong>strapping pins</strong>, se leen en el instante en que sube el reset y después quedan libres como GPIO comunes.</p>
+
+<figure class="diagrama" data-titulo="fig-1.5">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Cronograma del arranque: la señal de reset sube; en ese flanco el micro copia el nivel del strapping pin en un latch; después el pin queda libre como GPIO y sus cambios ya no afectan la decisión">
+    <text x="16" y="44" class="sv-tit f6" text-anchor="start" font-size="18">reset (EN)</text><polyline points="128,56 272,56 272,24 624,24" class="fn s5" stroke-width="2"/><text x="16" y="108" class="sv-tit f6" text-anchor="start" font-size="18">strapping</text><polyline points="128,80 400,80 400,112 464,112 464,80 520,80 520,112 624,112" class="fn s5" stroke-width="2"/><text x="16" y="172" class="sv-tit f6" text-anchor="start" font-size="18">decisión</text><rect x="128" y="144" width="144" height="40" class="f1 s2" stroke-width="2"/><text x="200" y="170" class="sv-lbl f4" text-anchor="middle" font-size="16">sin decidir</text><rect x="272" y="144" width="352" height="40" class="fa1 sa3" stroke-width="2"/><text x="448" y="170" class="sv-lbl fa3" text-anchor="middle" font-size="16">guardada en el latch: vale 1</text><line x1="272" y1="16" x2="272" y2="200" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="272" y="216" class="sv-lbl fa3" text-anchor="middle" font-size="16">se lee acá</text><text x="512" y="216" class="sv-lbl f4" text-anchor="middle" font-size="16">después: GPIO común</text>
+  </svg>
+  <figcaption><b>fig 1.5</b>El nivel del strapping pin solo importa en el instante en que sube el reset: ahí se copia a un latch y decide el arranque. Lo que el pin haga después (los pulsos de la derecha) ya no cambia nada: queda libre como GPIO.</figcaption>
+</figure>
+
+<p>El nivel por defecto lo fija una resistencia interna débil. Por eso cualquier cosa externa que fuerce un nivel en el arranque (un LED con su resistencia, un pull-up, un sensor que ya está encendido) puede cambiar la decisión sin que el firmware tenga la culpa.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Decisión</th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>Modo de arranque</b> (flash o descarga)</td><td>GPIO0 (y GPIO2 en 0)</td><td>GPIO0 y GPIO46</td></tr>
+    <tr><td><b>Tensión de la flash</b> (0: 3,3 V; 1: 1,8 V)</td><td>GPIO12</td><td>GPIO45</td></tr>
+    <tr><td><b>Mensajes de la ROM</b></td><td>GPIO15</td><td>GPIO46</td></tr>
+    <tr><td><b>Otros</b></td><td>GPIO5: tiempos del SDIO</td><td>GPIO3: origen del JTAG</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo: el pin de la tensión de la flash</h4>
+  <p>GPIO12 en el ESP32 y GPIO45 en el S3 eligen la tensión de la flash. Con un 1 en el arranque, una flash de 3,3 V recibe 1,8 V y el micro queda reiniciándose. Dejalos libres durante el reset o fijá la tensión por eFuse.</p>
+</div>
+
+<h2>El dominio RTC</h2>
+
+<p>En sueño profundo se apagan los núcleos, la RAM principal, el bus APB y la matriz de GPIO. Si todos los pines dependieran de la matriz, quedarían flotando y el micro no podría enterarse de que alguien apretó un botón. Por eso algunos pines pertenecen también al <strong>dominio RTC</strong>, alimentado siempre, y tienen un segundo multiplexor, el <strong>RTC IO MUX</strong>. Desde ahí se puede:</p>
+
+<ul>
+  <li><strong>despertar</strong> al micro por un nivel o un cambio en uno o varios pines;</li>
+  <li><strong>retener</strong> el nivel de una salida mientras todo duerme (<em>pad hold</em>), por ejemplo la habilitación de un regulador;</li>
+  <li>llegar a los bloques <strong>analógicos</strong> que viven en esa isla: el ADC, el sensor táctil y el cristal de 32 kHz;</li>
+  <li>dejar que el <strong>coprocesador ULP</strong> lea y maneje pines sin despertar a los núcleos (<a href="../micro/06-energia.html">Tomo 1, nivel 6</a>).</li>
+</ul>
+
+<h2>En el ESP32 y en el ESP32-S3</h2>
+
+<p>La celda es conceptualmente la misma en los dos. Las diferencias están en cuántos pines hay y en qué pueden hacer:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>GPIO</b></td><td>34, numerados de 0 a 39 con huecos</td><td>45: del 0 al 21 y del 26 al 48</td></tr>
+    <tr><td><b>Solo entrada</b></td><td>GPIO34 a 39: sin driver de salida y <strong>sin pull-up ni pull-down</strong></td><td>ninguno: los 45 son bidireccionales</td></tr>
+    <tr><td><b>Pines RTC</b></td><td>18</td><td>22 (GPIO0 a 21)</td></tr>
+    <tr><td><b>Matriz de GPIO</b></td><td>162 entradas y 176 salidas de periférico</td><td>175 entradas y 184 salidas</td></tr>
+    <tr><td><b>Pines tomados</b></td><td>GPIO6 a 11: la flash del módulo</td><td>GPIO26 a 32: la flash y la PSRAM (más 33 a 37 con memoria octal); GPIO19 y 20: USB</td></tr>
+    <tr><td><b>Niveles y fuerza</b></td><td colspan="2">iguales: 0,75 / 0,25 × VDD, pull de unos 45 kΩ, cuatro niveles de fuerza, unos 2 pF por pin, no toleran 5 V</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo: GPIO34 a 39 flotan en el ESP32</h4>
+  <p>Un pulsador a masa en GPIO34 sin resistencia externa deja el pin flotando cuando está suelto: lee ruido y da pulsaciones fantasma. Esos seis pines necesitan un pull-up o pull-down en la placa.</p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Una celda son dos transistores de salida, dos pull débiles y un buffer de entrada, gobernados por IE, OE, WPU y WPD.</li>
+    <li>Push-pull empuja y tira; open-drain solo tira y permite compartir el cable; alta impedancia suelta la línea.</li>
+    <li>La histéresis evita el repiqueteo en señales lentas. Los pull de 45 kΩ son para fijar niveles, no para buses rápidos.</li>
+    <li>La matriz de GPIO conecta cualquier señal con cualquier pin a cambio de unos ciclos de latencia; el IO MUX es el atajo.</li>
+    <li>Los strapping pins se leen al subir el reset: nada externo debe forzarlos. En el ESP32, GPIO34 a 39 son solo de entrada y sin pull.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Conectás la salida de 5 V de un sensor directo a un pin de entrada y al rato el micro se calienta y se reinicia. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El pull-up está en el camino, pero el que conduce la corriente peligrosa es otro elemento de la celda.">El pull-up interno de 45 kΩ no aguanta 5 V y se quema.</button>
+    <button type="button" data-por-que="5 V está muy por encima de 0,75 × VDD: se leería como 1. El problema no es la lectura sino la corriente.">El comparador con histéresis no reconoce 5 V como un 1.</button>
+    <button type="button" data-por-que="Correcto: con 5 V en el pin, el diodo de protección a VDD conduce y mete corriente en la alimentación de 3,3 V. Sostenida, puede encender el tiristor parásito del CMOS y cortocircuitar la alimentación. Hace falta un divisor o un traductor de nivel.">El diodo de protección hacia VDD conduce en forma continua y puede disparar el latch-up.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: GPIO (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/gpio.html">docs.espressif.com/…/gpio.html</a></li>
+    <li>Texas Instruments. <em>Understanding Schmitt Triggers (SCEA046)</em>. <a href="https://www.ti.com/lit/an/scea046/scea046.pdf">ti.com/lit/an/scea046/scea046.pdf</a></li>
+  </ol>
+  <p class="nota">La corriente que tolera un diodo de protección, la inductancia del encapsulado y el retardo exacto de la matriz no figuran como valores garantizados en los datasheets; van como órdenes de magnitud.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit, micro-esp, tomo-02, nivel-01</footer>
+</body>
+</html>

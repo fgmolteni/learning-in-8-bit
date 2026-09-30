@@ -8,3 +8,4 @@ AGENTS.md
 CLAUDE.md
 # capturas de prueba de agentes (no son parte del sitio)
 /*.png
+.claude/settings.local.json

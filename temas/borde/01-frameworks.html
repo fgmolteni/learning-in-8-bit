@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 1, Del modelo al chip</title>
+<title>Nivel 1, Del modelo al micro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
@@ -15,14 +15,14 @@
 <main class="leccion">
 <header>
   <span class="nivel-chip" data-n="01">nivel 01, 14 min de lectura</span>
-  <h1>Del modelo al chip</h1>
-  <p class="bajada">Ya sabemos cómo es el chip, cómo es la red y cómo se encoge. Falta el viaje: qué herramientas llevan un modelo entrenado en una PC hasta la flash de un ESP32-S3, y quién hace las cuentas rápidas una vez ahí.</p>
+  <h1>Del modelo al micro</h1>
+  <p class="bajada">Ya sabemos cómo es el micro, cómo es la red y cómo se encoge. Falta el viaje: qué herramientas llevan un modelo entrenado en una PC hasta la flash de un ESP32-S3, y quién hace las cuentas rápidas una vez ahí.</p>
 </header>
 
 <div class="caja objetivos">
   <h4>al terminar este nivel vas a poder…</h4>
   <ul>
-    <li>Describir las seis etapas del viaje de un modelo, de la PC al chip.</li>
+    <li>Describir las seis etapas del viaje de un modelo, de la PC al micro.</li>
     <li>Ubicar <strong>TensorFlow Lite Micro</strong>, <strong>ESP-NN</strong> y <strong>ESP-DL</strong> en capas y saber qué hace cada uno.</li>
     <li>Diferenciar un motor con <strong>intérprete</strong> de uno <strong>compilado</strong> de antemano.</li>
     <li>Tener una idea realista de cuánto acelera la biblioteca optimizada.</li>
@@ -32,7 +32,7 @@
 <h2>El viaje en seis etapas</h2>
 
 <figure class="diagrama" data-titulo="fig-1.1">
-  <svg viewBox="0 0 640 240" role="img" aria-label="Cadena de herramientas: entrenar, exportar, cuantizar, empaquetar, compilar y grabar en el chip">
+  <svg viewBox="0 0 640 240" role="img" aria-label="Cadena de herramientas: entrenar, exportar, cuantizar, empaquetar, compilar y grabar en el micro">
     <path d="M18,16H622V18H624V110H622V112H18V110H16V18H18Z" class="fn s2" stroke-width="2"/><path d="M18,128H622V130H624V222H622V224H18V222H16V130H18Z" class="fn s2" stroke-width="2"/>
     <text x="28" y="34" class="sv-tag f4" text-anchor="start">EN LA PC</text><text x="28" y="146" class="sv-tag f4" text-anchor="start">HACIA EL CHIP</text>
     <path d="M322,40H462V42H464V106H462V108H322V106H320V42H322Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="392" y="34" class="sv-tag fa3" text-anchor="middle">PIERDE PRECISIÓN</text>
@@ -60,7 +60,7 @@
 <ol>
   <li><strong>Entrenar.</strong> En PyTorch o TensorFlow, con una arquitectura pensada para microcontroladores: convoluciones separables, activaciones acotadas (ReLU6), pocas capas raras.</li>
   <li><strong>Exportar.</strong> Se “congela” el grafo y se quitan las piezas que solo sirven para entrenar. Formatos típicos: ONNX o TensorFlow Lite.</li>
-  <li><strong>Cuantizar.</strong> A int8, con un puñado de imágenes de calibración (<a href="../redes/02-cuantizacion.html">Tomo II, nivel 2</a>). Se fuerzan pesos simétricos y escalas por canal para que las rutinas rápidas del chip los acepten.</li>
+  <li><strong>Cuantizar.</strong> A int8, con un puñado de imágenes de calibración (<a href="../redes/02-cuantizacion.html">Tomo 1, nivel 2</a>). Se fuerzan pesos simétricos y escalas por canal para que las rutinas rápidas del micro los acepten.</li>
   <li><strong>Empaquetar.</strong> El modelo queda como un bloque de bytes: o se incrusta como una constante dentro del firmware, o se graba en una partición propia de la flash para poder actualizarlo por separado.</li>
   <li><strong>Compilar.</strong> Se arma el firmware con ESP-IDF, sumando el motor de inferencia y sus rutinas optimizadas.</li>
   <li><strong>Grabar y ejecutar.</strong> Por USB. Al arrancar, el programa prepara el tensor arena, recibe cuadros de la cámara y llama al motor en cada uno.</li>
@@ -88,7 +88,7 @@
 <h3>TensorFlow Lite for Microcontrollers (LiteRT Micro)</h3>
 <p>El estándar abierto de Google para correr redes en microcontroladores de 32 bits. Tres ideas lo definen:</p>
 <ul>
-  <li><strong>Sin memoria dinámica:</strong> todo vive en el tensor arena, reservado al arrancar (<a href="../chip/03-memoria.html">Tomo I, nivel 3</a>).</li>
+  <li><strong>Sin memoria dinámica:</strong> todo vive en el tensor arena, reservado al arrancar (<a href="../micro/04-memoria.html">Microcontroladores, Tomo 1, nivel 4</a>).</li>
   <li><strong>Solo lo que usás:</strong> se registran únicamente los tipos de capa que el modelo necesita, para no llenar la flash de código que nunca corre.</li>
   <li><strong>Intérprete:</strong> recorre la red capa por capa y llama a la rutina de cada operación.</li>
 </ul>
@@ -97,7 +97,7 @@
 <p>Una biblioteca de Espressif con las operaciones críticas (convolución, depthwise, capa densa, pooling, suma) <strong>escritas a mano en ensamblador</strong> para aprovechar PIE. Se enchufa por debajo de TFLite Micro: si el destino es un ESP32-S3, las rutinas genéricas se reemplazan solas por las optimizadas. Para eso los datos deben estar en int8 con pesos simétricos y alineados a 16 bytes.</p>
 
 <h3>ESP-DL y ESP-PPQ</h3>
-<p>Es el motor propio de Espressif, pensado para exprimir sus chips (S3 y P4). Usa un formato de modelo propio, <strong>.espdl</strong>, que se puede leer directamente desde la flash sin copiarlo ni “desarmarlo” primero. Para producirlo se usa <strong>ESP-PPQ</strong>, que toma un modelo en ONNX (exportado desde PyTorch o TensorFlow) y lo cuantiza a 8 bits, 16 bits o una mezcla.</p>
+<p>Es el motor propio de Espressif, pensado para exprimir sus micros (S3 y P4). Usa un formato de modelo propio, <strong>.espdl</strong>, que se puede leer directamente desde la flash sin copiarlo ni “desarmarlo” primero. Para producirlo se usa <strong>ESP-PPQ</strong>, que toma un modelo en ONNX (exportado desde PyTorch o TensorFlow) y lo cuantiza a 8 bits, 16 bits o una mezcla.</p>
 
 <h3>ESP-WHO y ESP-SR</h3>
 <p>Aplicaciones listas construidas encima: <strong>ESP-WHO</strong> trae detección y reconocimiento de caras, detección de personas y otros modelos de visión; <strong>ESP-SR</strong> trae detección de palabras de activación (WakeNet) y reconocimiento de comandos de voz.</p>
@@ -126,16 +126,16 @@
     <rect x="98" y="88" width="0" height="24" class="fa3"><animate attributeName="width" values="0;11;11" keyTimes="0;.02;1" dur="4s" repeatCount="indefinite"/></rect>
     <text x="118" y="105" class="sv-lbl fa3" text-anchor="start">~54 ms</text>
     <text x="96" y="144" class="sv-tit fa3" text-anchor="start">≈ 40× más rápido</text>
-    <text x="96" y="168" class="sv-lbl f4" text-anchor="start">mismo chip, mismo modelo</text>
+    <text x="96" y="168" class="sv-lbl f4" text-anchor="start">mismo micro, mismo modelo</text>
   </svg>
   <figcaption><b>fig 1.3</b>Las barras están a escala. La diferencia no viene solo del SIMD: también de ordenar los datos en memoria, desenrollar bucles y evitar accesos desalineados.</figcaption>
 </figure>
 
-<p>La misma tabla incluye otros chips (tiempo de una inferencia, memoria interna):</p>
+<p>La misma tabla incluye otros micros (tiempo de una inferencia, memoria interna):</p>
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th>Chip</th><th>Reloj</th><th>Sin ESP-NN</th><th>Con ESP-NN</th><th>Mejora</th></tr></thead>
+  <thead><tr><th>Micro</th><th>Reloj</th><th>Sin ESP-NN</th><th>Con ESP-NN</th><th>Mejora</th></tr></thead>
   <tbody>
     <tr><td><b>ESP32-S3</b></td><td>240 MHz</td><td>2300 ms</td><td><b>54 ms</b></td><td>≈ 43×</td></tr>
     <tr><td>ESP32-P4</td><td>360 MHz</td><td>1395 ms</td><td>73 ms</td><td>≈ 19×</td></tr>
@@ -145,7 +145,7 @@
 </table>
 </div>
 
-<p>Dos lecturas: el ESP32 original, sin PIE, también mejora mucho solo con código bien escrito; y en este modelo chico, con esta versión de las bibliotecas, el S3 termina antes que el P4. El reloj no lo es todo: pesa tanto cuán optimizadas estén las rutinas para cada chip. El P4 se luce en modelos y resoluciones más grandes, donde importan su memoria y sus periféricos de imagen.</p>
+<p>Dos lecturas: el ESP32 original, sin PIE, también mejora mucho solo con código bien escrito; y en este modelo chico, con esta versión de las bibliotecas, el S3 termina antes que el P4. El reloj no lo es todo: pesa tanto cuán optimizadas estén las rutinas para cada micro. El P4 se luce en modelos y resoluciones más grandes, donde importan su memoria y sus periféricos de imagen.</p>
 
 <p>Capa por capa la mejora varía mucho: las tablas de ESP-NN muestran desde alrededor de <strong>1,5×</strong> en algunas convoluciones pequeñas hasta <strong>8×</strong> o más en capas densas. Depende de los tamaños: PIE brilla cuando los canales son múltiplos de 16 y los datos están bien alineados.</p>
 
@@ -194,6 +194,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit, tomo-03, nivel-01</footer>
+<footer class="pie">learning-in-8-bit, ia-borde, tomo-02, nivel-01</footer>
 </body>
 </html>

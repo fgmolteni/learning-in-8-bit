@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: Anatomía del ESP32</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="micro" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 14 min de lectura</span>
+  <h1>Anatomía del ESP32</h1>
+  <p class="bajada">El clásico de la familia, por dentro: dos núcleos LX6, una SRAM partida en tres bancos, la memoria externa detrás de un bus de 4 líneas y los bloques que solo él tiene.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Dibujar los bloques principales del ESP32 y ubicar dónde queda la caché.</li>
+    <li>Explicar por qué la PSRAM del ESP32 no puede ejecutar código y se ve de a <strong>4 MB</strong>.</li>
+    <li>Reconocer los <strong>strapping pins</strong> y la trampa de GPIO12.</li>
+    <li>Decidir cuándo conviene el ESP32 y cuándo el S3, según los bloques que necesites.</li>
+  </ul>
+</div>
+
+<p>El <strong>ESP32</strong> salió en 2016 y fue el micro que puso Wi-Fi y Bluetooth al alcance de cualquier proyecto. Este nivel es su ficha técnica, como la del ESP32-S3 del <a href="03-anatomia-esp32s3.html">nivel 3</a>: qué tiene, cómo se organiza y qué lo distingue. Los bloques que comparten (el pin, el ADC, los buses) se explican a fondo en los Tomos 2 y 3.</p>
+
+<h2>El plano del micro</h2>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 392" role="img" aria-label="Diagrama de bloques del ESP32: dos núcleos LX6, caché con MMU, buses, ROM de 448 KB, SRAM de 520 KB, periféricos con su propio DMA y memorias externas por un bus quad SPI; la PSRAM solo cuelga del bus de datos">
+    <defs><pattern id="a2-t" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern></defs><rect x="16" y="16" width="432" height="360" class="f0 s4" stroke-width="2"/><rect x="15" y="15" width="2" height="2" class="f0"/><rect x="447" y="15" width="2" height="2" class="f0"/><rect x="15" y="375" width="2" height="2" class="f0"/><rect x="447" y="375" width="2" height="2" class="f0"/><text x="32" y="38" class="sv-tit f6" text-anchor="start">ESP32</text><rect x="32" y="48" width="192" height="48" class="f1 s3" stroke-width="2"/><rect x="31" y="47" width="2" height="2" class="f0"/><rect x="223" y="47" width="2" height="2" class="f0"/><rect x="31" y="95" width="2" height="2" class="f0"/><rect x="223" y="95" width="2" height="2" class="f0"/><text x="128" y="69" class="sv-tit f6" text-anchor="middle">Núcleo 0</text><text x="128" y="87" class="sv-lbl f4" text-anchor="middle">LX6, PRO_CPU</text><rect x="240" y="48" width="192" height="48" class="f1 s3" stroke-width="2"/><rect x="239" y="47" width="2" height="2" class="f0"/><rect x="431" y="47" width="2" height="2" class="f0"/><rect x="239" y="95" width="2" height="2" class="f0"/><rect x="431" y="95" width="2" height="2" class="f0"/><text x="336" y="69" class="sv-tit f6" text-anchor="middle">Núcleo 1</text><text x="336" y="87" class="sv-lbl f4" text-anchor="middle">LX6, APP_CPU</text><rect x="32" y="108" width="400" height="28" class="f1 s3" stroke-width="2"/><text x="232" y="127" class="sv-tit f6" text-anchor="middle">Caché 2 × 32 KB + MMU</text><rect x="32" y="146" width="400" height="20" class="f2 s3" stroke-width="2"/><rect x="34" y="148" width="396" height="16" fill="url(#a2-t)"/><rect x="196" y="150" width="72" height="12" class="f2"/><text x="232" y="161" class="sv-tag f4" text-anchor="middle" font-size="16">BUSES</text><line x1="88" y1="166" x2="88" y2="180" class="s4" stroke-width="2"/><line x1="232" y1="166" x2="232" y2="180" class="s4" stroke-width="2"/><line x1="376" y1="166" x2="376" y2="180" class="s4" stroke-width="2"/><rect x="32" y="180" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="31" y="179" width="2" height="2" class="f0"/><rect x="143" y="179" width="2" height="2" class="f0"/><rect x="31" y="227" width="2" height="2" class="f0"/><rect x="143" y="227" width="2" height="2" class="f0"/><text x="88" y="201" class="sv-tit f6" text-anchor="middle">ROM</text><text x="88" y="219" class="sv-lbl f4" text-anchor="middle">448 KB</text><rect x="160" y="180" width="144" height="48" class="f1 s3" stroke-width="2"/><rect x="159" y="179" width="2" height="2" class="f0"/><rect x="303" y="179" width="2" height="2" class="f0"/><rect x="159" y="227" width="2" height="2" class="f0"/><rect x="303" y="227" width="2" height="2" class="f0"/><text x="232" y="201" class="sv-tit f6" text-anchor="middle">SRAM</text><text x="232" y="219" class="sv-lbl f4" text-anchor="middle">520 KB</text><rect x="320" y="180" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="319" y="179" width="2" height="2" class="f0"/><rect x="431" y="179" width="2" height="2" class="f0"/><rect x="319" y="227" width="2" height="2" class="f0"/><rect x="431" y="227" width="2" height="2" class="f0"/><text x="376" y="201" class="sv-tit f6" text-anchor="middle">RTC</text><text x="376" y="219" class="sv-lbl f4" text-anchor="middle">16 KB + ULP</text><rect x="32" y="252" width="400" height="108" class="fn sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="40" y="246" class="sv-lbl fa3" text-anchor="start" font-size="16">cada periférico con su DMA</text><rect x="44" y="268" width="84" height="48" class="fa1 sa3" stroke-width="2"/><rect x="43" y="267" width="2" height="2" class="f0"/><rect x="127" y="267" width="2" height="2" class="f0"/><rect x="43" y="315" width="2" height="2" class="f0"/><rect x="127" y="315" width="2" height="2" class="f0"/><text x="86" y="289" class="sv-tit f6" text-anchor="middle">SPI</text><text x="86" y="307" class="sv-lbl fa3" text-anchor="middle">DMA</text><rect x="142" y="268" width="84" height="48" class="fa1 sa3" stroke-width="2"/><rect x="141" y="267" width="2" height="2" class="f0"/><rect x="225" y="267" width="2" height="2" class="f0"/><rect x="141" y="315" width="2" height="2" class="f0"/><rect x="225" y="315" width="2" height="2" class="f0"/><text x="184" y="289" class="sv-tit f6" text-anchor="middle">I2S</text><text x="184" y="307" class="sv-lbl fa3" text-anchor="middle">DMA</text><rect x="240" y="268" width="84" height="48" class="fa1 sa3" stroke-width="2"/><rect x="239" y="267" width="2" height="2" class="f0"/><rect x="323" y="267" width="2" height="2" class="f0"/><rect x="239" y="315" width="2" height="2" class="f0"/><rect x="323" y="315" width="2" height="2" class="f0"/><text x="282" y="289" class="sv-tit f6" text-anchor="middle">EMAC</text><text x="282" y="307" class="sv-lbl fa3" text-anchor="middle">DMA</text><rect x="338" y="268" width="84" height="48" class="fa1 sa3" stroke-width="2"/><rect x="337" y="267" width="2" height="2" class="f0"/><rect x="421" y="267" width="2" height="2" class="f0"/><rect x="337" y="315" width="2" height="2" class="f0"/><rect x="421" y="315" width="2" height="2" class="f0"/><text x="380" y="289" class="sv-tit f6" text-anchor="middle">SDIO</text><text x="380" y="307" class="sv-lbl fa3" text-anchor="middle">DMA</text><text x="232" y="348" class="sv-lbl f4" text-anchor="middle" font-size="16">UART, I2C, LEDC, ADC, DAC, touch: sin DMA propio</text><rect x="512" y="104" width="112" height="32" class="f1 s3" stroke-width="2"/><rect x="511" y="103" width="2" height="2" class="f0"/><rect x="623" y="103" width="2" height="2" class="f0"/><rect x="511" y="135" width="2" height="2" class="f0"/><rect x="623" y="135" width="2" height="2" class="f0"/><text x="568" y="126" class="sv-tit f6" text-anchor="middle">Flash</text><rect x="512" y="176" width="112" height="32" class="f1 s3" stroke-width="2"/><rect x="511" y="175" width="2" height="2" class="f0"/><rect x="623" y="175" width="2" height="2" class="f0"/><rect x="511" y="207" width="2" height="2" class="f0"/><rect x="623" y="207" width="2" height="2" class="f0"/><text x="568" y="198" class="sv-tit f6" text-anchor="middle">PSRAM</text><line x1="432" y1="120" x2="502" y2="120" class="s4" stroke-width="2"/><rect x="502" y="112" width="2" height="16" class="f4"/><rect x="504" y="114" width="2" height="12" class="f4"/><rect x="506" y="116" width="2" height="8" class="f4"/><rect x="508" y="118" width="2" height="4" class="f4"/><rect x="510" y="119" width="2" height="2" class="f4"/><polyline points="432,130 470,130 470,192 502,192" class="fn s4" stroke-width="2"/><rect x="502" y="184" width="2" height="16" class="f4"/><rect x="504" y="186" width="2" height="12" class="f4"/><rect x="506" y="188" width="2" height="8" class="f4"/><rect x="508" y="190" width="2" height="4" class="f4"/><rect x="510" y="191" width="2" height="2" class="f4"/><text x="568" y="158" class="sv-lbl f4" text-anchor="middle" font-size="16">quad SPI</text><text x="568" y="230" class="sv-lbl fa3" text-anchor="middle" font-size="16">solo bus</text><text x="568" y="248" class="sv-lbl fa3" text-anchor="middle" font-size="16">de datos</text><text x="568" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">80 MHz, 4 líneas</text>
+  </svg>
+  <figcaption><b>fig 2.1</b>Bloques del ESP32. Como en el S3, las memorias grandes están afuera, detrás de una caché. Las diferencias están en los detalles: la caché sale de la SRAM interna, el bus externo es de 4 líneas, la PSRAM solo se ve como datos y cada periférico rápido trae <strong>su propio DMA</strong> en lugar de compartir uno central.</figcaption>
+</figure>
+
+<h3>Dos núcleos LX6</h3>
+<p>Son dos procesadores <strong>Xtensa LX6</strong> de 32 bits, hasta <strong>240 MHz</strong>. Espressif los llama PRO_CPU (núcleo 0, el que arranca) y APP_CPU (núcleo 1). Cada uno tiene un <strong>pipeline de 7 etapas</strong> y una unidad de punto flotante de precisión simple. El doble de 64 bits se emula por software y cuesta decenas de ciclos.</p>
+
+<p>El LX6 <strong>no tiene instrucciones vectoriales</strong>: cada multiplicación trabaja sobre un solo dato. Para filtros digitales o redes neuronales, esa es la mayor diferencia con el S3, que multiplica de a 16 (<a href="../datos/05-pie.html">Tomo 3, nivel 5</a>).</p>
+
+<div class="caja dato">
+  <h4>dato: las ventanas de registros</h4>
+  <p>El LX6 tiene 64 registros físicos pero el programa ve solo 16 a la vez. Al llamar a una función, la ventana “rota” y la función nueva estrena registros sin guardar los anteriores en la pila. Ahorra accesos a memoria en las llamadas cortas; si las llamadas anidadas agotan los 64, una excepción vuelca los más viejos a la RAM.</p>
+</div>
+
+<h2>La memoria de adentro</h2>
+
+<ul>
+  <li><strong>ROM (448 KB):</strong> grabada de fábrica. Tiene el primer cargador de arranque y rutinas del sistema.</li>
+  <li><strong>SRAM (520 KB):</strong> la memoria de trabajo, partida en tres bancos con usos distintos.</li>
+  <li><strong>Memoria RTC (16 KB):</strong> 8 KB rápidos y 8 KB lentos que siguen alimentados en sueño profundo. La parte lenta es la memoria del coprocesador ULP (<a href="06-energia.html">nivel 6</a>).</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-2.2">
+  <svg viewBox="0 0 640 176" role="img" aria-label="Los 520 KB de SRAM interna del ESP32 dibujados a escala: SRAM0 de 192 KB (64 KB de caché y 128 KB de IRAM), SRAM1 de 128 KB visible como código y como datos, y SRAM2 de 200 KB de datos">
+    <defs><pattern id="a22-c" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="2" class="f3"/><rect x="2" y="2" width="2" height="2" class="f3"/></pattern></defs><text x="128" y="32" class="sv-tit f6" text-anchor="middle">SRAM0, 192 KB</text><rect x="16" y="48" width="71" height="56" class="f1 s2" stroke-width="2"/><rect x="15" y="47" width="2" height="2" class="f0"/><rect x="86" y="47" width="2" height="2" class="f0"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="86" y="103" width="2" height="2" class="f0"/><text x="51" y="73" class="sv-tit f4" text-anchor="middle">caché</text><text x="51" y="91" class="sv-lbl f4" text-anchor="middle">64 KB</text><rect x="20" y="92" width="63" height="8" fill="url(#a22-c)"/><rect x="91" y="48" width="146" height="56" class="f1 s3" stroke-width="2"/><rect x="90" y="47" width="2" height="2" class="f0"/><rect x="236" y="47" width="2" height="2" class="f0"/><rect x="90" y="103" width="2" height="2" class="f0"/><rect x="236" y="103" width="2" height="2" class="f0"/><text x="164" y="73" class="sv-tit f6" text-anchor="middle">IRAM</text><text x="164" y="91" class="sv-lbl f4" text-anchor="middle">128 KB</text><text x="315" y="32" class="sv-tit f6" text-anchor="middle">SRAM1, 128 KB</text><rect x="240" y="48" width="146" height="56" class="fa1 sa3" stroke-width="2"/><rect x="239" y="47" width="2" height="2" class="f0"/><rect x="385" y="47" width="2" height="2" class="f0"/><rect x="239" y="103" width="2" height="2" class="f0"/><rect x="385" y="103" width="2" height="2" class="f0"/><text x="313" y="73" class="sv-tit f6" text-anchor="middle">código o datos</text><text x="313" y="91" class="sv-lbl fa3" text-anchor="middle">128 KB</text><text x="507" y="32" class="sv-tit f6" text-anchor="middle">SRAM2, 200 KB</text><rect x="390" y="48" width="230" height="56" class="f1 s3" stroke-width="2"/><rect x="389" y="47" width="2" height="2" class="f0"/><rect x="619" y="47" width="2" height="2" class="f0"/><rect x="389" y="103" width="2" height="2" class="f0"/><rect x="619" y="103" width="2" height="2" class="f0"/><text x="505" y="73" class="sv-tit f6" text-anchor="middle">DRAM: datos</text><text x="505" y="91" class="sv-lbl f4" text-anchor="middle">200 KB</text><line x1="16" y1="124" x2="386" y2="124" class="s5" stroke-width="4"/><text x="16" y="146" class="sv-lbl f4" text-anchor="start" font-size="16">bus de instrucciones</text><line x1="240" y1="136" x2="620" y2="136" class="sa3" stroke-width="4"/><text x="620" y="158" class="sv-lbl fa3" text-anchor="end" font-size="16">bus de datos</text>
+  </svg>
+  <figcaption><b>fig 2.2</b>La SRAM a escala. Los primeros 64 KB de SRAM0 se los queda la caché de la flash y la PSRAM; el resto de SRAM0 es IRAM, donde viven las rutinas que no pueden esperar a la flash. SRAM1 tiene dos direcciones, una para código y otra para datos. SRAM2 es la memoria de datos: pilas, variables y búferes de DMA.</figcaption>
+</figure>
+
+<p>La partición importa en el diseño. La caché de la memoria externa no es un bloque aparte: sale de la propia SRAM, así que esos 64 KB no están disponibles para el programa. Y el código que tiene que correr sin demoras (las rutinas de interrupción) vive en IRAM, como se ve en el <a href="05-tiempo-real.html">nivel 5</a>.</p>
+
+<h2>La memoria de afuera</h2>
+
+<p>Como el S3, el ESP32 no tiene la flash en el mismo silicio que la CPU. El programa vive en un chip de flash externo y se puede sumar <strong>PSRAM</strong>. Los dos cuelgan de un bus <strong>quad SPI</strong>: 4 líneas de datos a hasta <strong>80 MHz</strong>, con un bit por línea en cada ciclo. El techo teórico es 80 MHz × 4 bits = 320 Mbit/s, es decir <strong>40 MB/s</strong>, la sexta parte del bus octal de doble flanco del S3.</p>
+
+<p>La <strong>caché</strong> (32 KB por núcleo) y la <strong>MMU</strong> hacen que la CPU vea la flash como memoria y pueda ejecutar código desde ahí (XIP). La PSRAM tiene dos limitaciones propias del ESP32:</p>
+
+<ul>
+  <li><strong>Solo cuelga del bus de datos.</strong> Sirve para variables y búferes, pero <strong>no se puede ejecutar código desde la PSRAM</strong>.</li>
+  <li><strong>La ventana es de 4 MB.</strong> Con un chip de 8 MB, la CPU ve una mitad por vez.</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 208" role="img" aria-label="Una PSRAM de 8 MB y la ventana de direcciones de 4 MB del ESP32: la ventana muestra una mitad por vez y el software cambia cuál">
+    <text x="16" y="32" class="sv-tit f6" text-anchor="start">PSRAM física, 8 MB</text><rect x="16" y="48" width="296" height="56" class="f1 s3" stroke-width="2"/><rect x="15" y="47" width="2" height="2" class="f0"/><rect x="311" y="47" width="2" height="2" class="f0"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="311" y="103" width="2" height="2" class="f0"/><text x="164" y="82" class="sv-tit f6" text-anchor="middle">0 a 4 MB</text><rect x="328" y="48" width="296" height="56" class="f1 s3" stroke-width="2"/><rect x="327" y="47" width="2" height="2" class="f0"/><rect x="623" y="47" width="2" height="2" class="f0"/><rect x="327" y="103" width="2" height="2" class="f0"/><rect x="623" y="103" width="2" height="2" class="f0"/><text x="476" y="82" class="sv-tit f6" text-anchor="middle">4 a 8 MB</text><g><animateTransform attributeName="transform" type="translate" values="0,0;312,0" dur="6s" calcMode="discrete" repeatCount="indefinite"/><rect x="12" y="44" width="304" height="64" class="fn sa3" stroke-width="4"/><text x="164" y="132" class="sv-lbl fa3" text-anchor="middle" font-size="16">ventana del bus de datos, 4 MB</text></g><rect x="16" y="160" width="608" height="32" class="f0 s4" stroke-width="2"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="623" y="159" width="2" height="2" class="f0"/><rect x="15" y="191" width="2" height="2" class="f0"/><rect x="623" y="191" width="2" height="2" class="f0"/><text x="320" y="182" class="sv-lbl f4" text-anchor="middle" font-size="16">la CPU ve una sola mitad; la otra requiere cambiar la MMU</text>
+  </svg>
+  <figcaption><b>fig 2.3</b>El ESP32 reserva una ventana fija de 4 MB para la RAM externa. Un módulo con 8 MB de PSRAM entra, pero la CPU ve una mitad por vez: para llegar a la otra, el software reescribe la tabla de la MMU (la técnica se llama <em>himem</em>). El recuadro en acento es la ventana saltando de mitad cada tres segundos.</figcaption>
+</figure>
+
+<div class="caja analogia">
+  <h4>analogía: la pantalla del osciloscopio</h4>
+  <p>La ventana de 4 MB es una pantalla de cuatro divisiones mirando una señal de ocho. Para ver la parte de arriba tenés que mover el offset, y en ese momento dejás de ver la de abajo. En el S3 la pantalla es mucho más grande: toda la PSRAM entra en un solo barrido.</p>
+</div>
+
+<h2>Un DMA por periférico</h2>
+
+<p>En el ESP32 el DMA no es un bloque central: los periféricos rápidos (<strong>SPI, I2S, Ethernet y SDIO</strong>) traen su propio motor. Todos funcionan igual: leen una lista enlazada de <strong>descriptores</strong> en la SRAM, cada uno con un puntero a un búfer de hasta 4092 bytes, y avisan al terminar.</p>
+
+<p>Ese DMA solo alcanza la SRAM interna: <strong>no puede leer ni escribir la PSRAM</strong>. Una imagen grande que vive en PSRAM tiene que pasar por la CPU o por búferes intermedios en SRAM. El S3 reemplazó este esquema por un GDMA central que sí llega a la PSRAM (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>).</p>
+
+<h2>Lo que solo tiene el ESP32</h2>
+
+<p>Varios bloques del ESP32 desaparecieron en el S3. Si tu proyecto necesita alguno, el clásico sigue siendo la opción:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Bloque</th><th>Qué es</th><th>Más detalle</th></tr></thead>
+  <tbody>
+    <tr><td><b>DAC</b></td><td>dos canales de 8 bits (GPIO25 y GPIO26), con generador de coseno por hardware</td><td><a href="../mundo/04-dac-touch.html">Tomo 2, nivel 4</a></td></tr>
+    <tr><td><b>Ethernet MAC</b></td><td>controlador de 10/100 Mbit/s por interfaz RMII hacia un PHY externo, con su propio DMA</td><td>Tomo 4 (en preparación)</td></tr>
+    <tr><td><b>Bluetooth Clásico</b></td><td>BR/EDR 4.2 además de BLE: permite audio por A2DP y puerto serie por SPP</td><td></td></tr>
+    <tr><td><b>LEDC de 16 canales</b></td><td>8 canales de alta velocidad y 8 de baja; el S3 tiene 8 en total</td><td><a href="../mundo/02-temporizadores-pwm.html">Tomo 2, nivel 2</a></td></tr>
+    <tr><td><b>Pines solo de entrada</b></td><td>GPIO34 a GPIO39 no tienen driver de salida ni pull-up o pull-down internos</td><td><a href="../mundo/01-pin.html">Tomo 2, nivel 1</a></td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo: el sensor Hall ya no está documentado</h4>
+  <p>El ESP32 traía un sensor de efecto Hall en el silicio, pero Espressif lo quitó del datasheet (aviso de cambio PCN20221202) y de las bibliotecas actuales. Aunque lo veas en tutoriales viejos, no diseñes con él.</p>
+</div>
+
+<h2>Del reset a tu programa</h2>
+
+<p>El arranque sigue la misma cadena que en el S3: el reset lee los <strong>strapping pins</strong>, la ROM carga un segundo cargador desde la flash, este lee la tabla de particiones, configura la MMU y arranca FreeRTOS en los dos núcleos (el detalle está en el <a href="03-anatomia-esp32s3.html">nivel 3</a>). Lo propio del ESP32 son sus cinco strapping pins:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Pin</th><th>Por defecto</th><th>Qué decide</th></tr></thead>
+  <tbody>
+    <tr><td><b>GPIO0</b></td><td>pull-up (1)</td><td>1: arranca desde la flash. 0: modo de descarga por UART</td></tr>
+    <tr><td><b>GPIO2</b></td><td>pull-down (0)</td><td>tiene que estar en 0 (o suelto) para entrar al modo de descarga</td></tr>
+    <tr><td><b>GPIO5</b></td><td>pull-up (1)</td><td>tiempos del esclavo SDIO</td></tr>
+    <tr><td><b>GPIO12</b></td><td>pull-down (0)</td><td>tensión de la flash: 0 da 3,3 V, 1 da 1,8 V</td></tr>
+    <tr><td><b>GPIO15</b></td><td>pull-up (1)</td><td>si la ROM imprime mensajes de arranque, y tiempos del SDIO</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja ojo">
+  <h4>ojo: GPIO12 puede dejar la flash sin tensión</h4>
+  <p>Casi todos los módulos usan flash de 3,3 V. Si algo externo mantiene GPIO12 en alto al soltar el reset (un pull-up o un sensor), el regulador interno le da <strong>1,8 V</strong> a la flash, que no arranca: el micro entra en un ciclo de reinicios. Se evita dejando GPIO12 libre durante el arranque o grabando un eFuse que fija la tensión en 3,3 V para siempre.</p>
+</div>
+
+<h2>Revisiones de silicio</h2>
+
+<p>Espressif corrigió el ESP32 varias veces sin cambiarle el nombre. La revisión queda grabada en eFuses y conviene saber cuál tenés:</p>
+
+<ul>
+  <li><strong>v0:</strong> la primera, con errores serios (el detector de baja tensión no era confiable). Ya no se consigue.</li>
+  <li><strong>v1:</strong> corrigió lo anterior, pero tiene un error en la caché cuando se usa PSRAM. Se esquiva con un parche del compilador que agrega instrucciones y cuesta rendimiento.</li>
+  <li><strong>v3:</strong> corrige la caché con PSRAM y habilita el <strong>arranque seguro v2</strong>, basado en firmas RSA. Es la que traen los módulos con sufijo “V3” o “-E”.</li>
+</ul>
+
+<div class="caja dato">
+  <h4>dato: no todas las variantes siguen vigentes</h4>
+  <p>El datasheet marca varias variantes viejas (por ejemplo ESP32-D0WD y ESP32-S0WD) como “no recomendadas para diseños nuevos”. Las que siguen en catálogo son las de revisión v3, como la ESP32-D0WD-V3.</p>
+</div>
+
+<h2>ESP32 contra ESP32-S3</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>Núcleos</b></td><td>2 × LX6, 240 MHz, pipeline de 7 etapas</td><td>2 × LX7, 240 MHz, pipeline de 5 etapas</td></tr>
+    <tr><td><b>Vectorial</b></td><td>no</td><td>PIE: 16 MAC de 8 bits por instrucción</td></tr>
+    <tr><td><b>ROM / SRAM</b></td><td>448 KB / 520 KB</td><td>384 KB / 512 KB</td></tr>
+    <tr><td><b>Bus externo</b></td><td>quad SPI, 80 MHz</td><td>quad u octal, hasta 120 MHz en doble flanco</td></tr>
+    <tr><td><b>PSRAM</b></td><td>ventana de 4 MB, solo datos</td><td>hasta 32 MB, datos y código</td></tr>
+    <tr><td><b>DMA</b></td><td>uno por periférico, solo SRAM</td><td>GDMA central de 5 + 5 canales, llega a PSRAM</td></tr>
+    <tr><td><b>GPIO</b></td><td>34 (6 solo de entrada)</td><td>45, todos bidireccionales</td></tr>
+    <tr><td><b>Solo en uno</b></td><td>DAC, Ethernet MAC, Bluetooth Clásico</td><td>USB OTG, USB-Serial/JTAG, interfaz de cámara LCD_CAM</td></tr>
+    <tr><td><b>Radio</b></td><td>Wi-Fi 4 + Bluetooth 4.2 (BR/EDR y LE)</td><td>Wi-Fi 4 + Bluetooth 5 (LE)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Dos LX6 a 240 MHz sin instrucciones vectoriales, 448 KB de ROM y 520 KB de SRAM en tres bancos; 64 KB se los lleva la caché.</li>
+    <li>La flash y la PSRAM van por quad SPI a 80 MHz (40 MB/s de techo). La PSRAM solo guarda datos y se ve de a 4 MB.</li>
+    <li>Cada periférico rápido trae su propio DMA, que no llega a la PSRAM.</li>
+    <li>DAC, Ethernet y Bluetooth Clásico son exclusivos del ESP32. GPIO34 a 39 son solo de entrada, sin pull-ups.</li>
+    <li>GPIO12 decide la tensión de la flash al arrancar: nada externo debe tirarlo a 1 durante el reset.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Tu placa con ESP32 queda en un ciclo de reinicios, pero arranca bien si desconectás un sensor que va a GPIO12 y lo conectás después de encenderla. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El consumo no depende del momento en que lo conectes. La clave está en el pin: GPIO12 es un strapping pin.">El sensor consume demasiada corriente al arrancar.</button>
+    <button type="button" data-por-que="Correcto: GPIO12 se lee al soltar el reset y elige la tensión de la flash. Con un 1, el regulador entrega 1,8 V, la flash no arranca y el micro se reinicia una y otra vez. Se arregla moviendo el sensor o grabando el eFuse que fija 3,3 V.">El sensor pone GPIO12 en alto durante el reset y el micro le da 1,8 V a una flash de 3,3 V.</button>
+    <button type="button" data-por-que="Los pines solo de entrada son GPIO34 a 39. GPIO12 es bidireccional; el problema es su papel en el arranque.">GPIO12 es solo de entrada y el sensor lo daña.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Series SoC Errata</em>. <a href="https://docs.espressif.com/projects/esp-chip-errata/en/latest/esp32/">docs.espressif.com/projects/esp-chip-errata/…/esp32/</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: Memory Types (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/memory-types.html">docs.espressif.com/…/memory-types.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: Support for External RAM (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/external-ram.html">docs.espressif.com/…/external-ram.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: Bootloader (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/bootloader.html">docs.espressif.com/…/bootloader.html</a></li>
+  </ol>
+  <p class="nota">El rendimiento de la caché con PSRAM y el costo del parche de la revisión v1 dependen del programa; no se dan cifras.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">learning-in-8-bit, micro-esp, tomo-01, nivel-02</footer>
+</body>
+</html>

@@ -18,7 +18,7 @@
 <header>
   <span class="nivel-chip" data-n="02">nivel 02, 18 min de lectura</span>
   <h1>Todo junto</h1>
-  <p class="bajada">Un sistema de visión es más que la red neuronal: es una cadena en la que la cámara captura, alguien prepara la imagen, la red decide y el sistema actúa. En este nivel armamos la cadena completa, miramos casos reales y cerramos con cómo elegir el chip.</p>
+  <p class="bajada">Un sistema de visión es más que la red neuronal: es una cadena en la que la cámara captura, alguien prepara la imagen, la red decide y el sistema actúa. En este nivel armamos la cadena completa, miramos casos reales y cerramos con cómo elegir el micro.</p>
 </header>
 
 <div class="caja objetivos">
@@ -58,9 +58,9 @@
 </figure>
 
 <ol>
-  <li><strong>Captura.</strong> El sensor (por ejemplo, un OV2640) entrega píxeles por el bus paralelo; la interfaz de cámara y el DMA los dejan en memoria. La CPU no interviene (<a href="../chip/02-arquitectura.html">Tomo I, nivel 2</a>).</li>
+  <li><strong>Captura.</strong> El sensor (por ejemplo, un OV2640) entrega píxeles por el bus paralelo; la interfaz de cámara y el DMA los dejan en memoria. La CPU no interviene (<a href="../micro/03-anatomia-esp32s3.html">Microcontroladores, Tomo 1, nivel 3</a>).</li>
   <li><strong>Preparación.</strong> Se recorta la zona de interés, se reescala al tamaño que espera la red (por ejemplo, 96 × 96), se pasa a escala de grises si hace falta y se lleva al formato int8 de la entrada. Se escribe directamente en el buffer de entrada del tensor arena.</li>
-  <li><strong>Inferencia.</strong> El motor recorre la red con las rutinas vectoriales. Pesos desde la flash, activaciones en SRAM (<a href="../chip/03-memoria.html">Tomo I, nivel 3</a>).</li>
+  <li><strong>Inferencia.</strong> El motor recorre la red con las rutinas vectoriales. Pesos desde la flash, activaciones en SRAM (<a href="../micro/04-memoria.html">Microcontroladores, Tomo 1, nivel 4</a>).</li>
   <li><strong>Decisión.</strong> La salida se convierte de nuevo a probabilidades, se compara con un umbral (“hay una persona con más de 75 %”) y se actúa: un relé, un LED, un mensaje. En detectores que devuelven recuadros, además se eliminan los recuadros repetidos.</li>
 </ol>
 
@@ -69,7 +69,7 @@
 <p>Si todo se hace en fila, la cámara espera a la red y la red espera a la cámara. El truco clásico es el <strong>doble buffer</strong> (o “ping-pong”): hay dos buffers de imagen. Mientras la red trabaja sobre uno, la cámara llena el otro; después se intercambian. Con dos núcleos el reparto natural es:</p>
 <ul>
   <li><strong>Núcleo 0:</strong> Wi-Fi, sistema y preparación de cuadros.</li>
-  <li><strong>Núcleo 1:</strong> la inferencia, sin la carga de Wi-Fi ni del sistema (sigue recibiendo su tick y las interrupciones que se le asignen; ver <a href="../chip/05-tiempo-real.html">Tomo I, nivel 5</a>).</li>
+  <li><strong>Núcleo 1:</strong> la inferencia, sin la carga de Wi-Fi ni del sistema (sigue recibiendo su tick y las interrupciones que se le asignen; ver <a href="../micro/05-tiempo-real.html">Microcontroladores, Tomo 1, nivel 5</a>).</li>
 </ul>
 
 <figure class="diagrama" data-titulo="fig-2.2 analizador lógico">
@@ -128,7 +128,7 @@
   <p>Dejar el reflector prendido toda la noche agota el generador en horas. Mejor un centinela quieto en la oscuridad que, cuando escucha un ruido, prende el reflector un instante, mira y lo apaga.</p>
 </div>
 
-<h2>¿Qué chip elijo?</h2>
+<h2>¿Qué micro elijo?</h2>
 
 <div class="caja arbol" data-arbol>
   <h4>árbol de decisión</h4>
@@ -193,6 +193,6 @@
 
 <div data-nav-niveles></div>
 </main>
-<footer class="pie">learning-in-8-bit, tomo-03, nivel-02</footer>
+<footer class="pie">learning-in-8-bit, ia-borde, tomo-02, nivel-02</footer>
 </body>
 </html>
