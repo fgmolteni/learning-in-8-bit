@@ -177,19 +177,8 @@ function pausarFueraDePantalla() {
   document.querySelectorAll("figure.diagrama svg").forEach((s) => io.observe(s));
 }
 
-// ---- autoría: firma al pie de todas las páginas ----
-function montarAutor() {
-  const pie = document.querySelector("footer.pie");
-  if (!pie) return;
-  const firma = document.createElement("div");
-  firma.className = "autor";
-  firma.innerHTML = `hecho por <a href="https://github.com/fgmolteni" rel="author">Gabriel Molteni</a> · <a href="https://github.com/fgmolteni/learning-in-8-bit">código en GitHub</a>`;
-  pie.append(firma);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   montarBarra();
-  montarAutor();
   montarTemario();
   montarNavLeccion();
   montarQuiz();

@@ -347,8 +347,6 @@ abbr[title], .termino { text-decoration: underline dotted var(--texto-suave); te
 .nav-niveles small { display: block; font-family: var(--f-mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); }
 .nav-niveles span { font-family: var(--f-serif); font-size: 1.4rem; line-height: 1.25; color: var(--tinta); }
 
-footer.pie .autor { margin-top: .5rem; color: var(--texto); }
-footer.pie .autor a { color: var(--a3); }
 footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--texto-suave); font-size: .8rem; font-family: var(--f-mono); letter-spacing: .04em; border-top: 1px solid var(--linea-fuerte); }
 
 /* animaciones */
@@ -409,3 +407,21 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   figure.diagrama > svg, figure.diagrama > canvas { min-width: 560px; }
   figure.diagrama figcaption { position: sticky; left: 0; max-width: calc(100vw - 3rem); }
 }
+
+/* ---------- Portada: autor y aviso (solo index.html) ---------- */
+.autor-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 1.6rem; align-items: center;
+  padding: 1.6rem; border: 1px solid var(--linea-fuerte); background: var(--panel);
+  clip-path: var(--esc); margin: 0 0 3rem;
+}
+.autor-card .avatar { width: 96px; height: 96px; border: 1px solid var(--linea-fuerte); background: var(--fondo); display: grid; place-items: center; }
+.autor-card .prompt { font-family: var(--f-mono); font-size: .8rem; color: var(--texto-suave); margin: 0 0 .3rem; }
+.autor-card .prompt b { color: var(--a3); font-weight: 400; }
+.autor-card h3 { font-family: var(--f-serif); font-weight: 400; font-size: 2.2rem; line-height: 1.05; margin: 0 0 .35rem; color: var(--tinta); text-transform: none; letter-spacing: 0; }
+.autor-card .rol { margin: 0 0 1rem; color: var(--texto); }
+.autor-card .enlaces { display: flex; flex-wrap: wrap; gap: .6rem; }
+.autor-card .enlaces a { text-decoration: none; }
+.aviso { border: 1px dashed var(--a3); background: var(--a1); padding: 1.2rem 1.4rem; margin: 0 0 3rem; font-size: .95rem; }
+.aviso ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+.aviso li { margin-bottom: .35rem; }
+@media (max-width: 560px) { .autor-card { grid-template-columns: 1fr; } }
