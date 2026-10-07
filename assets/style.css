@@ -194,11 +194,10 @@ a:hover { text-decoration-color: var(--a3); }
   display: grid; gap: 0;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   margin: 0 0 4rem;
-  border-left: 1px solid var(--linea-fuerte); border-top: 1px solid var(--linea-fuerte);
 }
 .libro {
   display: flex; flex-direction: column; gap: .7rem;
-  border-width: 0 1px 1px 0;
+  margin: 0 -1px -1px 0; /* bordes completos que se superponen: sin bordes abiertos en las celdas vacías */
   padding: 1.4rem; text-decoration: none; color: var(--texto);
 }
 a.libro:hover { background: var(--n2); color: var(--texto); }
@@ -215,6 +214,14 @@ a.libro:hover .lomo { border-color: var(--a3); }
   clip-path: var(--esc);
 }
 .etiqueta.pronto { border-color: var(--linea-fuerte); color: var(--texto-suave); border-style: dashed; }
+/* avance del tomo en su tarjeta (site.js; solo con niveles completados) */
+.avance {
+  margin-top: auto; display: flex; align-items: center; gap: .6rem;
+  font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-suave);
+}
+.avance > span { display: flex; gap: 3px; }
+.avance i { width: 10px; height: 10px; border: 1px solid var(--linea-fuerte); }
+.avance i.si { background: var(--a3); border-color: var(--a3); }
 
 /* ---------- Temario ---------- */
 .leccion .mapa { list-style: none; padding: 0; margin: 2rem 0 4rem; border-top: 1px solid var(--linea-fuerte); }
@@ -275,6 +282,12 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .caja.clave { border-color: var(--a3); }
 .objetivos { margin: 2.5rem 0; }
 .objetivos ul { margin: 0; }
+/* índice de la página (site.js, niveles con 7 secciones o más) */
+.indice ol { columns: 2; column-gap: 2.5rem; margin: 0; }
+.indice li { break-inside: avoid; }
+.indice a { color: var(--texto); text-decoration-color: var(--linea-fuerte); }
+.indice a:hover { color: var(--tinta); text-decoration-color: var(--a3); }
+.leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde el índice */
 
 /* figuras */
 figure.diagrama { margin: 2.5rem -1rem; padding: 1.5rem 1.25rem 1.25rem; background: var(--n0); clip-path: var(--esc-t); }
@@ -370,6 +383,7 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
   .nav-niveles a + a { border-left: 0; border-top: 1px solid var(--linea-fuerte); text-align: left; }
+  .indice ol { columns: 1; }
 }
 
 /* árbol de decisión (Nivel 7): reutiliza el look del quiz */

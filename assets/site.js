@@ -154,6 +154,41 @@ function montarTemario() {
   if (total) total.textContent = `${n} / ${CURSOS[id].niveles.length}`;
 }
 
+// ---- portada: avance de cada tomo en su tarjeta (solo si ya hay niveles completados) ----
+function montarAvancePortada() {
+  document.querySelectorAll("a.libro[href^='temas/']").forEach((a) => {
+    const id = a.getAttribute("href").split("/")[1], curso = CURSOS[id];
+    if (!curso) return;
+    const hechos = LS.get(clave(id), []), n = curso.niveles.filter((x) => hechos.includes(x.f)).length;
+    if (!n) return;
+    a.insertAdjacentHTML("beforeend", `<span class="avance"><span aria-hidden="true">${curso.niveles.map((x) =>
+      `<i${hechos.includes(x.f) ? ' class="si"' : ""}></i>`).join("")}</span>${n} / ${curso.niveles.length} completados</span>`);
+  });
+}
+
+// ---- índice de la página: solo en niveles largos (≥ 7 secciones, sin contar las fuentes) ----
+function montarIndice() {
+  const obj = document.querySelector(".leccion .objetivos");
+  const hs = [...document.querySelectorAll(".leccion > h2")];
+  if (!obj || hs.length < 7) return;
+  const nav = document.createElement("nav");
+  nav.className = "caja indice";
+  nav.setAttribute("aria-label", "En esta página");
+  nav.innerHTML = "<h4>en esta página</h4><ol></ol>";
+  hs.forEach((h) => {
+    if (!h.id) {
+      let id = h.textContent.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      while (document.getElementById(id)) id += "-2";
+      h.id = id;
+    }
+    const a = document.createElement("a");
+    a.href = "#" + h.id;
+    a.textContent = h.textContent;
+    nav.querySelector("ol").appendChild(document.createElement("li")).appendChild(a);
+  });
+  obj.after(nav);
+}
+
 function montarNavLeccion() {
   const b = document.body.dataset;
   const curso = CURSOS[b.curso];
@@ -221,6 +256,8 @@ function pausarFueraDePantalla() {
 document.addEventListener("DOMContentLoaded", () => {
   montarBarra();
   montarTemario();
+  montarAvancePortada();
+  montarIndice();
   montarNavLeccion();
   montarQuiz();
   pausarFueraDePantalla();
