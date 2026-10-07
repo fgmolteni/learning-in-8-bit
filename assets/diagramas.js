@@ -29,6 +29,16 @@ function mezcla(a, b, t) {
 }
 function gris(v) { return mezcla(R(1), R(6), v); }
 
+// setInterval de un widget: corre solo con el canvas en pantalla; con prefers-reduced-motion queda quieto
+// (el widget ya dibujó su primer cuadro y sigue respondiendo a clics y deslizadores).
+const QUIETO = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function cada(cv, fn, ms) {
+  if (QUIETO) return;
+  let visible = false;
+  new IntersectionObserver((es) => (visible = es.at(-1).isIntersecting)).observe(cv);
+  setInterval(() => visible && fn(), ms);
+}
+
 // canvas en resolución de dispositivo, coordenadas lógicas de 640 de ancho
 function prepCanvas(cv, h) {
   const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -211,7 +221,7 @@ function widgetConv(cv) {
   }
   document.addEventListener("redibujar", dibujar);
   dibujar();
-  setInterval(tick, 180);
+  cada(cv, tick, 180);
 }
 
 // ------------------------------------------------------------------
@@ -363,7 +373,7 @@ function widgetSeparable(cv) {
     marcar();
   }
   document.addEventListener("redibujar", dibujar);
-  setInterval(dibujar, 100);
+  cada(cv, dibujar, 100);
   dibujar();
 }
 
@@ -498,7 +508,7 @@ function widgetFamilia(cv) {
     auto = false; e.preventDefault(); dibujar();
   });
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => { t++; if (auto && t % 8 === 0) sel = (sel + 1) % CHIPS.length; dibujar(); }, 400);
+  cada(cv, () => { t++; if (auto && t % 8 === 0) sel = (sel + 1) % CHIPS.length; dibujar(); }, 400);
   dibujar();
 }
 
@@ -537,7 +547,7 @@ function widgetSimd(cv) {
     rotulo(g, "menos ciclos: 64 → 4", MG + w + 12, 192, R(5));
   }
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => { t = t > N + 12 ? 0 : t + 1; dibujar(); }, 140);
+  cada(cv, () => { t = t > N + 12 ? 0 : t + 1; dibujar(); }, 140);
   dibujar();
 }
 
@@ -578,7 +588,7 @@ function widgetMemoria(cv) {
     });
   }
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => {
+  cada(cv, () => {
     niveles.forEach((nv, i) => {
       pos[i] += 1 / (nv.c * 3); // pasos por viaje proporcional a la latencia
       if (pos[i] >= 1) { pos[i] = 0; cuentas[i]++; }
@@ -634,7 +644,7 @@ function widgetArena(cv) {
     ctl.querySelector('[data-a="rei"]').onclick = () => { paso = 0; dibujar(); };
   }
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => { paso = paso >= capas.length + 3 ? 0 : paso + 1; dibujar(); }, 700);
+  cada(cv, () => { paso = paso >= capas.length + 3 ? 0 : paso + 1; dibujar(); }, 700);
   dibujar();
 }
 
@@ -797,7 +807,7 @@ function widgetRedCnn(cv) {
   }
   preparar();
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => { t++; if (t % 120 === 0) { idx = (idx + 1) % orden.length; preparar(); } dibujar(); }, 60);
+  cada(cv, () => { t++; if (t % 120 === 0) { idx = (idx + 1) % orden.length; preparar(); } dibujar(); }, 60);
   dibujar();
 }
 
@@ -827,7 +837,7 @@ function widgetPixeles(cv) {
     hover = i >= 0 && i < 12 && j >= 0 && j < 12 ? [i, j] : null; dibujar();
   });
   let k = 0;
-  setInterval(() => { if (!cv.matches(":hover")) { k = (k + 1) % 144; hover = [Math.floor(k / 12), k % 12]; dibujar(); } }, 250);
+  cada(cv, () => { if (!cv.matches(":hover")) { k = (k + 1) % 144; hover = [Math.floor(k / 12), k % 12]; dibujar(); } }, 250);
   document.addEventListener("redibujar", dibujar);
   dibujar();
 }
@@ -938,7 +948,7 @@ function widgetTiming(cv) {
     b.onclick = () => { doble = !doble; b.textContent = doble ? "ver sin doble buffer" : "ver con doble buffer"; };
   }
   document.addEventListener("redibujar", dibujar);
-  setInterval(() => { t0 += 3; dibujar(); }, 50);
+  cada(cv, () => { t0 += 3; dibujar(); }, 50);
   dibujar();
 }
 

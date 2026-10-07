@@ -203,13 +203,19 @@ function montarQuiz() {
 }
 
 // ---- utilidades para diagramas animados ----
-// Reproduce/pausa animaciones SMIL de un svg según visibilidad (ahorra CPU)
+// Reproduce/pausa animaciones SMIL de un svg según visibilidad (ahorra CPU).
+// Con prefers-reduced-motion quedan quietas en su primer cuadro (el CSS no detiene SMIL).
 function pausarFueraDePantalla() {
+  const svgs = document.querySelectorAll("figure.diagrama svg");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    svgs.forEach((s) => { s.pauseAnimations?.(); s.setCurrentTime?.(0); });
+    return;
+  }
   const io = new IntersectionObserver((es) => es.forEach((e) => {
     const s = e.target;
     if (s.pauseAnimations) e.isIntersecting ? s.unpauseAnimations() : s.pauseAnimations();
   }));
-  document.querySelectorAll("figure.diagrama svg").forEach((s) => io.observe(s));
+  svgs.forEach((s) => io.observe(s));
 }
 
 document.addEventListener("DOMContentLoaded", () => {
