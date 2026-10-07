@@ -1,4 +1,4 @@
-// Learning in 8-bit — widgets interactivos en canvas (pixel art)
+// Apuntes en bits — widgets interactivos en canvas (pixel art)
 // Uso: <canvas data-widget="conv"></canvas> dentro de <figure class="diagrama">, con .controles opcional.
 // Todos los canvas: 640 px lógicos de ancho (ver "Especificación de figuras" en GUIA.md), margen 16,
 // rótulos 13px mono, etiquetas 10px pixel, contornos 2px, brillo (rampa 6) solo para lo que se mueve o el dato clave.

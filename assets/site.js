@@ -1,4 +1,4 @@
-// Learning in 8-bit — comportamiento común (tema, barra, navegación, progreso, quiz)
+// Apuntes en bits — comportamiento común (tema, barra, navegación, progreso, quiz)
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 const CURSOS = {
@@ -100,7 +100,7 @@ function montarBarra() {
   barra.className = "topbar";
   barra.setAttribute("aria-label", "Navegación");
   barra.innerHTML = `
-    <a class="logo" href="${raiz}index.html">▚ <span>learning-in-8-bit</span></a>
+    <a class="logo" href="${raiz}index.html">▚ <span>apuntes.bin</span></a>
     <div class="migas">${migas}</div>
     <div class="colores" role="group" aria-label="Color de acento">${Object.entries(ACENTOS).map(([id, n]) =>
       `<button type="button" data-color="${id}" aria-label="Acento ${n}" title="${n}" aria-pressed="${html.dataset.acento === id}"></button>`).join("")}</div>
