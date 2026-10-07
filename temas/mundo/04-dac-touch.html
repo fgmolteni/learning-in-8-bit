@@ -98,6 +98,17 @@
 
 <p>La ventaja del sigma-delta es el <strong>modelado del ruido</strong>: en vez de concentrar el error en la frecuencia del PWM, lo empuja hacia frecuencias muy altas. Con el mismo filtro RC el rizado es mucho menor, o con el mismo rizado se puede usar un filtro más rápido.</p>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En un ESP32-S3, el rizado de un PWM con filtro RC te obliga a un filtro muy lento. ¿Qué probás primero, sin agregar chips?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El S3 no tiene DAC: los dos canales de 8 bits en GPIO25 y GPIO26 son del ESP32 clásico.">El DAC interno, en GPIO25.</button>
+    <button type="button" data-por-que="Con el reloj fijo, cada bit extra baja la frecuencia a la mitad, y el rizado empeora.">Un PWM con más bits de resolución.</button>
+    <button type="button" data-por-que="Con el mismo filtro hay menos rizado, o con el mismo rizado se puede usar un filtro más rápido.">Un canal sigma-delta: reparte los pulsos y empuja el ruido a frecuencias altas, así el mismo RC filtra mejor.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>El sensor táctil</h2>
 
 <p>Un botón táctil es un pad de cobre con una capacidad a masa de reposo del orden de 5 a 30 pF, según su tamaño y el plano de masa cercano. Un dedo cerca, a través del vidrio o el plástico, agrega del orden de <strong>0,5 a 5 pF</strong>: un cambio relativo de algunos por ciento, en un entorno lleno de ruido. Hay que medirlo sin tocar el pad con nada más que el propio micro.</p>
@@ -187,7 +198,7 @@
   <p class="pregunta">Pasás a un ESP32-S3 un código de botón táctil del ESP32 que detecta el toque cuando la lectura cae un 40 %. En el S3 el botón nunca responde. ¿Por qué?</p>
   <div class="opciones">
     <button type="button" data-por-que="Los dos funcionan a través de una cubierta aislante; el problema es cómo se interpreta la lectura.">El táctil del S3 necesita tocar el cobre sin ninguna cubierta.</button>
-    <button type="button" data-por-que="Correcto: el ESP32 cuenta oscilaciones en una ventana fija y al tocar la cuenta baja. El S3 cuenta el tiempo de un número fijo de oscilaciones: al tocar, cada oscilación es más lenta y la cuenta sube. Hay que invertir la condición.">En el S3 la lectura sube al tocar, porque mide cuánto tarda en completar un número fijo de oscilaciones.</button>
+    <button type="button" data-por-que="El ESP32 cuenta oscilaciones en una ventana fija y al tocar la cuenta baja. El S3 cuenta el tiempo de un número fijo de oscilaciones: al tocar, cada oscilación es más lenta y la cuenta sube. Hay que invertir la condición.">En el S3 la lectura sube al tocar, porque mide cuánto tarda en completar un número fijo de oscilaciones.</button>
     <button type="button" data-por-que="El táctil no comparte hardware con la radio como el ADC2. La causa es la forma de contar.">El táctil del S3 solo funciona con el Wi-Fi apagado.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

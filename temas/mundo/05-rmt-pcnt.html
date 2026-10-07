@@ -86,6 +86,17 @@
   <p>El RMT es una pianola: el rollo perforado (la memoria) dice qué nota tocar y cuánto sostenerla, y el mecanismo lo ejecuta con el mismo ritmo cada vez, aunque el pianista (la CPU) se vaya a atender la puerta.</p>
 </div>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un receptor infrarrojo entrega tramas de largo variable. ¿Cómo sabe el RMT que la trama terminó?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Estos protocolos no tienen una longitud fija. Por eso el RMT usa un umbral de inactividad.">Cuenta una cantidad fija de símbolos configurada de antemano.</button>
+    <button type="button" data-por-que="El RMT mide cuánto dura cada nivel y, si la línea no cambia durante más que ese umbral, da la trama por terminada.">Porque la línea queda quieta más que el umbral de inactividad configurado.</button>
+    <button type="button" data-por-que="Justamente se evita: una interrupción por flanco es lo que el RMT viene a reemplazar.">La CPU lo detecta con una interrupción por flanco y lo detiene.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>El PCNT: contar sin interrumpir</h2>
 
 <p>El <strong>contador de pulsos</strong> suma y resta flancos de señales externas en un registro de hardware y solo molesta a la CPU cuando la cuenta llega a un valor que interesa.</p>
@@ -132,7 +143,7 @@
 </table>
 </div>
 
-<p>Para una tira de 500 LEDs (12 000 bits) la diferencia se nota: en el ESP32 el RMT necesita que la CPU le recargue la memoria a mitad de camino muchas veces; en el S3 el DMA la alimenta desde la RAM.</p>
+<p>Para una tira de 500 LEDs (12 000 bits) la diferencia se nota: en el ESP32 el RMT necesita que la CPU le recargue la memoria a mitad de camino muchas veces; en el S3 el DMA (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) la alimenta desde la RAM.</p>
 
 <div class="caja clave">
   <h4>para llevar</h4>
@@ -151,7 +162,7 @@
   <div class="opciones">
     <button type="button" data-por-que="Deshabilitar interrupciones unos 9 ms por trama perjudica al Wi-Fi y al sistema operativo; y sin eso, una interrupción estira los pulsos más allá de los ±150 ns.">Un GPIO movido por software, con interrupciones deshabilitadas durante la trama.</button>
     <button type="button" data-por-que="El PCNT cuenta pulsos que entran, no genera una señal de salida.">El PCNT, porque cuenta los bits enviados.</button>
-    <button type="button" data-por-que="Correcto: con ticks de 25 ns, el 0 y el 1 son símbolos fijos que la máquina de estados reproduce sin depender de la CPU. En el S3, además, el DMA alimenta la memoria del RMT.">El RMT: cada bit es un símbolo con duraciones exactas en ticks, generado por hardware.</button>
+    <button type="button" data-por-que="Con ticks de 25 ns, el 0 y el 1 son símbolos fijos que la máquina de estados reproduce sin depender de la CPU. En el S3, además, el DMA alimenta la memoria del RMT.">El RMT: cada bit es un símbolo con duraciones exactas en ticks, generado por hardware.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>
 </div>

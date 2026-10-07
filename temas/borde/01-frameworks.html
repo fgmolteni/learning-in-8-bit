@@ -73,6 +73,17 @@
   <li><strong>Grabar y ejecutar.</strong> Por USB. Al arrancar, el programa prepara el tensor arena, recibe cuadros de la cámara y llama al motor en cada uno.</li>
 </ol>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Querés poder actualizar el modelo sin regrabar todo el firmware. ¿En qué etapa del viaje se decide?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La arquitectura no decide dónde vive el modelo. Eso se resuelve al empaquetar.">Al entrenar: hay que elegir una arquitectura que se pueda actualizar.</button>
+    <button type="button" data-por-que="Cualquier modelo es un bloque de bytes. Lo que importa es dónde se guarda.">Al cuantizar: un modelo int8 se puede reemplazar y uno en coma flotante no.</button>
+    <button type="button" data-por-que="Incrustado como constante, el modelo viaja con el firmware; en su propia partición, se actualiza solo.">Al empaquetar: si el modelo va en una partición propia de la flash, se reemplaza por separado del firmware.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Quién es quién</h2>
 
 <figure class="diagrama" data-titulo="fig-1.2">

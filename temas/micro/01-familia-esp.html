@@ -72,6 +72,17 @@
 
 <p>Para redes neuronales esto tiene una consecuencia directa que vamos a ver a lo largo de los tres tomos: <strong>en un MCU la memoria rápida es chiquita</strong>. Una CNN tiene que caber, o al menos organizarse, dentro de unos cientos de kilobytes.</p>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En un microcontrolador, ¿qué limita lo que una red neuronal puede tener a mano mientras calcula?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La SRAM interna se lee en uno o dos ciclos, pero es chica. Por eso la red tiene que caber, o al menos organizarse, en unos cientos de kilobytes.">La memoria de trabajo rápida: la SRAM del mismo chip, de 64 KB a cerca de 1 MB.</button>
+    <button type="button" data-por-que="El reloj fija cuánto tarda en calcular, no cuánto entra en la memoria rápida.">La velocidad del reloj de la CPU, que no pasa de 240 MHz.</button>
+    <button type="button" data-por-que="Un microcontrolador corre, como mucho, un RTOS liviano. El límite es el tamaño de la SRAM interna.">El sistema operativo, que ocupa la mayor parte de la memoria.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Diez años de micros ESP</h2>
 
 <p>Espressif, una empresa de Shanghái, se hizo famosa en 2014 con el <strong>ESP8266</strong>: un micro con Wi-Fi que costaba monedas y que al principio se usaba como “módem” de otros microcontroladores. Desde entonces la familia se abrió en ramas con objetivos distintos.</p>

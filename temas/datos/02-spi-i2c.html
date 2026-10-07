@@ -136,6 +136,17 @@
   <p>Dos compradores recitan números a la vez mientras escuchan la sala. El “cero” se oye más fuerte que el “uno”. Si uno dijo “uno” pero oye “cero”, entiende que el otro tiene prioridad, se calla y lo deja terminar sin interrumpirlo.</p>
 </div>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Para leer un byte de un sensor por SPI, ¿por qué el maestro tiene que mandar un byte aunque no tenga nada que decir?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Cada flanco de SCK saca un bit por MOSI y mete uno por MISO. Sin reloj, el esclavo no tiene cómo responder.">Porque el reloj que acompaña a ese byte es el que trae el dato del esclavo: SPI es un anillo de registros.</button>
+    <button type="button" data-por-que="Eso es I2C. En SPI el esclavo se elige con su línea CS, sin dirección.">Porque el esclavo necesita recibir su dirección antes de responder.</button>
+    <button type="button" data-por-que="SPI no tiene ACK: el que confirma cada byte es I2C.">Porque SPI confirma cada byte con un ACK.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>¿SPI o I2C?</h2>
 
 <div class="tabla-scroll">
@@ -185,7 +196,7 @@
   <p class="pregunta">Un bus I2C a 400 kHz tiene 150 pF. ¿Qué pull-up elegís?</p>
   <div class="opciones">
     <button type="button" data-por-que="Con 45 kΩ y 150 pF la subida tarda más de 5 µs; a 400 kHz el reloj pasa 1,25 µs en alto y la línea no llega al umbral.">Los internos de 45 kΩ, para ahorrar componentes.</button>
-    <button type="button" data-por-que="Correcto: el máximo sale de 300 ns / (0,85 × 150 pF) ≈ 2,36 kΩ, y el mínimo de (3,3 − 0,4) V / 3 mA ≈ 970 Ω. Un valor comercial de 1,8 o 2,2 kΩ queda en el medio.">Una de 1,8 a 2,2 kΩ.</button>
+    <button type="button" data-por-que="El máximo sale de 300 ns / (0,85 × 150 pF) ≈ 2,36 kΩ, y el mínimo de (3,3 − 0,4) V / 3 mA ≈ 970 Ω. Un valor comercial de 1,8 o 2,2 kΩ queda en el medio.">Una de 1,8 a 2,2 kΩ.</button>
     <button type="button" data-por-que="Con 470 Ω el transistor tendría que absorber unos 6 mA para bajar la línea, el doble de lo que garantiza la norma, y la tensión en bajo podría no bajar de 0,4 V.">Una de 470 Ω, para que suba lo más rápido posible.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

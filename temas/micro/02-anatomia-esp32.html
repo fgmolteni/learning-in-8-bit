@@ -102,6 +102,17 @@
 
 <p>Ese DMA solo alcanza la SRAM interna: <strong>no puede leer ni escribir la PSRAM</strong>. Una imagen grande que vive en PSRAM tiene que pasar por la CPU o por búferes intermedios en SRAM. El S3 reemplazó este esquema por un GDMA central que sí llega a la PSRAM (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>).</p>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En un ESP32 con 8 MB de PSRAM querés que el I2S grabe audio por DMA directo a un búfer en la PSRAM. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La ventana limita a la CPU. El problema es otro: el DMA de los periféricos del ESP32 no llega a la PSRAM.">Funciona, pero solo en la mitad de la PSRAM que muestra la ventana de 4 MB.</button>
+    <button type="button" data-por-que="Cada periférico rápido trae su propio DMA y ninguno llega a la PSRAM. El GDMA del S3, en cambio, sí.">No se puede: el DMA del ESP32 solo alcanza la SRAM interna, así que el audio pasa por búferes en SRAM.</button>
+    <button type="button" data-por-que="La caché sirve a la CPU. El DMA no pasa por ella y, en el ESP32, no tiene camino hacia la PSRAM.">Funciona igual que en SRAM, porque la caché hace que la PSRAM se vea como memoria interna.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Lo que solo tiene el ESP32</h2>
 
 <p>Varios bloques del ESP32 desaparecieron en el S3. Si tu proyecto necesita alguno, el clásico sigue siendo la opción:</p>
@@ -196,7 +207,7 @@
   <p class="pregunta">Tu placa con ESP32 queda en un ciclo de reinicios, pero arranca bien si desconectás un sensor que va a GPIO12 y lo conectás después de encenderla. ¿Qué pasa?</p>
   <div class="opciones">
     <button type="button" data-por-que="El consumo no depende del momento en que lo conectes. La clave está en el pin: GPIO12 es un strapping pin.">El sensor consume demasiada corriente al arrancar.</button>
-    <button type="button" data-por-que="Correcto: GPIO12 se lee al soltar el reset y elige la tensión de la flash. Con un 1, el regulador entrega 1,8 V, la flash no arranca y el micro se reinicia una y otra vez. Se arregla moviendo el sensor o grabando el eFuse que fija 3,3 V.">El sensor pone GPIO12 en alto durante el reset y el micro le da 1,8 V a una flash de 3,3 V.</button>
+    <button type="button" data-por-que="GPIO12 se lee al soltar el reset y elige la tensión de la flash. Con un 1, el regulador entrega 1,8 V, la flash no arranca y el micro se reinicia una y otra vez. Se arregla moviendo el sensor o grabando el eFuse que fija 3,3 V.">El sensor pone GPIO12 en alto durante el reset y el micro le da 1,8 V a una flash de 3,3 V.</button>
     <button type="button" data-por-que="Los pines solo de entrada son GPIO34 a 39. GPIO12 es bidireccional; el problema es su papel en el arranque.">GPIO12 es solo de entrada y el sensor lo daña.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

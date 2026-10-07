@@ -79,6 +79,17 @@
   <figcaption><b>fig 4.2</b>Lectura de la flash a través de la caché. En modo secuencial, cada fallo trae una línea de 8 palabras y las siguientes lecturas son aciertos (~1-2 ciclos). En modo salteado casi todos son fallos: la CPU queda en espera (STALL) unas decenas de ciclos mientras la línea viaja por el bus SPI. Las barras comparan los ciclos reales con el caso ideal de aciertos; son órdenes de magnitud, no mediciones.</figcaption>
 </figure>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Dos versiones de una capa leen los mismos pesos desde la flash: una los recorre en orden y la otra salta de un lado a otro. ¿Por qué la segunda es mucho más lenta?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Leyendo en orden, cada ráfaga trae los bytes vecinos que se usan enseguida. Saltando, la línea traída casi no se aprovecha.">Porque casi cada acceso es un fallo de caché: el núcleo se detiene mientras la línea llega de la flash por el bus serie.</button>
+    <button type="button" data-por-que="La MMU mapea las páginas una vez. El costo de saltar viene de la caché, que falla casi en cada acceso.">Porque la MMU tiene que remapear una página de 64 KB en cada salto.</button>
+    <button type="button" data-por-que="La flash se desgasta al escribir y borrar, no al leer. El costo está en los fallos de caché.">Porque la flash se desgasta con las lecturas desordenadas.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Pesos y activaciones: dos datos muy distintos</h2>
 
 <p>Una red neuronal maneja dos tipos de datos con personalidades opuestas:</p>

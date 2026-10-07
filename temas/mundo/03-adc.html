@@ -141,6 +141,17 @@
   <p>Que el resultado tenga 12 bits dice cuán finos son los escalones, no cuán cerca está del valor real. En los dos micros, después de calibrar, el error total en el rango más amplio es de decenas de milivolts.</p>
 </div>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un ADC tiene una DNL de −1 LSB en uno de sus escalones. ¿Qué vas a observar?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Eso es un offset: la curva entera corrida. La DNL habla de un escalón en particular.">Todas las lecturas corridas un LSB hacia abajo.</button>
+    <button type="button" data-por-que="Si un escalón mide 1 LSB menos de lo ideal, su ancho es cero y ese código desaparece.">Un código que el ADC nunca devuelve.</button>
+    <button type="button" data-por-que="El ruido cambia de una lectura a otra. La DNL es un error fijo de cada escalón.">Ruido de un LSB en cada lectura.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Atenuadores: medir más de un volt</h2>
 
 <p>Los transistores finos del núcleo no aguantan 3,3 V, así que el SAR trabaja con una referencia interna de alrededor de <strong>1,1 V</strong>. Para medir más, la entrada pasa por un <strong>atenuador</strong> programable. El costo: la señal se achica pero el ruido del núcleo no, así que la resolución en volts empeora; el divisor agrega resistencia en serie y algo de curvatura; y cerca del techo la cadena se comprime y satura antes de 3,3 V.</p>
@@ -172,7 +183,7 @@
 
 <ul>
   <li><strong>Controlador RTC:</strong> conversiones sueltas a pedido, de bajo consumo. Es el que puede usar el coprocesador ULP con los núcleos dormidos.</li>
-  <li><strong>Controlador digital:</strong> muestreo continuo a ritmo fijo, marcado por hardware. Recorre una <strong>tabla de patrones</strong> (canal y atenuación de cada paso) y entrega las muestras por <strong>DMA</strong> a la RAM, con el número de canal pegado a cada una. La CPU solo se entera cuando se llena un bloque. En el S3 suma filtros IIR y un monitor de umbrales que interrumpe solo si la señal sale de una banda.</li>
+  <li><strong>Controlador digital:</strong> muestreo continuo a ritmo fijo, marcado por hardware. Recorre una <strong>tabla de patrones</strong> (canal y atenuación de cada paso) y entrega las muestras por <strong>DMA</strong> (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) a la RAM, con el número de canal pegado a cada una. La CPU solo se entera cuando se llena un bloque. En el S3 suma filtros IIR y un monitor de umbrales que interrumpe solo si la señal sale de una banda.</li>
 </ul>
 
 <h2>ADC2 y la radio</h2>
@@ -220,7 +231,7 @@
   <h4>repaso</h4>
   <p class="pregunta">Medís una batería con un divisor de 100 kΩ + 100 kΩ y las lecturas dan de menos y cambian según el canal leído antes. ¿Qué hacés?</p>
   <div class="opciones">
-    <button type="button" data-por-que="Correcto: el divisor presenta 50 kΩ y el capacitor interno no llega a cargarse durante el muestreo. El capacitor externo le presta la carga al instante y el divisor lo repone entre muestras. Para señales rápidas, la alternativa es un seguidor con operacional.">Pongo un capacitor de 100 nF del pin a masa, pegado al micro.</button>
+    <button type="button" data-por-que="El divisor presenta 50 kΩ y el capacitor interno no llega a cargarse durante el muestreo. El capacitor externo le presta la carga al instante y el divisor lo repone entre muestras. Para señales rápidas, la alternativa es un seguidor con operacional.">Pongo un capacitor de 100 nF del pin a masa, pegado al micro.</button>
     <button type="button" data-por-que="Más bits no ayudan si el capacitor interno no se carga: el error viene de la impedancia de la fuente, no de la resolución.">Subo la resolución a 12 bits para ganar exactitud.</button>
     <button type="button" data-por-que="ADC2 tiene el mismo circuito de entrada, así que el problema sigue, y además choca con la radio.">Cambio a un canal de ADC2.</button>
   </div>

@@ -71,6 +71,17 @@
   <figcaption><b>fig 3.2</b>En TDM, un pulso de sincronía abre la trama y el período de una muestra se divide en ranuras. Cada micrófono o conversor habla solo en la suya y deja la línea en alta impedancia el resto del tiempo. Así, ocho canales viajan por un solo cable de datos.</figcaption>
 </figure>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué no alcanza con SPI para mandar audio a un códec, si también tiene reloj y datos?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="SPI va mucho más rápido. El problema no es la velocidad sino la regularidad.">Porque SPI no llega a los 1,536 MHz que pide el estéreo de 16 bits a 48 kHz.</button>
+    <button type="button" data-por-que="SPI puede mandar cualquiera de los dos primero. El problema son las pausas entre transferencias.">Porque SPI manda el bit menos significativo primero.</button>
+    <button type="button" data-por-que="I2S tiene un reloj que no se detiene nunca. Con 1 ns de jitter, una señal de 20 kHz ya queda limitada a unos 78 dB.">Porque tiene pausas entre transferencias: el instante de cada muestra tiembla, y ese jitter se convierte en ruido.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>PDM: el formato de los micrófonos MEMS</h2>
 
 <p>Un micrófono analógico entrega milivolts por una pista que atraviesa una placa con Wi-Fi y fuentes conmutadas: se llena de ruido. Los micrófonos <strong>MEMS digitales</strong> integran la membrana y el conversor en una cápsula blindada de pocos milímetros y sacan la señal ya digital, en <strong>PDM</strong>.</p>
@@ -79,7 +90,7 @@
   <svg viewBox="0 0 640 216" role="img" aria-label="Una senoidal y su codificación PDM: donde la señal es alta hay casi todos unos, en el cero la mitad, y donde es baja casi todos ceros">
     <text x="16" y="60" class="sv-tit f6" text-anchor="start" font-size="16">audio</text><polyline points="96,64 100,63 104,61 108,59 112,57 116,55 120,53 124,51 128,50 132,48 136,46 140,45 144,43 148,41 152,40 156,38 160,37 164,36 168,34 172,33 176,32 180,31 184,30 188,29 192,28 196,27 200,27 204,26 208,26 212,25 216,25 220,25 224,25 228,24 232,25 236,25 240,25 244,25 248,26 252,26 256,27 260,27 264,28 268,29 272,30 276,31 280,32 284,33 288,34 292,36 296,37 300,38 304,40 308,41 312,43 316,45 320,46 324,48 328,50 332,51 336,53 340,55 344,57 348,59 352,61 356,63 360,64 364,65 368,67 372,69 376,71 380,73 384,75 388,77 392,78 396,80 400,82 404,83 408,85 412,87 416,88 420,90 424,91 428,92 432,94 436,95 440,96 444,97 448,98 452,99 456,100 460,101 464,101 468,102 472,102 476,103 480,103 484,103 488,103 492,104 496,103 500,103 504,103 508,103 512,102 516,102 520,101 524,101 528,100 532,99 536,98 540,97 544,96 548,95 552,94 556,92 560,91 564,90 568,88 572,87 576,85 580,83 584,82 588,80 592,78 596,77 600,75 604,73 608,71 612,69 616,67 620,65" class="fn s5" stroke-width="2"/><line x1="96" y1="64" x2="624" y2="64" class="s2" stroke-width="2" stroke-dasharray="2 4"/><text x="16" y="164" class="sv-tit f6" text-anchor="start" font-size="16">PDM</text><polyline points="96,184 100,184 100,144 104,144 104,184 108,184 108,144 112,144 112,184 116,184 116,144 120,144 120,184 124,184 124,144 136,144 136,184 140,184 140,144 152,144 152,184 156,184 156,144 184,144 184,184 188,184 188,144 292,144 292,184 296,184 296,144 312,144 312,184 316,184 316,144 328,144 328,184 332,184 332,144 340,144 340,184 344,184 344,144 348,144 348,184 352,184 352,144 360,144 360,184 368,184 368,144 372,144 372,184 376,184 376,144 380,144 380,184 384,184 384,144 388,144 388,184 400,184 400,144 404,144 404,184 416,184 416,144 420,144 420,184 448,184 448,144 452,144 452,184 556,184 556,144 560,144 560,184 576,184 576,144 580,144 580,184 592,184 592,144 596,144 596,184 604,184 604,144 608,144 608,184 612,184 612,144 616,144 616,184 620,184 620,144 624,144" class="fn sa3" stroke-width="2"/><text x="228" y="208" class="sv-lbl f4" text-anchor="middle" font-size="14">más unos cuanto más alta la señal; mitad y mitad en cero</text>
   </svg>
-  <figcaption><b>fig 3.3</b>Un micrófono MEMS digital entrega 1 bit a unos MHz: la amplitud está codificada en la <strong>densidad</strong> de unos. En el pico casi todo es 1; en el cero, mitad y mitad; en el valle, casi todo 0. Es un modulador sigma-delta como el del Tomo 2, nivel 4, pero adentro del micrófono.</figcaption>
+  <figcaption><b>fig 3.3</b>Un micrófono MEMS digital entrega 1 bit a unos MHz: la amplitud está codificada en la <strong>densidad</strong> de unos. En el pico casi todo es 1; en el cero, mitad y mitad; en el valle, casi todo 0. Es un modulador sigma-delta como el del <a href="../mundo/04-dac-touch.html">Tomo 2, nivel 4</a>, pero adentro del micrófono.</figcaption>
 </figure>
 
 <p>El bus PDM tiene solo dos cables: un reloj de 1 a 3 MHz que da el micro y la línea de datos. Dos micrófonos pueden compartir la misma línea: uno pone su bit en el flanco de subida y el otro en el de bajada, eligiendo con un pin cuál es el izquierdo.</p>
@@ -139,7 +150,7 @@
   <div class="opciones">
     <button type="button" data-por-que="Esa cuenta olvida los 8 canales: 16 kHz × 32 bits es el BCLK de un solo canal.">512 kHz, en cualquiera de los dos.</button>
     <button type="button" data-por-que="La cuenta es correcta, pero el ESP32 no tiene TDM: solo lleva dos canales por línea.">4,096 MHz, en cualquiera de los dos.</button>
-    <button type="button" data-por-que="Correcto: 16 kHz × 8 canales × 32 bits = 4,096 MHz. El I2S del S3 admite TDM de hasta 16 canales por línea; en el ESP32 harían falta varias líneas y controladores.">4,096 MHz, en el ESP32-S3.</button>
+    <button type="button" data-por-que="16 kHz × 8 canales × 32 bits = 4,096 MHz. El I2S del S3 admite TDM de hasta 16 canales por línea; en el ESP32 harían falta varias líneas y controladores.">4,096 MHz, en el ESP32-S3.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>
 </div>

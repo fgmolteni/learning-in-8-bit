@@ -118,6 +118,17 @@
   <p>La matriz es la central con su panel de conexiones: une cualquier teléfono (periférico) con cualquier línea externa (pin). El IO MUX son unas pocas líneas directas, cableadas, para las llamadas que no toleran la demora de pasar por la central.</p>
 </div>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Querés ahorrarte las resistencias de un bus I2C a 400 kHz y usar los pull-up internos. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Es una resistencia, pero del orden de 45 kΩ: demasiado débil para una línea rápida.">Funciona igual: el pull-up interno es una resistencia como cualquier otra.</button>
+    <button type="button" data-por-que="A 3,3 V, 45 kΩ dejan pasar unos 73 µA: no se queman. El problema es que son demasiado débiles.">Se queman los pull-up internos por la corriente del open-drain.</button>
+    <button type="button" data-por-que="A 400 kHz el reloj pasa solo 1,25 µs en alto. Los pull internos sirven para que un pin no flote o para un pulsador, no para un bus rápido.">La línea no llega a subir a tiempo: con 45 kΩ y 100 pF de cable tarda unos 6 µs en alcanzar el umbral alto.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Pines de arranque</h2>
 
 <p>Al soltar el reset, el micro todavía no ejecutó nada y tiene que decidir cosas: ¿arranca el programa de la flash o espera uno nuevo por la UART? ¿Con qué tensión alimenta la flash? Dedicarle un pin fijo a cada pregunta sería caro. En cambio, algunos pines, los <strong>strapping pins</strong>, se leen en el instante en que sube el reset y después quedan libres como GPIO comunes.</p>
@@ -199,7 +210,7 @@
   <div class="opciones">
     <button type="button" data-por-que="El pull-up está en el camino, pero el que conduce la corriente peligrosa es otro elemento de la celda.">El pull-up interno de 45 kΩ no aguanta 5 V y se quema.</button>
     <button type="button" data-por-que="5 V está muy por encima de 0,75 × VDD: se leería como 1. El problema no es la lectura sino la corriente.">El comparador con histéresis no reconoce 5 V como un 1.</button>
-    <button type="button" data-por-que="Correcto: con 5 V en el pin, el diodo de protección a VDD conduce y mete corriente en la alimentación de 3,3 V. Sostenida, puede encender el tiristor parásito del CMOS y cortocircuitar la alimentación. Hace falta un divisor o un traductor de nivel.">El diodo de protección hacia VDD conduce en forma continua y puede disparar el latch-up.</button>
+    <button type="button" data-por-que="Con 5 V en el pin, el diodo de protección a VDD conduce y mete corriente en la alimentación de 3,3 V. Sostenida, puede encender el tiristor parásito del CMOS y cortocircuitar la alimentación. Hace falta un divisor o un traductor de nivel.">El diodo de protección hacia VDD conduce en forma continua y puede disparar el latch-up.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>
 </div>

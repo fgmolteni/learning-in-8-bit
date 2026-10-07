@@ -83,6 +83,17 @@
   <p>Los bits de guarda son como el margen de alimentación de un amplificador: si la señal sube un poco más de lo previsto, no recorta. Con 4 bits de guarda se pueden sumar del orden de 16 productos máximos sin salirse; después hay que sacar el resultado.</p>
 </div>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Con datos de 8 bits, QACC funciona como 16 acumuladores de 20 bits. ¿Para qué sirven los 4 bits de más sobre los 16 de cada producto?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El signo ya está dentro del producto de 16 bits. Los bits de más dan margen para sumar.">Para guardar el signo, que no entra en los 16 bits del producto.</button>
+    <button type="button" data-por-que="Son los bits de guarda: el margen que evita que la suma se desborde y el signo se invierta.">Para acumular varios productos sin desbordar: del orden de 16 productos máximos antes de tener que sacar el resultado.</button>
+    <button type="button" data-por-que="Las direcciones van en otros registros. Los bits de guarda son margen numérico del acumulador.">Para guardar la dirección del siguiente dato en memoria.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Volver a 8 bits: desplazar y saturar</h2>
 
 <p>En una red cuantizada, el resultado de cada neurona tiene que volver a int8 para la capa siguiente (<a href="../redes/02-cuantizacion.html">IA en el borde, Tomo 1, nivel 2</a>). Eso requiere dividir por una escala, en la práctica un desplazamiento a la derecha, y recortar al rango. Hecho con instrucciones comunes serían comparaciones y saltos por cada número.</p>
@@ -152,7 +163,7 @@
   <p class="pregunta">¿Por qué a PIE le conviene que los pesos de una red sean de 8 bits y no de 32?</p>
   <div class="opciones">
     <button type="button" data-por-que="La precisión no mejora al bajar bits; al contrario. La razón es el ancho de los registros.">Porque 8 bits es más preciso que 32 bits.</button>
-    <button type="button" data-por-que="Correcto: con 8 bits cada instrucción hace 16 productos; con 32, 4. Además los datos ocupan cuatro veces menos memoria y ancho de bus, que es lo que suele limitar.">Porque en un registro de 128 bits entran 16 valores de 8 bits, contra 4 de 32: cuatro veces más trabajo por instrucción.</button>
+    <button type="button" data-por-que="Con 8 bits cada instrucción hace 16 productos; con 32, 4. Además los datos ocupan cuatro veces menos memoria y ancho de bus, que es lo que suele limitar.">Porque en un registro de 128 bits entran 16 valores de 8 bits, contra 4 de 32: cuatro veces más trabajo por instrucción.</button>
     <button type="button" data-por-que="La flash guarda cualquier cosa; el motivo es el ancho de los registros vectoriales.">Porque la flash no puede guardar números de 32 bits.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

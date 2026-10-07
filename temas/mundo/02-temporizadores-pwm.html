@@ -116,6 +116,17 @@
   <li><strong>Fade por hardware.</strong> Cada canal puede sumar un paso al ciclo de trabajo cada tantos períodos: rampas de brillo sin que la CPU intervenga.</li>
 </ul>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un motor manejado con PWM a 4 kHz silba. ¿Qué cambiás y qué perdés?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Entre 1 y 10 kHz el bobinado vibra en el rango audible. Cada vez que duplicás la frecuencia, perdés un bit de resolución.">Subís la frecuencia por encima de 20 kHz para que deje de oírse; con 80 MHz y sin divisor quedan 11 bits.</button>
+    <button type="button" data-por-que="A 500 Hz el ruido sigue siendo audible, y más grave. La salida es subir por encima de 20 kHz.">Bajás la frecuencia a 500 Hz para ganar resolución: con pulsos más largos el silbido desaparece.</button>
+    <button type="button" data-por-que="El modo de conteo no saca la frecuencia del rango audible: hay que subirla por encima de 20 kHz.">Cambiás el contador a modo triángulo: así deja de silbar sin tocar la frecuencia.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>MCPWM y el tiempo muerto</h2>
 
 <p>Para puentes en H, inversores y fuentes conmutadas hay un bloque más completo, el <strong>MCPWM</strong>. Cada unidad tiene tres timers y tres operadores; cada operador da un <strong>par de salidas</strong> (A y B) para los dos transistores de una rama.</p>
@@ -185,7 +196,7 @@
   <p class="pregunta">Necesitás un PWM de 40 kHz con el reloj de 80 MHz y sin divisor. ¿Cuál es la resolución máxima?</p>
   <div class="opciones">
     <button type="button" data-por-que="Con 11 bits el contador recorre 2048 marcas y la frecuencia queda en 80 MHz / 2048 ≈ 39 kHz, por debajo de los 40 kHz pedidos.">11 bits: 2048 niveles.</button>
-    <button type="button" data-por-que="Correcto: 80 MHz / 40 kHz = 2000 cuentas por período. La potencia de dos que entra es 2<sup>10</sup> = 1024, así que quedan 10 bits, con escalones de alrededor de 0,1 %.">10 bits: 1024 niveles.</button>
+    <button type="button" data-por-que="80 MHz / 40 kHz = 2000 cuentas por período. La potencia de dos que entra es 2<sup>10</sup> = 1024, así que quedan 10 bits, con escalones de alrededor de 0,1 %.">10 bits: 1024 niveles.</button>
     <button type="button" data-por-que="Ese es el tope del contador, pero a 40 kHz no hay tiempo de recorrer 16 384 marcas: saldrían unos 4,9 kHz.">14 bits: el máximo del LEDC del S3.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

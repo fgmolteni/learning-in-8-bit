@@ -68,6 +68,17 @@
 <h3>Ráfagas y alineación</h3>
 <p>Pedir el bus, esperar la concesión y mandar una dirección por cada palabra desperdicia ciclos. En una <strong>ráfaga</strong>, el DMA manda la dirección una vez y transfiere varias palabras seguidas (por ejemplo 16, 32 o 64 bytes). Eso exige que los búferes empiecen en direcciones <strong>alineadas</strong> al tamaño de la ráfaga.</p>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Con una cámara conectada, ¿por qué el árbitro del bus suele darle prioridad al DMA sobre la CPU?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La prioridad la decide quién pierde datos si espera. Para no ahogar a la CPU existen también las prioridades rotativas.">Porque si la FIFO de la cámara desborda se pierde el cuadro; la CPU, en cambio, puede esperar unos ciclos.</button>
+    <button type="button" data-por-que="La prioridad no tiene que ver con la velocidad sino con quién pierde datos si espera.">Porque el DMA es más rápido que la CPU y así el bus rinde más.</button>
+    <button type="button" data-por-que="La CPU puede leer; con una matriz de conmutación incluso usa otro banco a la vez. Lo que no puede pasar es que desborde la FIFO de la cámara.">Porque la CPU no puede leer la SRAM mientras la cámara está encendida.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Descriptores: una lista de tareas en la RAM</h2>
 
 <p>Un DMA simple tiene un registro de dirección y uno de longitud: al terminar cada bloque, la CPU tiene que reprogramarlo. Los DMA de los dos micros leen su trabajo de <strong>descriptores</strong> en la RAM, cada uno con el búfer, su tamaño y el puntero al siguiente.</p>
@@ -144,7 +155,7 @@
   <h4>repaso</h4>
   <p class="pregunta">En un ESP32-S3, la CPU arma un paquete en un búfer de PSRAM y el SPI lo envía por DMA, pero del otro lado llegan datos viejos. ¿Qué falta?</p>
   <div class="opciones">
-    <button type="button" data-por-que="Correcto: la CPU escribió el paquete en la caché y la PSRAM todavía tiene lo anterior. El DMA lee la PSRAM directamente, así que hay que escribir esas líneas de caché antes de transmitir.">Forzar la escritura de la caché a la PSRAM (<em>writeback</em>) antes de arrancar el DMA.</button>
+    <button type="button" data-por-que="La CPU escribió el paquete en la caché y la PSRAM todavía tiene lo anterior. El DMA lee la PSRAM directamente, así que hay que escribir esas líneas de caché antes de transmitir.">Forzar la escritura de la caché a la PSRAM (<em>writeback</em>) antes de arrancar el DMA.</button>
     <button type="button" data-por-que="Invalidar sirve al recibir, para que la CPU no lea una copia vieja. Acá el problema está antes de transmitir.">Invalidar la caché después de que el DMA termine.</button>
     <button type="button" data-por-que="El tamaño no cambia que el dato nuevo siga en la caché y no en la memoria que lee el DMA.">Usar un búfer más grande.</button>
   </div>

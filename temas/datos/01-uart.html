@@ -81,6 +81,17 @@
 
 <p>El sobremuestreo resuelve dos cosas: filtra los picos de ruido que parecen un inicio y ubica el centro del primer bit con una incertidumbre de 1/16. A partir de ahí, el receptor no vuelve a mirar los flancos hasta la próxima trama.</p>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">A 115 200 baud en formato 8N1, ¿cuántos bytes útiles por segundo podés mandar como máximo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Faltan los bits de inicio y de parada: en 8N1 cada byte ocupa 10 bits.">14 400: 115 200 bits divididos por 8.</button>
+    <button type="button" data-por-que="El inicio y la parada se llevan el 20 % de la línea.">11 520: cada byte ocupa 10 bits en la línea.</button>
+    <button type="button" data-por-que="El baud rate cuenta símbolos por segundo, y en la UART cada símbolo es un bit.">115 200: el baud rate ya cuenta bytes.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Cuánto error de reloj se tolera</h2>
 
 <figure class="diagrama" data-titulo="fig-1.4 interactivo">
@@ -155,7 +166,7 @@
   <h4>repaso</h4>
   <p class="pregunta">Un enlace 8N1 falla seguido: el transmisor tiene un reloj un 2 % lento y el receptor uno 3 % rápido. ¿Por qué?</p>
   <div class="opciones">
-    <button type="button" data-por-que="Correcto: los errores en sentidos opuestos se suman. 9,5 bits × 5 % ≈ 0,48 bits de corrimiento en el bit de parada: el punto de muestreo cae en el borde o en el bit vecino y aparecen errores de trama.">Porque el error relativo es del 5 % y en el bit de parada el muestreo se corrió casi medio bit.</button>
+    <button type="button" data-por-que="Los errores en sentidos opuestos se suman. 9,5 bits × 5 % ≈ 0,48 bits de corrimiento en el bit de parada: el punto de muestreo cae en el borde o en el bit vecino y aparecen errores de trama.">Porque el error relativo es del 5 % y en el bit de parada el muestreo se corrió casi medio bit.</button>
     <button type="button" data-por-que="La paridad detectaría algunos errores, pero no los evita: el problema es de temporización.">Porque sin paridad la UART no puede detectar errores.</button>
     <button type="button" data-por-que="Un segundo bit de parada da un poco más de separación entre tramas, pero no corrige el desfasaje acumulado dentro de cada una.">Porque 8N1 necesita dos bits de parada a esa velocidad.</button>
   </div>

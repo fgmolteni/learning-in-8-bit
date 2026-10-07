@@ -103,6 +103,17 @@
   <p>ReLU6 es como poner un zener de 6 V en una entrada: por debajo no toca nada, por encima recorta. Así el conversor que viene después sabe exactamente qué rango tiene que cubrir.</p>
 </div>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué muchas redes para microcontroladores usan ReLU6 en lugar de ReLU?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Las dos son una comparación y casi no cuestan. La razón es el rango al pasar a 8 bits.">Porque es más rápida de calcular que ReLU.</button>
+    <button type="button" data-por-que="Con el techo en 6, el rango es fijo y conocido, y los escalones del int8 se aprovechan.">Porque fija el rango de la salida: al pasar a 8 bits, un valor aislado muy grande no estira los 256 escalones.</button>
+    <button type="button" data-por-que="No: ReLU6 convierte los negativos en cero, como ReLU, y además recorta arriba de 6.">Porque deja pasar los valores negativos hasta −6.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Pooling: resumir</h2>
 
 <p>El <strong>pooling</strong> achica los mapas. Toma ventanas (por ejemplo, de 2 × 2) y se queda con un solo valor por ventana: el máximo (<strong>max pooling</strong>) o el promedio (<strong>average pooling</strong>). Con ventanas de 2 × 2 y paso 2, el mapa queda con la cuarta parte de los valores.</p>

@@ -261,6 +261,17 @@
 
 <p>El <strong>cambio de contexto</strong> guarda el estado de la tarea saliente (registros y puntero de pila) en <strong>su pila</strong>, elige a la siguiente y restaura la suya. Ocurre cuando una tarea se bloquea, cuando una rutina de interrupción despierta a una más prioritaria o cuando el tick decide rotar. Cuesta del orden de <strong>microsegundos</strong>; no hay una cifra oficial. Las tareas que usan coma flotante quedan ancladas a un núcleo para no mover el estado de la unidad de coma flotante entre núcleos.</p>
 
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Con el tick en 100 Hz, una tarea pide esperar 3 ms. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Las esperas de las tareas se cuentan en ticks: con 100 Hz, la resolución es de 10 ms.">Espera 3 ms exactos, porque los temporizadores del núcleo tienen resolución de microsegundos.</button>
+    <button type="button" data-por-que="El tick no es la latencia de una interrupción, pero sí la resolución de las esperas y de los temporizadores de software.">La espera se redondea a un múltiplo de 10 ms, porque el tick fija la resolución de los retardos.</button>
+    <button type="button" data-por-que="No la rechaza: la redondea a ticks. Con 100 Hz, el retardo pasa a un múltiplo de 10 ms.">El planificador la rechaza y la tarea sigue corriendo sin esperar.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>FreeRTOS en dos núcleos</h2>
 
 <p>ESP-IDF usa una variante <strong>SMP</strong> (multiprocesamiento simétrico) de FreeRTOS: hay <strong>una sola lista</strong> de tareas listas y cada núcleo corre el planificador y toma la más prioritaria <em>compatible con él</em>. Esa compatibilidad se llama <strong>afinidad</strong>: una tarea puede quedar <strong>anclada</strong> al núcleo 0, anclada al 1, o <strong>sin afinidad</strong> (puede migrar).</p>

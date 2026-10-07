@@ -82,6 +82,17 @@
 
 <p>La solución estándar es <strong>una escala por canal de salida</strong> (<strong>por canal</strong>). No cuesta casi nada: como la convolución calcula un canal de salida completo antes de pasar al siguiente, el micro solo carga una escala nueva al empezar cada canal. TensorFlow Lite Micro y ESP-NN lo usan por defecto en convoluciones.</p>
 
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En una capa, un filtro tiene pesos de hasta ±0,8 y otro de hasta ±0,005. Con una sola escala para toda la capa, ¿qué le pasa al segundo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Con ±0,8 en 127 escalones, cada escalón vale unos 0,0063: el filtro chico no llega a un escalón. Por eso se usa una escala por canal, que casi no cuesta.">Queda representado con apenas tres valores (−1, 0 y 1): la escala la estira el filtro grande.</button>
+    <button type="button" data-por-que="Saturaría si la escala fuera chica. Acá la escala la fija el filtro grande, y el chico cae en muy pocos escalones.">Se satura en ±127.</button>
+    <button type="button" data-por-que="El punto cero corre el rango, pero no cambia el tamaño del escalón. El filtro chico sigue con muy pocos valores.">No le pasa nada: el punto cero compensa la diferencia.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Todo con enteros</h2>
 
 <p>Las escalas son números con coma, pero el micro las aplica sin usar la unidad de punto flotante, con un truco de punto fijo:</p>

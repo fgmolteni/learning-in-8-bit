@@ -82,6 +82,17 @@
 
 <p>El DMA en general, y la diferencia con el del ESP32, está en el <a href="../datos/04-dma.html">Tomo 3, nivel 4</a>. Otros periféricos importantes para IA: <strong>I2S</strong>, que recibe audio de micrófonos digitales (incluidos los de tipo PDM, comunes para reconocer palabras clave), y <strong>USB</strong> nativo, que sirve para programar y depurar sin chips adaptadores.</p>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Una cámara QVGA en color de 16 bits a 15 cuadros por segundo genera más de 2 MB/s. ¿Cómo lo maneja el S3 sin ahogar a la CPU?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Aun con un núcleo dedicado, copiar píxel por píxel le quitaría casi todo el tiempo de cálculo.">La CPU copia cada píxel, pero en el núcleo que no corre el Wi-Fi.</button>
+    <button type="button" data-por-que="La flash es la memoria del programa y no se escribe durante la ejecución. Los cuadros van a búferes en RAM.">La cámara escribe directo en la flash externa por el bus octal.</button>
+    <button type="button" data-por-que="El DMA mueve los datos sin la CPU y solo avisa cuando el cuadro está completo.">LCD_CAM recibe los píxeles y el GDMA los escribe en búferes encadenados; la CPU recibe una interrupción por cuadro.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Del reset a tu programa</h2>
 
 <figure class="diagrama" data-titulo="fig-3.2">

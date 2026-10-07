@@ -131,6 +131,17 @@
   <p>Son cifras del datasheet v2.2 en esas condiciones. La temperatura, la tensión de batería y la variante con PSRAM las mueven. Tampoco hay cifra oficial para Wi-Fi conectado con ahorro de energía: depende del router y de su intervalo de baliza, y hay que medirla.</p>
 </div>
 
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un equipo despierta, hace un cálculo y vuelve a dormir. ¿Por qué suele convenir hacerlo a 240 MHz y no a 40 MHz?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Puede dormir desde cualquier frecuencia. La razón es el piso de consumo que no baja con la frecuencia.">Porque a 40 MHz el micro no puede entrar después en deep-sleep.</button>
+    <button type="button" data-por-que="A 240 MHz consume más corriente. Lo que baja es el tiempo despierto y, con él, la energía.">Porque a 240 MHz el datasheet da menos corriente que a 40 MHz.</button>
+    <button type="button" data-por-que="Ejecutando en los dos núcleos, el datasheet da 18,7 mA a 40 MHz y 66,2 mA a 240 MHz: seis veces más rápido por unas 3,5 veces la corriente. La energía es corriente por tiempo.">Porque la corriente no crece en proporción a la frecuencia: terminar rápido acorta el tiempo despierto, que es lo que se paga.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
 <h2>Cómo se despierta el micro y qué hace el ULP</h2>
 
 <p>Dormir sirve si se puede despertar a tiempo. Las fuentes de despertar son eventos que el dominio RTC sigue vigilando aunque la CPU no esté:</p>
