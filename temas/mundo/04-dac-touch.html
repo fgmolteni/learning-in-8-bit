@@ -15,6 +15,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js" defer></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-perifericos.js" defer></script>
 </head>
 <body data-raiz="../../" data-curso="mundo" data-nivel="4">
 
@@ -103,11 +106,9 @@
 
 <p>El circuito carga el pad con una <strong>corriente constante</strong> hasta un umbral alto, lo descarga hasta un umbral bajo, y repite. Con corriente constante, la tensión sube en rampa: Δt = C × ΔV / I. El período completo es 2 × C × ΔV / I, y la frecuencia, <strong>I / (2 × C × ΔV)</strong>. Si la capacidad sube, la rampa se hace más lenta y la frecuencia baja. Solo queda contar.</p>
 
-<figure class="diagrama" data-titulo="fig-4.3">
-  <svg viewBox="0 0 640 312" role="img" aria-label="Tensión triangular en un pad táctil entre dos umbrales, sin dedo y con dedo (más lenta). Debajo, dos formas de contar: ventana fija que cuenta oscilaciones (ESP32) y cantidad fija de oscilaciones que cuenta tiempo (S3)">
-    <text x="16" y="44" class="sv-tit f6" text-anchor="start" font-size="16">sin dedo</text><polyline points="128,64 152,24 176,64 200,24 224,64 248,24 272,64 296,24 320,64 344,24 368,64 392,24 416,64 440,24 464,64 488,24 512,64 536,24 560,64 584,24 608,64" class="fn s5" stroke-width="2"/><text x="16" y="116" class="sv-tit f6" text-anchor="start" font-size="16">con dedo</text><polyline points="128,136 168,96 208,136 248,96 288,136 328,96 368,136 408,96 448,136 488,96 528,136 568,96 608,136" class="fn sa3" stroke-width="2"/><line x1="128" y1="24" x2="624" y2="24" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="128" y1="64" x2="624" y2="64" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="128" y1="96" x2="624" y2="96" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="128" y1="136" x2="624" y2="136" class="s2" stroke-width="2" stroke-dasharray="2 4"/><text x="16" y="196" class="sv-tit f6" text-anchor="start" font-size="16">ESP32</text><text x="16" y="214" class="sv-lbl f4" text-anchor="start" font-size="14">ventana fija</text><rect x="128" y="176" width="288" height="40" class="fa1 sa3" stroke-width="2"/><text x="272" y="202" class="sv-lbl fa3" text-anchor="middle" font-size="14">sin dedo: 6 · con dedo: 3,6 → BAJA</text><text x="16" y="268" class="sv-tit f6" text-anchor="start" font-size="16">ESP32-S3</text><text x="16" y="286" class="sv-lbl f4" text-anchor="start" font-size="14">N ciclos fijos</text><rect x="128" y="248" width="192" height="40" class="f1 s4" stroke-width="2"/><text x="224" y="274" class="sv-lbl f4" text-anchor="middle" font-size="14">sin dedo: corto</text><rect x="328" y="248" width="296" height="40" class="fa1 sa3" stroke-width="2"/><text x="476" y="274" class="sv-lbl fa3" text-anchor="middle" font-size="14">con dedo: largo → SUBE</text>
-  </svg>
-  <figcaption><b>fig 4.3</b>El pad se carga y descarga con corriente constante entre dos umbrales. El dedo agrega capacidad y la rampa se vuelve más lenta. Los dos micros miden eso al revés: el ESP32 cuenta oscilaciones en una ventana fija (al tocar, <strong>baja</strong>); el S3 mide cuánto tarda en completar un número fijo de oscilaciones (al tocar, <strong>sube</strong>).</figcaption>
+<figure class="diagrama" data-titulo="fig-4.3 animada">
+  <canvas data-motor="per-tactil"></canvas>
+  <figcaption><b>fig 4.3</b>El pad se carga y descarga con corriente constante entre dos umbrales. Cada cuatro segundos se acerca un dedo (zona tramada): agrega capacidad y la rampa se vuelve más lenta. Los dos micros miden eso al revés: el ESP32 cuenta oscilaciones en una ventana fija (al tocar, <strong>baja</strong>); el S3 mide cuánto tarda en completar un número fijo de oscilaciones (al tocar, <strong>sube</strong>). Las frecuencias están bajadas para que se vean.</figcaption>
 </figure>
 
 <div class="caja analogia">

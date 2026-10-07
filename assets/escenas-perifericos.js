@@ -1,5 +1,6 @@
 // Escenas de periféricos (Tomos 2 y 3 de Microcontroladores) sobre PixelMotor + PixelMicro:
-// matriz de GPIO, PWM (LEDC), conversión SAR del ADC y cronogramas UART / I2C / SPI.
+// matriz de GPIO, PWM (LEDC), conversión SAR del ADC, cronogramas UART / I2C / SPI, sensor táctil,
+// encoder en cuadratura (PCNT), error de reloj en UART, trama I2S y descriptores de DMA.
 // Estética plana (v3): texto bitmap, estructura en 16, trazas finas en 32. Cifras de los datasheets del ESP32 y del S3.
 (() => {
 const PM = window.PixelMotor, MI = window.PixelMicro;
@@ -8,7 +9,7 @@ const txt = (m, s, x, y, tok, op) => m.texto(s, x, y, tok, op);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // estado de cada escena: lo comparten la escena (lee) y sus controles (escriben)
-const ST = { pwm: { bits: 4, duty: 40 }, sar: { vin: 60 } };
+const ST = { pwm: { bits: 4, duty: 40 }, sar: { vin: 60 }, uart: { e: 3 } };
 
 function deslizador(el, id, etiqueta, st, clave, min, max, unidad, escena) {
   el.insertAdjacentHTML("beforeend",
@@ -25,6 +26,7 @@ const CONTROLES = {
     deslizador(el, "pw-b", "bits de resolución", ST.pwm, "bits", 2, 14, "bits", ST.pwm);
   },
   "sar": (el) => deslizador(el, "sr-v", "tensión de entrada", ST.sar, "vin", 0, 100, "% del fondo de escala", ST.sar),
+  "uart": (el) => deslizador(el, "ua-e", "reloj del receptor más lento", ST.uart, "e", 0, 8, "%", ST.uart),
 };
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-ctl]").forEach((el) => CONTROLES[el.dataset.ctl]?.(el));
@@ -237,6 +239,285 @@ PM.escena("per-buses", {
       { nombre: "MOSI", tok: "n6", f: (v) => spi(v).mosi }, { nombre: "MISO", tok: "n5", f: (v) => spi(v).miso }] });
     an("CS BAJA", 10, 1, 187); an("8 CICLOS DE SCK", 10, 5, 187); an("CS SUBE", 10, 9, 187);
     txt(m, "BYTE DE DATOS: 10100101", 8, 199, "n4");
+  },
+});
+
+const frac = (x) => x - Math.floor(x);
+
+// =====================================================================================
+// per-tactil · oscilador de relajación: el dedo suma capacidad y la rampa se hace más lenta
+// =====================================================================================
+// Pad de 10 pF y dedo de 4 pF (dentro de los rangos del nivel). Frecuencias de dibujo: la real es mucho más alta.
+const TC = { T: 8, F0: 4, F1: (4 * 10) / 14, VENT: 2, N: 4 };   // ciclo sin/con dedo (s), Hz sin y con dedo, ventana del ESP32 (s), ciclos del S3
+const TC_P = (TC.T / 2) * (TC.F0 + TC.F1);                      // oscilaciones en un ciclo sin/con dedo
+// fase acumulada en oscilaciones y su inversa: la frecuencia cambia por tramos
+function tcFase(t) {
+  const q = Math.floor(t / TC.T), r = t - q * TC.T, h = TC.T / 2;
+  return q * TC_P + (r < h ? r * TC.F0 : h * TC.F0 + (r - h) * TC.F1);
+}
+function tcTiempo(f) {
+  const q = Math.floor(f / TC_P), r = f - q * TC_P, h = TC.T / 2;
+  return q * TC.T + (r < h * TC.F0 ? r / TC.F0 : h + (r - h * TC.F0) / TC.F1);
+}
+const tcDedo = (t) => frac(t / TC.T) >= 0.5;
+const tcV = (t) => { const p = frac(tcFase(t)); return p < 0.5 ? 2 * p : 2 - 2 * p; };   // 0 = umbral bajo, 1 = umbral alto
+
+PM.escena("per-tactil", {
+  alto: 184, tFijo: 5.3,
+  descripcion: "Oscilador de relajación de un botón táctil. Un pad de 10 pF se carga y se descarga con corriente constante entre dos umbrales, y su tensión dibuja un triángulo. Cada cuatro segundos se acerca un dedo que suma 4 pF y la rampa se hace más lenta. Abajo, el ESP32 cuenta oscilaciones en una ventana fija (al tocar, la cuenta baja) y el ESP32-S3 mide cuánto tarda en completar cuatro oscilaciones (al tocar, el tiempo sube).",
+  dibujar(m, t) {
+    fondo(m);
+    const dedo = tcDedo(t);
+    txt(m, "OSCILADOR DE RELAJACION", 8, 4, "n6");
+    txt(m, dedo ? "CON DEDO" : "SIN DEDO", 312, 4, dedo ? "a3" : "n4", { alin: "der" });
+    // dedo, cubierta y pad
+    m.en(16, () => {
+      const yd = dedo ? 26 : 16;                            // al tocar, la yema llega a la cubierta
+      m.rect(28, 14, 20, yd + 4, "n4"); m.rect(30, yd + 18, 16, 2, "n4"); m.rect(32, yd + 20, 12, 2, "n4");
+      m.linea(12, 50, 64, 50, "n3", { grosor: 2 });
+      m.rect(18, 54, 40, 6, dedo ? "a3" : "n4");
+    });
+    txt(m, "PAD", 38, 64, "n4", { alin: "centro" });
+    txt(m, dedo ? "14 pF" : "10 pF", 38, 74, dedo ? "a3" : "n6", { alin: "centro" });
+    // tensión del pad entre los dos umbrales; tramado donde está el dedo
+    const X = 92, Y = 16, W = 220, H = 72, VEN = 1.5, lo = -0.15, hi = 1.15;
+    const yv = (v) => Y + H - ((v - lo) / (hi - lo)) * H, xt = (tt) => X + ((tt - (t - VEN)) / VEN) * W;
+    m.osciloscopio({ x: X, y: Y, w: W, h: H, t, ventana: VEN, rango: [lo, hi], divs: [6, 1], ejes: false, rotulos: false, trazos: [{ f: tcV, tok: "a3" }] });
+    m.en(16, () => {
+      for (let k = Math.floor((t - VEN) / TC.T); k * TC.T <= t; k++) {
+        const a = Math.max(t - VEN, k * TC.T + TC.T / 2), z = Math.min(t, (k + 1) * TC.T);
+        if (z > a) m.tramado(xt(a), Y + 1, xt(z) - xt(a), H - 2, "a1");
+      }
+      m.linea(X, yv(1), X + W, yv(1), "n4", { punteo: 2 }); m.linea(X, yv(0), X + W, yv(0), "n4", { punteo: 2 });
+    });
+    txt(m, "VH", 88, yv(1) - 3, "n4", { alin: "der" }); txt(m, "VL", 88, yv(0) - 3, "n4", { alin: "der" });
+    // ESP32: oscilaciones completas dentro de una ventana fija
+    const t0 = Math.floor(t / TC.VENT) * TC.VENT, f0 = Math.floor(tcFase(t0));
+    const cuenta = Math.floor(tcFase(t)) - f0, ultima = f0 - Math.floor(tcFase(t0 - TC.VENT));
+    txt(m, "ESP32: VENTANA FIJA", 8, 100, "n6");
+    m.en(16, () => {
+      m.marco(8, 112, 148, 10, "n3");
+      m.rect(9, 113, Math.max(1, Math.round(((t - t0) / TC.VENT) * 146)), 8, "n2");
+      for (let j = f0 + 1; j <= f0 + cuenta; j++) m.rect(8 + ((tcTiempo(j) - t0) / TC.VENT) * 148 - 1, 112, 2, 10, "a3");
+    });
+    txt(m, "CUENTA " + cuenta, 8, 128, "n6");
+    txt(m, "ULTIMA LECTURA " + ultima, 8, 140, "a3");
+    txt(m, "AL TOCAR, BAJA", 8, 152, "n4");
+    // ESP32-S3: tiempo que tardan 4 oscilaciones (en centésimas)
+    const fa = tcFase(t), j0 = Math.floor(fa / TC.N) * TC.N, ts = tcTiempo(j0), hechas = Math.floor(fa) - j0;
+    txt(m, "ESP32-S3: 4 CICLOS FIJOS", 164, 100, "n6");
+    m.en(16, () => {
+      for (let i = 0; i < TC.N; i++) {
+        const x = 164 + i * 37, lleno = i < hechas ? 1 : i === hechas ? fa - j0 - hechas : 0;
+        m.marco(x, 112, 35, 10, "n3");
+        if (lleno > 0) m.rect(x + 1, 113, Math.max(1, Math.round(lleno * 33)), 8, i < hechas ? "a3" : "n2");
+      }
+    });
+    txt(m, "TIEMPO " + Math.round((t - ts) * 100), 164, 128, "n6");
+    txt(m, "ULTIMA LECTURA " + Math.round((ts - tcTiempo(j0 - TC.N)) * 100), 164, 140, "a3");
+    txt(m, "AL TOCAR, SUBE", 164, 152, "n4");
+    txt(m, "10 pF + 4 pF DEL DEDO: CADA RAMPA TARDA 40 % MAS", 8, 170, "n4");
+  },
+});
+
+// =====================================================================================
+// per-encoder · disco ranurado, dos sensores en cuadratura y el contador del PCNT (x4)
+// =====================================================================================
+const EN = { NR: 12, V: 1.5, T: 8 };   // ranuras del disco, ranuras por segundo, ida y vuelta (s)
+const enPos = (t) => { const r = frac(t / EN.T) * EN.T, h = EN.T / 2; return EN.V * (r < h ? r : EN.T - r); };   // posición en ranuras
+const enA = (t) => (frac(enPos(t)) < 0.5 ? 1 : 0);
+const enB = (t) => (frac(enPos(t) - 0.25) < 0.5 ? 1 : 0);   // un cuarto de ranura después
+const enCuenta = (t) => Math.floor(4 * enPos(t));           // un paso por flanco de A o de B
+
+PM.escena("per-encoder", {
+  alto: 180, tFijo: 2.2,
+  descripcion: "Encoder incremental leído por el contador de pulsos. A la izquierda, un disco de 12 ranuras gira cuatro segundos en un sentido y cuatro en el otro, frente a dos sensores, A y B, separados de manera que sus señales quedan desfasadas un cuarto de ciclo. A la derecha, las dos cuadradas y la cuenta: sube cuando A sube con B en 0 y baja cuando A sube con B en 1, cuatro cuentas por ranura.",
+  dibujar(m, t) {
+    fondo(m);
+    const s = enPos(t), suma = frac(t / EN.T) < 0.5, CX = 56, CY = 96, R = 40, PASO = (2 * Math.PI) / EN.NR;
+    txt(m, "PCNT: ENCODER EN CUADRATURA", 8, 4, "n6");
+    // disco: cada ranura ocupa media posición; el ángulo se mide en sentido horario desde arriba
+    m.en(16, () => {
+      m.circulo(CX, CY, R, "n2", true); m.circulo(CX, CY, R, "n4"); m.circulo(CX, CY, 5, "n4", true);
+      for (let i = 0; i < EN.NR; i++) for (let k = 0; k <= 8; k++) {
+        const ang = (i - s) * PASO + (k / 8) * (PASO / 2);
+        for (let r = 28; r <= 35; r++) m.rect(Math.round(CX + Math.sin(ang) * r) - 1, Math.round(CY - Math.cos(ang) * r) - 1, 2, 2, "n0");
+      }
+    });
+    // sensor: ventana sobre el anillo de ranuras; en acento cuando ve luz (señal en 1)
+    const sensor = (phi, v, nombre) => {
+      const x = Math.round(CX + Math.sin(phi) * 32), y = Math.round(CY - Math.cos(phi) * 32);
+      m.en(16, () => { m.marco(x - 6, y - 6, 12, 12, v ? "a3" : "n6"); m.marco(x - 7, y - 7, 14, 14, v ? "a3" : "n6"); });
+      const xl = Math.round(CX + Math.sin(phi) * (R + 10)), yl = Math.round(CY - Math.cos(phi) * (R + 10));
+      txt(m, nombre, xl, yl - 3, v ? "a3" : "n5", { alin: "centro" });
+    };
+    sensor(0, enA(t), "A"); sensor(2.75 * PASO, enB(t), "B");
+    txt(m, suma ? "GIRA ANTIHORARIO" : "GIRA HORARIO", CX, 146, "n6", { alin: "centro" });
+    txt(m, "12 RANURAS", CX, 156, "n4", { alin: "centro" });
+    // señales y cuenta
+    MI.cronograma(m, { x: 150, y: 16, w: 162, h: 36, ventana: 3, t, señales: [
+      { nombre: "A", tok: "n6", f: enA }, { nombre: "B", tok: "a3", f: enB }] });
+    m.osciloscopio({ x: 150, y: 60, w: 162, h: 56, t, ventana: 3, rango: [-2, 26], divs: [6, 4], ejes: false, rotulos: false, trazos: [{ f: enCuenta, tok: "a3" }] });
+    txt(m, "CUENTA", 146, 62, "n4", { alin: "der" });
+    txt(m, "CUENTA", 150, 124, "n4"); txt(m, String(enCuenta(t)), 150, 134, "n6", { tam: 14 });
+    txt(m, "SENTIDO", 220, 124, "n4"); txt(m, suma ? "SUMA +1" : "RESTA -1", 220, 134, "a3");
+    txt(m, suma ? "A SUBE CON B=0" : "A SUBE CON B=1", 220, 146, "n5");
+    txt(m, "4 CUENTAS POR RANURA, SIN INSTRUCCIONES DE LA CPU", 8, 170, "n4");
+  },
+});
+
+// =====================================================================================
+// per-uart-error · el receptor muestrea con su propio reloj: el error se acumula bit a bit
+// =====================================================================================
+const UA_TX = [0, ...BITS(0x48, 8, false), 1];   // inicio, b0..b7 (LSB primero), parada
+PM.escena("per-uart-error", {
+  alto: 172, tFijo: 5,
+  descripcion: "Una trama UART de 10 bits (inicio, ocho datos con el menos significativo primero, parada) y los puntos donde el receptor la muestrea. Con un reloj más lento que el del transmisor, cada muestra cae un poco más tarde que la anterior. Un deslizador fija el error entre 0 y 8 %: debajo se ven el corrimiento acumulado en el bit de parada, el byte enviado y el byte leído.",
+  dibujar(m, t) {
+    ST.uart.m = m; fondo(m);
+    const e = ST.uart.e / 100, X = 16, CW = 26, Y = 26, H = 24, xs = (p) => X + p * CW;
+    const nivel = (p) => (p < 0 || p >= 10 ? 1 : UA_TX[Math.floor(p)]);
+    const mu = UA_TX.map((_, k) => { const p = (k + 0.5) * (1 + e); return { k, p, bit: nivel(p), ok: Math.floor(p) === k }; });
+    const u = Math.min(1, (frac(t / 6) * 6) / 4.5), xc = xs(u * 11), fin = u >= 1;
+    txt(m, "EL RECEPTOR MUESTREA CON SU RELOJ", 8, 4, "n6");
+    txt(m, "RX " + ST.uart.e + " % LENTO", 312, 4, e ? "a3" : "n4", { alin: "der" });
+    ["INI", "B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "FIN"].forEach((s, i) => txt(m, s, xs(i + 0.5), 16, "n4", { alin: "centro" }));
+    m.en(16, () => {
+      const yv = (b) => (b ? Y + 4 : Y + H - 4);
+      const pts = [[X - 12, yv(1)]]; let prev = 1;
+      UA_TX.forEach((b, i) => { pts.push([xs(i), yv(prev)], [xs(i), yv(b)]); prev = b; });
+      pts.push([xs(10) + 14, yv(1)]);
+      for (let i = 0; i < 10; i++) { m.marco(xs(i), Y, CW, H, "n3"); m.linea(xs(i + 0.5), Y + H, xs(i + 0.5), Y + H + 4, "n4"); }
+      m.polilinea(pts, "n6");
+      mu.forEach((s) => {
+        const x = xs(s.p), x0 = xs(s.k + 0.5);
+        if (x > xc) return;
+        m.linea(x, Y - 2, x, Y + H + 10, s.ok ? "n4" : "a3", { punteo: 2 });
+        if (x - x0 >= 1) m.linea(x0, Y + H + 6, x, Y + H + 6, "a3", { grosor: 2 });   // corrimiento acumulado
+        m.rect(x - 2, Y + H + 10, 4, 4, s.ok ? "n5" : "a3");
+      });
+      if (!fin) m.linea(xc, Y - 4, xc, Y + H + 14, "a4");
+    });
+    mu.forEach((s) => { if (xs(s.p) <= xc) txt(m, String(s.bit), xs(s.p), Y + H + 17, s.ok ? "n5" : "a3", { alin: "centro" }); });
+    // corrimiento en el bit de parada, contra el límite práctico (0,4 bit) y el borde de la celda (0,5 bit)
+    const d9 = Math.round(9.5 * ST.uart.e) / 100, BX = 16, BW = 288, BY = 104;
+    const malos = mu.filter((s) => !s.ok && s.k >= 1 && s.k <= 8).length, leido = mu.slice(1, 9).reduce((v, s, i) => v | (s.bit << i), 0);
+    txt(m, "CORRIMIENTO EN EL BIT DE PARADA", BX, 82, "n4");
+    txt(m, "9,5 × " + ST.uart.e + " % = " + d9.toFixed(2).replace(".", ",") + " BIT", BX, 92, d9 >= 0.4 ? "a3" : "n6");
+    m.en(16, () => {
+      m.marco(BX, BY, BW, 8, "n3");
+      if (d9 > 0) m.rect(BX + 1, BY + 1, Math.min(BW - 2, d9 * BW), 6, d9 < 0.4 ? "a2" : "a3");
+      m.linea(BX + 0.4 * BW, BY - 3, BX + 0.4 * BW, BY + 11, "n6");
+      m.linea(BX + 0.5 * BW, BY - 3, BX + 0.5 * BW, BY + 11, "n6", { punteo: 2 });
+    });
+    txt(m, "0", BX, BY + 13, "n4"); txt(m, "LIMITE 0,4", BX + 0.4 * BW - 2, BY + 13, "n5", { alin: "der" });
+    txt(m, "BORDE 0,5", BX + 0.5 * BW + 3, BY + 13, "n5"); txt(m, "1 BIT", BX + BW, BY + 13, "n4", { alin: "der" });
+    const bin = (v) => v.toString(2).padStart(8, "0"), env = bin(0x48);
+    txt(m, "ENVIADO", BX, 132, "n4"); txt(m, env, 76, 132, "n6");
+    txt(m, "LEIDO", BX, 144, "n4");
+    if (fin) [...bin(leido)].forEach((c, i) => txt(m, c, 76 + i * 6, 144, c === env[i] ? "n6" : "a3"));
+    else txt(m, "--------", 76, 144, "n3");
+    txt(m, "BIT DE PARADA", 180, 132, "n4"); txt(m, fin ? (mu[9].bit ? "LEIDO 1: OK" : "LEIDO 0: ERROR") : "--", 180, 144, "n6");
+    txt(m, !fin ? "MUESTREANDO..." : malos ? "LEE BITS EQUIVOCADOS Y NADIE AVISA" : d9 >= 0.4 ? "AL BORDE: SIN MARGEN PARA EL RUIDO" : "DENTRO DEL MARGEN",
+      BX, 160, fin && (malos || d9 >= 0.4) ? "a3" : "n6");
+  },
+});
+
+// =====================================================================================
+// per-i2s · una trama estéreo de 16 bits en formato Philips: WS cambia un ciclo antes del MSB
+// =====================================================================================
+const IS = { T: 6, BARRIDO: 5, N: 33 };   // s por trama, s de barrido, ranuras de BCLK dibujadas
+const isMuestra = (n) => [Math.round(20000 * Math.sin(n * 0.9 + 0.7)), Math.round(-12000 * Math.sin(n * 0.6 + 1))];
+const bits16 = (v) => BITS(v & 0xffff, 16, true);
+PM.escena("per-i2s", {
+  alto: 160, tFijo: 3.2,
+  descripcion: "Una trama I2S estéreo de 16 bits por canal que se dibuja de izquierda a derecha. Arriba, las muestras izquierda y derecha en binario, en complemento a dos. Abajo, el reloj de bit que nunca se detiene, la selección de palabra que cambia un ciclo antes del primer bit de cada muestra y la línea de datos, que saca cada muestra del bit más significativo al menos significativo.",
+  dibujar(m, t) {
+    fondo(m);
+    const n = Math.floor(t / IS.T), [l, r] = isMuestra(n), bl = bits16(l), br = bits16(r), prev = bits16(isMuestra(n - 1)[1]);
+    const sd = (s) => (s === 0 ? prev[15] : s <= 16 ? bl[s - 1] : br[s - 17]);
+    const ws = (s) => (s >= 16 && s < 32 ? 1 : 0);
+    const ranura = (v) => Math.min(IS.N - 1, Math.floor(Math.min(v, 0.99999) * IS.N));
+    const u = Math.min(1, (frac(t / IS.T) * IS.T) / IS.BARRIDO), fin = u >= 1, cur = ranura(u);
+    txt(m, "I2S: TRAMA ESTEREO DE 16 BITS", 8, 4, "n6");
+    const fila = (nombre, bs, y, s0, valor) => {
+      const est = (i) => { const s = s0 + i; return !fin && s === cur ? "act" : fin || s < cur ? "hecho" : "falta"; };
+      txt(m, nombre, 8, y + 2, "n4");
+      m.en(16, () => bs.forEach((_, i) => {
+        const x = 32 + i * 9, e = est(i);
+        m.rect(x, y, 8, 11, e === "act" ? "a1" : e === "hecho" ? "n1" : "n0"); m.marco(x, y, 8, 11, e === "act" ? "a3" : "n3");
+      }));
+      bs.forEach((b, i) => { const e = est(i); txt(m, String(b), 32 + i * 9 + 4, y + 2, e === "act" ? "a3" : e === "hecho" ? "n4" : "n6", { alin: "centro" }); });
+      txt(m, (valor > 0 ? "+" : "") + valor, 182, y + 2, "n6");
+    };
+    fila("IZQ", bl, 16, 1, l); fila("DER", br, 30, 17, r);
+    txt(m, "BCLK A 48 kHz", 228, 14, "n4"); txt(m, "32 × 48 kHz", 228, 24, "n6"); txt(m, "= 1,536 MHz", 228, 34, "a3");
+    // cronograma de una trama: 33 ranuras (la última de la trama anterior + 16 + 16)
+    const X = 40, W = IS.N * 8;
+    MI.cronograma(m, { x: X, y: 50, w: W, h: 60, ventana: 1, t: u, desde: 0, señales: [
+      { nombre: "BCLK", tok: "n5", f: (v) => (frac(v * IS.N) >= 0.5 ? 1 : 0) },
+      { nombre: "WS", tok: "n6", f: (v) => ws(ranura(v)) },
+      { nombre: "SD", tok: "a3", f: (v) => sd(ranura(v)) }] });
+    m.en(16, () => [1, 17].forEach((s) => m.linea(X + s * 8, 48, X + s * 8, 112, "n4", { punteo: 2 })));
+    txt(m, "IZQUIERDO, WS=0", X + 9 * 8, 115, "n5", { alin: "centro" }); txt(m, "DERECHO, WS=1", X + 25 * 8, 115, "n5", { alin: "centro" });
+    txt(m, "MSB", X + 8 + 1, 125, "a3"); txt(m, "LSB", X + 17 * 8 - 3, 125, "a3", { alin: "der" });
+    txt(m, "MSB", X + 17 * 8 + 3, 125, "a3"); txt(m, "LSB", X + W, 125, "a3", { alin: "der" });
+    txt(m, "WS CAMBIA 1 CICLO ANTES DEL MSB", X, 137, "n4");
+    const k = (cur - 1) % 16;
+    txt(m, fin ? "TRAMA COMPLETA: 32 BITS" : cur === 0 ? "SALE EL ULTIMO BIT DE LA TRAMA ANTERIOR"
+      : "SALE " + (cur <= 16 ? "IZQ" : "DER") + " BIT " + (15 - k) + (k === 0 ? " (MSB)" : k === 15 ? " (LSB)" : ""), X, 149, "a3");
+  },
+});
+
+// =====================================================================================
+// per-dma · tres descriptores en anillo: el DMA llena, el bit de dueño le pasa el búfer a la CPU
+// =====================================================================================
+const DM = { N: 8, TW: 0.25, ND: 3, TPROC: 0.6 };   // palabras por búfer, s por palabra, descriptores, s de proceso de la CPU
+const DM_TB = DM.N * DM.TW;                          // s por búfer
+PM.escena("per-dma", {
+  alto: 184, tFijo: 2.3,
+  descripcion: "Un canal de recepción del GDMA con tres descriptores cerrados en anillo. Las palabras llegan de la FIFO del I2S y el DMA llena el búfer del descriptor activo, cuyo bit de dueño vale 1. Al completarlo, lo pone en 0, levanta una interrupción y pasa al siguiente; la CPU lee ese búfer y lo devuelve. Abajo, una línea de tiempo: el DMA mueve palabras todo el tiempo y la CPU solo trabaja un rato después de cada interrupción.",
+  dibujar(m, t) {
+    fondo(m);
+    const b = Math.floor(t / DM_TB), tb = t - b * DM_TB, jc = ((b % DM.ND) + DM.ND) % DM.ND, w = tb / DM.TW, llenas = Math.floor(w);
+    const jp = (jc + DM.ND - 1) % DM.ND, enCpu = b >= 1 && tb < DM.TPROC;   // la CPU lee el búfer que se acaba de llenar
+    const CX = [8, 112, 216], CY = 58, CW = 96, CH = 60;
+    txt(m, "GDMA: DESCRIPTORES EN ANILLO", 8, 4, "n6");
+    m.caja(8, 16, 68, 24, { titulo: "I2S RX", sub: "FIFO" });
+    m.caja(124, 16, 72, 24, { estilo: "activo", titulo: "GDMA", sub: "CANAL RX" });
+    m.flecha(76, 28, 124, 28, "n4");
+    m.en(16, () => {
+      m.linea(160, 40, 160, 50, "n3"); m.linea(56, 50, 264, 50, "n3");
+      CX.forEach((x) => m.linea(x + CW / 2, 50, x + CW / 2, CY, "n3"));
+      m.polilinea([[264, CY + CH], [264, CY + CH + 6], [3, CY + CH + 6], [3, CY + 30]], "n4");
+    });
+    m.flecha(104, CY + 30, 112, CY + 30, "n4"); m.flecha(208, CY + 30, 216, CY + 30, "n4"); m.flecha(3, CY + 30, 8, CY + 30, "n4");
+    for (let j = 0; j < DM.ND; j++) {
+      const x = CX[j], llena = j === jc, cpu = enCpu && j === jp;
+      const ocupadas = llena ? llenas : cpu ? Math.ceil(DM.N * (1 - tb / DM.TPROC)) : 0;
+      m.caja(x, CY, CW, CH, { estilo: llena ? "activo" : cpu ? "normal" : "apagado" });
+      txt(m, "DESC " + j, x + 6, CY + 5, llena || cpu ? "n6" : "n4");
+      txt(m, cpu ? "BIT 0: CPU" : "BIT 1: DMA", x + 6, CY + 16, llena ? "a3" : cpu ? "n6" : "n5");
+      m.en(16, () => { for (let i = 0; i < DM.N; i++) { const cx = x + 8 + i * 10; m.rect(cx, CY + 30, 9, 12, i < ocupadas ? (llena ? "a3" : "n5") : "n0"); m.marco(cx, CY + 30, 9, 12, "n3"); } });
+      txt(m, llena ? "EL DMA LLENA" : cpu ? "LA CPU LEE" : "LIBRE", x + 6, CY + 47, llena ? "a3" : cpu ? "n6" : "n4");
+    }
+    // la palabra en viaje: primero de la FIFO al GDMA, después al búfer activo
+    const fv = w - llenas, dx = CX[jc] + 12 + llenas * 10;
+    if (fv < 0.4) MI.paquete(m, { camino: [[76, 28], [124, 28]], t: fv / 0.4, periodo: 1, tok: "a4", tam: 4 });
+    else MI.paquete(m, { camino: [[160, 40], [160, 50], [dx, 50], [dx, CY - 2]], t: (fv - 0.4) / 0.6, periodo: 1, tok: "a4", tam: 4 });
+    // línea de tiempo de los últimos 8 s
+    const TX = 40, TW = 272, VEN = 8, xt = (tt) => TX + TW - ((t - tt) / VEN) * TW;
+    txt(m, "DMA", 34, 138, "n4", { alin: "der" }); txt(m, "CPU", 34, 154, "n4", { alin: "der" });
+    m.en(16, () => {
+      m.marco(TX, 136, TW, 10, "n3"); m.marco(TX, 152, TW, 10, "n3");
+      for (let k = Math.ceil((t - VEN) / DM.TW); k * DM.TW <= t; k++) m.rect(xt(k * DM.TW), 138, 2, 6, "n5");
+      for (let k = Math.max(1, Math.floor((t - VEN) / DM_TB)); k * DM_TB <= t; k++) {
+        const a = Math.max(t - VEN, k * DM_TB), z = Math.min(t, k * DM_TB + DM.TPROC);
+        if (z > a) m.rect(xt(a), 153, Math.max(1, xt(z) - xt(a)), 8, "a3");
+        if (k * DM_TB >= t - VEN) m.linea(xt(k * DM_TB), 149, xt(k * DM_TB), 164, "a4");
+      }
+    });
+    txt(m, "LA CPU SOLO TRABAJA DESPUES DE CADA INTERRUPCION", 8, 172, "n4");
   },
 });
 })();
