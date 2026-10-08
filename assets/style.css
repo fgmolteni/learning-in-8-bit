@@ -179,13 +179,18 @@ a:hover { text-decoration-color: var(--a3); }
   color: var(--tinta); margin: 1.2rem 0 1.4rem; letter-spacing: -.01em;
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
-/* hero de la portada con fondo ASCII (ascii.js): el canvas va detrás del texto, dentro de la hoja */
-.hero.hero-ascii { position: relative; isolation: isolate; padding: 2.5rem 2rem 2.4rem; }
+/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho; el texto queda alineado con la columna
+   de 1100 px y el canvas va detrás */
+.hero.hero-ascii {
+  position: relative; isolation: isolate; max-width: none;
+  padding: 2.5rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 2.4rem;
+  border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea);
+}
 .hero-ascii h1 { margin: .5rem 0 .7rem; }
 .hero-ascii p { max-width: 40ch; }
 .ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 .ascii-pie {
-  position: absolute; right: 1rem; bottom: .8rem; display: flex; align-items: center; gap: .6rem;
+  position: absolute; right: max(1rem, calc((100% - 1100px) / 2 + 1rem)); bottom: .8rem; display: flex; align-items: center; gap: .6rem;
   font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap;
 }
 .ascii-pie span { background: var(--fondo); padding: 0 .3rem; }

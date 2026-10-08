@@ -176,10 +176,12 @@
       }
     }
 
-    // tamaño y centro de las escenas 3D: detrás del título en escritorio, centradas en móvil
+    // tamaño y centro de las escenas 3D, medidos sobre la columna del texto (el hero ocupa todo el ancho):
+    // detrás del título en escritorio, centradas en móvil
+    let col0 = 0, colW = 0;
     function encuadre(tam, cx) {
       const ancho = W >= 760;
-      return { k: (ancho ? Math.min(W * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam, px0: W * (ancho ? cx : 0.5), py0: H * 0.5 };
+      return { k: (ancho ? Math.min(colW * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam, px0: ancho ? col0 + colW * cx : W / 2, py0: H * 0.5 };
     }
 
     function escenaPlaca(g, ts) {
@@ -302,6 +304,8 @@
     function medir() {
       const rc = hero.getBoundingClientRect(), dpr = devicePixelRatio || 1;
       W = rc.width; H = rc.height;
+      const est = getComputedStyle(hero);
+      col0 = parseFloat(est.paddingLeft); colW = W - col0 - parseFloat(est.paddingRight);
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       fs = W < 640 ? 9 : 10;
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
