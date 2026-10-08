@@ -437,20 +437,16 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   figure.diagrama figcaption { position: sticky; left: 0; max-width: calc(100vw - 3rem); }
 }
 
-/* ---------- Portada: pie con autor y aviso sobre una foto del puente con una capa ASCII (solo index.html) ----------
-   Banda a todo el ancho como el hero. Capas, de atrás hacia adelante: la foto (fondo), un velo del color de
-   fondo para que se lea el texto, el canvas con la capa ASCII (escena mapa de ascii.js, que lee el
-   background-position de acá para alinearse) y el contenido, en la columna de 1100 px */
+/* ---------- Portada: pie con autor y aviso (solo index.html) ----------
+   Banda a todo el ancho como el hero; detrás, el canvas (escena bordes de ascii.js) pone caracteres sueltos y
+   tenues contra los costados. El contenido va en la columna de 1100 px */
 footer.pie.pie-portada {
   position: relative; isolation: isolate;
-  background: url("puente.jpg") 75% 43% / cover no-repeat, var(--fondo);
   max-width: none; border-left: 0; border-right: 0; border-top: 1px solid var(--linea-fuerte);
   padding: 1.8rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 1rem;
   font-family: var(--f-cuerpo); font-size: .95rem; letter-spacing: 0; color: var(--texto);
 }
-.pie-portada::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--fondo) 62%, transparent); }
-/* autor y aviso a la izquierda; a la derecha queda libre para que se vea la foto */
-.pie-grilla { display: grid; grid-template-columns: auto minmax(0, 46ch); gap: 3rem; align-items: center; }
+.pie-grilla { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3rem; align-items: center; }
 .pie-portada h2 { font-family: var(--f-serif); font-weight: 400; font-size: 1.7rem; line-height: 1.1; color: var(--tinta); margin: 0 0 .5rem; }
 .pie-autor { display: flex; gap: 1.2rem; align-items: center; }
 /* foto de perfil en ASCII (40 × 20, generada de la foto de GitHub): fósforo del acento sobre una pantalla
@@ -467,9 +463,9 @@ footer.pie.pie-portada {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: repeating-linear-gradient(transparent 0 2px, color-mix(in srgb, var(--pantalla) 35%, transparent) 2px 3px);
 }
-.pie-enlaces { margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-size: .9rem; }
+.pie-enlaces { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; font-size: .9rem; }
 .pie-aviso h2 { font-family: var(--f-cuerpo); font-size: .95rem; font-weight: 600; margin-bottom: .4rem; }
-.pie-aviso p { margin: 0; max-width: 46ch; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; }
+.pie-aviso p { margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; }
 .pie-base {
   display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
   margin-top: 1.4rem; padding-top: .8rem; border-top: 1px solid var(--linea);

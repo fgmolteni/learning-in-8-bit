@@ -5,8 +5,8 @@
 //   uno:   una Arduino Uno en 3D que gira, con el ATmega328P en su zócalo y los LED L, TX y RX
 // Cada pieza lleva uno de los cinco colores de la barra (naranja, azul, verde, magenta, ámbar), en tres
 // niveles según la luz; las piezas sin color usan la rampa neutra.
-//   mapa:  (solo con data-escena, pie) capa ASCII alineada sobre una foto de fondo, en data-mapa
-// Con data-escena="esp32|red|uno|mapa" muestra solo esa escena; con data-fijo además dibuja un único cuadro, sin bucle
+//   bordes: (solo con data-escena, pie) caracteres sueltos y tenues contra los costados
+// Con data-escena="esp32|red|uno|bordes" muestra solo esa escena; con data-fijo además dibuja un único cuadro, sin bucle
 // ni pausa (data-t = instante en s, fija el ángulo). Es el modo del pie de la portada.
 // Con data-fuente="ruta.mp4" (o .webm, .png, .jpg) convierte ese video o imagen a ASCII en vivo.
 // En file:// el navegador no deja leer los píxeles de un video: ahí vuelve a las escenas.
@@ -263,29 +263,16 @@
       }
     }
 
-    // mapa: capa ASCII de una foto que va de fondo del recuadro (CSS: background-size cover y su
-    // background-position en %). data-mapa="ANCHOxALTO:datos" es la foto entera convertida a celdas: cada
-    // carácter es ALFA[tinta * 10 + brillo] (tinta en el orden de TINTAS; brillo 0 = vacía … 9). Se ubica con
-    // la misma cuenta que usa el navegador para el fondo, así cada carácter cae sobre su parte de la foto.
-    const ALFA = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const MAPA = /^(\d+)x(\d+):(\w+)$/.exec(cv.dataset.mapa || "");
-    function escenaMapa(g) {
-      if (!MAPA) return;
-      const gw = +MAPA[1], gh = +MAPA[2], d = MAPA[3];
-      const [px, py] = getComputedStyle(hero).backgroundPosition.split(",").at(-1).trim().split(" ").map((v) => parseFloat(v) / 100);
-      const s = Math.max(W / gw, H / gh), dw = gw * s, dh = gh * s, ox = (W - dw) * px, oy = (H - dh) * py;
-      for (let r = 0; r < g.rows; r++) {
-        const v = ((r + 0.5) * ch - oy) / dh;
-        if (v < 0 || v >= 1) continue;
-        const fila = Math.floor(v * gh) * gw;
-        for (let c = 0; c < g.cols; c++) {
-          const u = ((c + 0.5) * cw - ox) / dw;
-          if (u < 0 || u >= 1) continue;
-          const n = ALFA.indexOf(d[fila + Math.floor(u * gw)]), q = n % 10;
-          if (q <= 0) continue;
-          const i = r * g.cols + c;
-          g.car[i] = RAMPA[q]; g.tono[i] = T[TINTAS[Math.floor(n / 10)]] + (q < 3 ? 0 : q < 6 ? 1 : 2);   // un tono más claro: va sobre la foto
-        }
+    // bordes: caracteres sueltos y tenues que se juntan contra los costados del recuadro y se desvanecen hacia
+    // el centro (fondo del pie, quieto). Casi todos neutros; algunos, del tono oscuro de una tinta.
+    function escenaBordes(g) {
+      const banda = Math.max(80, W * 0.12), COLOR = ["azul", "magenta", "verde", "ambar", "naranja"];
+      for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
+        const x = (c + 0.5) * cw, e = 1 - Math.min(x, W - x) / banda;   // 1 contra el borde, 0 a una banda
+        if (e <= 0 || hash(c, r * 7 + 1) > 0.22 * e * e) continue;
+        const i = r * g.cols + c, k = hash(r * 3, c + 11);
+        g.car[i] = ".:+-*/"[Math.floor(hash(c * 5, r) * 6)];
+        g.tono[i] = k < 0.85 ? T.n : T[COLOR[Math.floor((k - 0.85) / 0.15 * 5)]];
       }
     }
 
@@ -312,9 +299,9 @@
       ["esp32", "placa ESP32-DevKitC", escenaEsp32],
       ["red", "red neuronal: una pasada hacia adelante", escenaRed],
       ["uno", "placa Arduino Uno", escenaUno],
-      ["mapa", "", escenaMapa],
+      ["bordes", "", escenaBordes],
     ];
-    const ROTAN = 3;   // las tres primeras se turnan en el hero; mapa solo se pide con data-escena
+    const ROTAN = 3;   // las tres primeras se turnan en el hero; bordes solo se pide con data-escena
     const unica = ESCENAS.findIndex((x) => x[0] === cv.dataset.escena);   // -1: se turnan todas
     const pintar = (g, e, ts) => { limpiar(g); ESCENAS[e][2](g, ts); };
 
