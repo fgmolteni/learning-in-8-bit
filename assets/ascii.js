@@ -3,17 +3,17 @@
 //   placa: una ESP32-DevKitC en 3D que gira (un rayo por celda contra cajas alineadas, con sombras)
 //   red:   red neuronal densa en 3D; en cada pasada hacia adelante la activación viaja capa por capa
 //   audio: espectro de un micrófono I2S en cascada; la línea nueva entra adelante y las viejas se alejan
-// Debajo del texto del hero los caracteres se atenúan para que se lea.
+// El texto del hero va sobre un panel de vidrio (CSS) que desenfoca lo que queda atrás.
 // Con data-fuente="ruta.mp4" (o .webm, .png, .jpg) convierte ese video o imagen a ASCII en vivo.
 // En file:// el navegador no deja leer los píxeles de un video: ahí vuelve a las escenas.
 (() => {
   const RAMPA = " .:-=+*#%@", DURA = 12, FUNDE = 1.2;   // s por escena, s de fundido
   const reducir = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const hash = (a, b = 0) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
-  // tono de cada celda: 0..2 tinta según el brillo, 3 acento, 4 segundo color, 5 tinta tenue; -1 = vacía
+  // tono de cada celda: 0..2 tinta según el brillo, 3 acento, 4 segundo color; -1 = vacía
   function colores() {
     const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
-    return [v("--n3"), v("--n4"), v("--n5"), v("--a3"), v("--b3"), v("--n2")];
+    return [v("--n3"), v("--n4"), v("--n5"), v("--a3"), v("--b3")];
   }
 
   // ---------------------------------------------------------------- geometría (cajas en mm)
@@ -97,7 +97,7 @@
 
   function montar(cv) {
     const hero = cv.parentElement, ctx = cv.getContext("2d");
-    let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A, mascara = new Uint8Array(0);
+    let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A;
     let corriendo = !reducir, visible = true, t = reducir ? 7 : 0, ultimo = 0, fuente = null, escena = -1;
 
     // un rayo ortográfico por celda contra las cajas; guarda la profundidad para las líneas
@@ -176,21 +176,21 @@
       }
     }
 
-    // tamaño y centro de las escenas 3D, medidos sobre la columna del texto (el hero ocupa todo el ancho):
-    // detrás del título en escritorio, centradas en móvil
-    let col0 = 0, colW = 0;
+    // tamaño y centro de las escenas 3D: en escritorio, apenas a la derecha del vidrio (una parte queda detrás
+    // y se ve desenfocada); en móvil, centradas detrás del texto. cx = cuánto sale del vidrio, en medias escenas
+    let vidrioDer = 0;
     function encuadre(tam, cx) {
-      const ancho = W >= 760;
-      return { k: (ancho ? Math.min(colW * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam, px0: ancho ? col0 + colW * cx : W / 2, py0: H * 0.5 };
+      const ancho = W >= 760, k = (ancho ? Math.min(W * 0.4, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam;
+      return { k, px0: ancho ? vidrioDer + cx * k * tam / 2 : W / 2, py0: H * 0.5 };
     }
 
     function escenaPlaca(g, ts) {
-      const { k, px0, py0 } = encuadre(58, 0.46);
+      const { k, px0, py0 } = encuadre(58, -0.05);
       trazar(g, PLACA[+(Math.sin(ts * Math.PI * 1.6) > 0)], camara(ts * Math.PI * 2 / 26 + 0.6, -0.62 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
     }
 
     function escenaRed(g, ts) {
-      const { k, px0, py0 } = encuadre(48, 0.56), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
+      const { k, px0, py0 } = encuadre(48, 0.1), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
       const P = proyectar(cam, k, px0, py0), tau = ts % (PASO * (CAPAS.length + 1));
       // solo las aristas de más peso, en tinta tenue (las más fuertes, un tono más); el pulso viaja en acento
       for (const e of ARISTAS) {
@@ -286,16 +286,13 @@
       ctx.clearRect(0, 0, W, H);
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
       ctx.textBaseline = "top";
-      // una cadena por fila y por tono; debajo del texto la tinta baja a los tonos tenues
+      // una cadena por fila y por tono
       const capas = col.map(() => new Array(A.cols));
       for (let r = 0; r < A.rows; r++) {
         capas.forEach((cap) => cap.fill(" "));
         for (let c = 0; c < A.cols; c++) {
           const i = r * A.cols + c;
-          let tn = A.tono[i];
-          if (tn < 0) continue;
-          if (mascara[i] && tn < 3) tn = tn === 2 ? 0 : 5;
-          capas[tn][c] = A.car[i];
+          if (A.tono[i] >= 0) capas[A.tono[i]][c] = A.car[i];
         }
         capas.forEach((cap, n) => { ctx.fillStyle = col[n]; ctx.fillText(cap.join(""), 0, r * ch); });
       }
@@ -304,25 +301,13 @@
     function medir() {
       const rc = hero.getBoundingClientRect(), dpr = devicePixelRatio || 1;
       W = rc.width; H = rc.height;
-      const est = getComputedStyle(hero);
-      col0 = parseFloat(est.paddingLeft); colW = W - col0 - parseFloat(est.paddingRight);
+      vidrioDer = hero.querySelector(".hero-vidrio").getBoundingClientRect().right - rc.left;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       fs = W < 640 ? 9 : 10;
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
       cw = ctx.measureText("M").width; ch = Math.round(fs * 1.2);
       const cols = Math.floor(W / cw), rows = Math.floor(H / ch);
       A = grilla(cols, rows); B = grilla(cols, rows);
-      // máscara: celdas que caen debajo de cada renglón de texto del hero (con una celda de margen)
-      mascara = new Uint8Array(cols * rows);
-      const rg = document.createRange();
-      hero.querySelectorAll(".eyebrow, h1, p").forEach((el) => {
-        rg.selectNodeContents(el);
-        for (const b of rg.getClientRects()) {
-          const c0 = Math.max(0, Math.floor((b.left - rc.left) / cw) - 1), c1 = Math.min(cols - 1, Math.ceil((b.right - rc.left) / cw) + 1);
-          const r0 = Math.max(0, Math.floor((b.top - rc.top) / ch)), r1 = Math.min(rows - 1, Math.ceil((b.bottom - rc.top) / ch));
-          for (let r = r0; r < r1; r++) mascara.fill(1, r * cols + c0, r * cols + c1);
-        }
-      });
       dibujar();
     }
 
