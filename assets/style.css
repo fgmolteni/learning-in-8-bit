@@ -173,8 +173,6 @@ a:hover { text-decoration-color: var(--a3); }
 
 /* ---------- Portada / biblioteca ---------- */
 .hero { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem 2.5rem; }
-.hero .prompt { font-family: var(--f-mono); font-size: .85rem; color: var(--texto-suave); margin-top: 1.6rem; }
-.hero .prompt b { color: var(--a3); font-weight: 400; }
 .hero h1 {
   font-family: var(--f-serif); font-weight: 400;
   font-size: clamp(3rem, 9vw, 5rem); line-height: 1.02;
@@ -182,16 +180,18 @@ a:hover { text-decoration-color: var(--a3); }
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
 /* hero de la portada con fondo ASCII (ascii.js): el canvas va detrás del texto, dentro de la hoja */
-.hero-ascii { position: relative; isolation: isolate; min-height: 34rem; display: flex; flex-direction: column; justify-content: center; }
-.hero-ascii p { max-width: 44ch; }
+.hero.hero-ascii { position: relative; isolation: isolate; padding: 2.5rem 2rem 2.4rem; }
+.hero-ascii h1 { margin: .5rem 0 .7rem; }
+.hero-ascii p { max-width: 40ch; }
 .ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-.ascii-pausa {
-  position: absolute; right: 1rem; bottom: 1rem;
-  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
-  background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .2rem .6rem; cursor: pointer;
+.ascii-pie {
+  position: absolute; right: 1rem; bottom: .8rem; display: flex; align-items: center; gap: .6rem;
+  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap;
 }
-.ascii-pausa:hover { color: var(--tinta); border-color: var(--a3); }
-@media (max-width: 759.98px) { .hero.hero-ascii { justify-content: flex-start; padding-bottom: calc(62vw + 3rem); } }
+.ascii-pie span { background: var(--fondo); padding: 0 .3rem; }
+.ascii-pie button { font: inherit; color: inherit; background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .15rem .55rem; cursor: pointer; }
+.ascii-pie button:hover { color: var(--tinta); border-color: var(--a3); }
+@media (max-width: 640px) { .hero.hero-ascii { padding: 2rem 1rem 3.2rem; } .ascii-pie span { display: none; } }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
 .seccion-titulo {
