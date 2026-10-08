@@ -5,8 +5,8 @@
 //   uno:   una Arduino Uno en 3D que gira, con el ATmega328P en su zócalo y los LED L, TX y RX
 // Cada pieza lleva uno de los cinco colores de la barra (naranja, azul, verde, magenta, ámbar), en tres
 // niveles según la luz; las piezas sin color usan la rampa neutra.
-//   cielo: (solo con data-escena, fondo del pie) estrellas sueltas y una galaxia espiral inclinada
-// Con data-escena="esp32|red|uno|cielo" muestra solo esa escena; con data-fijo además dibuja un único cuadro, sin bucle
+//   mapa:  (solo con data-escena, pie) capa ASCII alineada sobre una foto de fondo, en data-mapa
+// Con data-escena="esp32|red|uno|mapa" muestra solo esa escena; con data-fijo además dibuja un único cuadro, sin bucle
 // ni pausa (data-t = instante en s, fija el ángulo). Es el modo del pie de la portada.
 // Con data-fuente="ruta.mp4" (o .webm, .png, .jpg) convierte ese video o imagen a ASCII en vivo.
 // En file:// el navegador no deja leer los píxeles de un video: ahí vuelve a las escenas.
@@ -263,34 +263,29 @@
       }
     }
 
-    // cielo: estrellas sueltas (casi todas neutras, algunas de color) y una galaxia espiral de dos brazos, inclinada,
-    // con el núcleo cálido y los brazos azules salpicados de magenta. Es quieto: no usa el tiempo.
-    function escenaCielo(g) {
-      // en escritorio, el núcleo va en el margen entre el final del texto y el borde; en móvil, detrás del aviso
-      const ancho = W >= 760, gx = ancho ? (textoDer + W) / 2 : W * 0.7, gy = H * 0.45, R = Math.max(W * (ancho ? 0.2 : 0.5), 150);
-      const giro = 0.3, inc = 0.36, ang = -0.32, ca = Math.cos(ang), sa = Math.sin(ang);
-      const COLOR = ["azul", "ambar", "magenta", "verde", "naranja"];
-      for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
-        const i = r * g.cols + c, x = (c + 0.5) * cw - gx, y = (r + 0.5) * ch - gy;
-        // al plano de la galaxia: girar y estirar el eje corto (inclinación)
-        const xr = x * ca + y * sa, yr = (-x * sa + y * ca) / inc, d = Math.hypot(xr, yr) / R;
-        let v = 0;
-        if (d < 1.4) {
-          const fase = Math.atan2(yr, xr) - Math.log(d + 0.02) / giro;            // espiral logarítmica
-          const brazo = (0.5 + 0.5 * Math.cos(2 * fase)) ** 6;
-          v = (brazo * 1.1 + 0.12) * Math.exp(-2.2 * d) + 1.3 * Math.exp(-d * d / 0.008);
-          v *= 0.55 + 0.45 * hash(c, r);                                          // grano
+    // mapa: capa ASCII de una foto que va de fondo del recuadro (CSS: background-size cover y su
+    // background-position en %). data-mapa="ANCHOxALTO:datos" es la foto entera convertida a celdas: cada
+    // carácter es ALFA[tinta * 10 + brillo] (tinta en el orden de TINTAS; brillo 0 = vacía … 9). Se ubica con
+    // la misma cuenta que usa el navegador para el fondo, así cada carácter cae sobre su parte de la foto.
+    const ALFA = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const MAPA = /^(\d+)x(\d+):(\w+)$/.exec(cv.dataset.mapa || "");
+    function escenaMapa(g) {
+      if (!MAPA) return;
+      const gw = +MAPA[1], gh = +MAPA[2], d = MAPA[3];
+      const [px, py] = getComputedStyle(hero).backgroundPosition.split(",").at(-1).trim().split(" ").map((v) => parseFloat(v) / 100);
+      const s = Math.max(W / gw, H / gh), dw = gw * s, dh = gh * s, ox = (W - dw) * px, oy = (H - dh) * py;
+      for (let r = 0; r < g.rows; r++) {
+        const v = ((r + 0.5) * ch - oy) / dh;
+        if (v < 0 || v >= 1) continue;
+        const fila = Math.floor(v * gh) * gw;
+        for (let c = 0; c < g.cols; c++) {
+          const u = ((c + 0.5) * cw - ox) / dw;
+          if (u < 0 || u >= 1) continue;
+          const n = ALFA.indexOf(d[fila + Math.floor(u * gw)]), q = n % 10;
+          if (q <= 0) continue;
+          const i = r * g.cols + c;
+          g.car[i] = RAMPA[q]; g.tono[i] = T[TINTAS[Math.floor(n / 10)]] + (q < 3 ? 0 : q < 6 ? 1 : 2);   // un tono más claro: va sobre la foto
         }
-        if (v > 0.07) {
-          const tinta = d < 0.1 ? (v > 0.9 ? "ambar" : "naranja") : hash(c * 3, r * 5) < 0.12 ? "magenta" : "azul";
-          luz(g, i, Math.min(1, v), tinta);
-          continue;
-        }
-        const e = hash(c * 7 + 1, r * 13 + 3);
-        if (e > 0.024) continue;                                                  // ~2 % de las celdas son estrellas
-        const b = hash(c, r * 31 + 7), k = hash(r, c * 17 + 5);
-        g.car[i] = b < 0.65 ? "." : b < 0.9 ? "+" : "*";
-        g.tono[i] = T[k < 0.7 ? "n" : COLOR[Math.floor((k - 0.7) / 0.3 * 5)]] + (b < 0.65 ? 0 : b < 0.9 ? 1 : 2);
       }
     }
 
@@ -317,9 +312,9 @@
       ["esp32", "placa ESP32-DevKitC", escenaEsp32],
       ["red", "red neuronal: una pasada hacia adelante", escenaRed],
       ["uno", "placa Arduino Uno", escenaUno],
-      ["cielo", "", escenaCielo],
+      ["mapa", "", escenaMapa],
     ];
-    const ROTAN = 3;   // las tres primeras se turnan en el hero; cielo solo se pide con data-escena
+    const ROTAN = 3;   // las tres primeras se turnan en el hero; mapa solo se pide con data-escena
     const unica = ESCENAS.findIndex((x) => x[0] === cv.dataset.escena);   // -1: se turnan todas
     const pintar = (g, e, ts) => { limpiar(g); ESCENAS[e][2](g, ts); };
 
