@@ -139,7 +139,7 @@
 
   function montar(cv) {
     const hero = cv.parentElement, ctx = cv.getContext("2d");
-    let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A;
+    let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A, mascara = new Uint8Array(0), textoDer = 0;
     let corriendo = !reducir, visible = true, t = reducir ? 7 : 0, ultimo = 0, fuente = null, escena = -1;
 
     // un rayo ortográfico por celda contra las cajas
@@ -216,25 +216,28 @@
       }
     }
 
-    // tamaño de las escenas 3D (tam = lo que mide la pieza, en mm); siempre centradas en el hero
-    function encuadre(tam) {
-      const k = (W >= 760 ? Math.min(W * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam;
-      return { k, px0: W / 2, py0: H / 2 };
+    // tamaño y centro de las escenas 3D. tam = lo que mide la pieza (mm), radio = media anchura máxima en pantalla
+    // al girar (mm). En escritorio va centrada si no toca el texto; si no, se corre a la derecha lo justo, sin
+    // salirse del hero. En móvil va centrada detrás del texto (ahí la máscara la atenúa).
+    function encuadre(tam, radio) {
+      const k = (W >= 760 ? Math.min(W * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam, R = radio * k;
+      const px0 = W >= 760 ? Math.min(Math.max(W / 2, textoDer + 2 * cw + R), W - R) : W / 2;
+      return { k, px0, py0: H / 2 };
     }
 
     function escenaEsp32(g, ts) {
-      const { k, px0, py0 } = encuadre(58);
+      const { k, px0, py0 } = encuadre(58, 32.5);
       trazar(g, ESP32[+(Math.sin(ts * Math.PI * 1.6) > 0)], camara(ts * Math.PI * 2 / 26 + 0.6, -0.62 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
     }
 
     function escenaUno(g, ts) {
-      const { k, px0, py0 } = encuadre(90);
+      const { k, px0, py0 } = encuadre(90, 48.5);
       const led = Math.sin(ts * Math.PI) > 0, tx = Math.sin(ts * Math.PI * 5) > 0;
       trazar(g, UNO[2 * led + tx], camara(-ts * Math.PI * 2 / 28 - 0.5, -0.66 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
     }
 
     function escenaRed(g, ts) {
-      const { k, px0, py0 } = encuadre(48), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
+      const { k, px0, py0 } = encuadre(48, 23), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
       const P = proyectar(cam, k, px0, py0), tau = ts % (PASO * (CAPAS.length + 1));
       // solo las aristas de más peso, en la tinta de su capa de origen; el pulso viaja en el tono más claro
       for (const e of ARISTAS) {
@@ -303,13 +306,15 @@
       ctx.clearRect(0, 0, W, H);
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
       ctx.textBaseline = "top";
-      // una cadena por fila y por tono (solo los tonos que aparecen en la fila)
+      // una cadena por fila y por tono (solo los tonos que aparecen en la fila); bajo el texto, el tono más tenue
       const capas = col.map(() => new Array(A.cols)), usado = new Uint8Array(col.length);
       for (let r = 0; r < A.rows; r++) {
         usado.fill(0);
         for (let c = 0; c < A.cols; c++) {
-          const i = r * A.cols + c, tn = A.tono[i];
+          const i = r * A.cols + c;
+          let tn = A.tono[i];
           if (tn < 0) continue;
+          if (mascara[i]) tn -= tn % 3;
           if (!usado[tn]) { usado[tn] = 1; capas[tn].fill(" "); }
           capas[tn][c] = A.car[i];
         }
@@ -326,6 +331,18 @@
       cw = ctx.measureText("M").width; ch = Math.round(fs * 1.2);
       const cols = Math.floor(W / cw), rows = Math.floor(H / ch);
       A = grilla(cols, rows); B = grilla(cols, rows);
+      // renglones de texto del hero: su borde derecho corre las escenas y sus celdas (con una de margen) van a la máscara
+      mascara = new Uint8Array(cols * rows); textoDer = 0;
+      const rg = document.createRange();
+      hero.querySelectorAll(".eyebrow, h1, p").forEach((el) => {
+        rg.selectNodeContents(el);
+        for (const b of rg.getClientRects()) {
+          textoDer = Math.max(textoDer, b.right - rc.left);
+          const c0 = Math.max(0, Math.floor((b.left - rc.left) / cw) - 1), c1 = Math.min(cols, Math.ceil((b.right - rc.left) / cw) + 1);
+          const r0 = Math.max(0, Math.floor((b.top - rc.top) / ch)), r1 = Math.min(rows, Math.ceil((b.bottom - rc.top) / ch));
+          for (let r = r0; r < r1; r++) mascara.fill(1, r * cols + c0, r * cols + c1);
+        }
+      });
       dibujar();
     }
 
