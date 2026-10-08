@@ -38,7 +38,7 @@
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
+:root[data-theme="apuntes-dia"] {
   --n0: #ffffff; --n1: #f4f6f9; --n2: #e2e7ee; --n3: #b3bdcb;
   --n4: #586478; --n5: #2f394b; --n6: #151b28;
   --a1: #fdefe7; --a2: #f1b99d; --a3: #b84b14; --a4: #e8692c;
@@ -46,84 +46,158 @@
   color-scheme: light;
 }
 
-/* acentos alternativos (el selector de la barra pone data-acento en <html>) */
+/* tema "apuntes": pizarra de noche (:root) y papel de día. site.js pone data-theme="<tema>-<dia|noche>" y
+   data-acento en <html> según los ajustes. Acentos alternativos de apuntes: */
 :root[data-acento="verde"] { --a1: #12301f; --a2: #2b824f; --a3: #19e66f; --a4: #81f8b3; }
-:root[data-theme="light"][data-acento="verde"] { --a1: #e7fdf0; --a2: #9df1c0; --a3: #0e813e; --a4: #2ce87a; }
+:root[data-theme="apuntes-dia"][data-acento="verde"] { --a1: #e7fdf0; --a2: #9df1c0; --a3: #0e813e; --a4: #2ce87a; }
 :root[data-acento="azul"] { --a1: #122030; --a2: #2b5482; --a3: #75aef0; --a4: #81b9f8; }
-:root[data-theme="light"][data-acento="azul"] { --a1: #e7f2fd; --a2: #9dc4f1; --a3: #166aca; --a4: #2c83e8; }
+:root[data-theme="apuntes-dia"][data-acento="azul"] { --a1: #e7f2fd; --a2: #9dc4f1; --a3: #166aca; --a4: #2c83e8; }
 :root[data-acento="ambar"] { --a1: #302712; --a2: #82672b; --a3: #e7a923; --a4: #f8d381; }
-:root[data-theme="light"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #956704; --a4: #e8ac2c; }
+:root[data-theme="apuntes-dia"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #956704; --a4: #e8ac2c; }
 :root[data-acento="magenta"] { --a1: #301225; --a2: #822b62; --a3: #f183c9; --a4: #f881cd; }
-:root[data-theme="light"][data-acento="magenta"] { --a1: #fde7f5; --a2: #f19dd2; --a3: #c51685; --a4: #e82ca3; }
+:root[data-theme="apuntes-dia"][data-acento="magenta"] { --a1: #fde7f5; --a2: #f19dd2; --a3: #c51685; --a4: #e82ca3; }
 
-/* temas de terminal (selector "tema" de la barra; ids en TEMAS de site.js). Cada uno trae sus cinco acentos.
-   No editar a mano: salen de herramientas/temas.py, que corrige el contraste */
+/* temas de terminal, de noche y de día (ids, nombres y acento por defecto en TEMAS de site.js). Cada uno trae
+   sus cinco acentos. No editar a mano: salen de herramientas/temas.py, que corrige el contraste */
 /* temas:inicio */
-:root[data-theme="dracula"] {
+:root[data-theme="dracula-noche"] {
   --n0: #282a36; --n1: #2e303d; --n2: #353747; --n3: #4d5066;
   --n4: #96a1c2; --n5: #f8f8f2; --n6: #ffffff;
   --a1: #4a413f; --a2: #947151; --a3: #ffb86c; --a4: #ffc689;
 }
-:root[data-theme="dracula"][data-acento="verde"] { --a1: #2e4b41; --a2: #3c9258; --a3: #50fa7b; --a4: #73fb95; }
-:root[data-theme="dracula"][data-acento="azul"] { --a1: #384956; --a2: #5a8a9a; --a3: #8be9fd; --a4: #a2edfd; }
-:root[data-theme="dracula"][data-acento="ambar"] { --a1: #484b44; --a2: #8c9261; --a3: #f1fa8c; --a4: #f4fba3; }
-:root[data-theme="dracula"][data-acento="magenta"] { --a1: #4a374d; --a2: #94527e; --a3: #ff79c6; --a4: #ff94d1; }
-:root[data-theme="gruvbox"] {
+:root[data-theme="dracula-noche"][data-acento="verde"] { --a1: #2e4b41; --a2: #3c9258; --a3: #50fa7b; --a4: #73fb95; }
+:root[data-theme="dracula-noche"][data-acento="azul"] { --a1: #403b55; --a2: #725e98; --a3: #bd93f9; --a4: #caa9fa; }
+:root[data-theme="dracula-noche"][data-acento="ambar"] { --a1: #484b44; --a2: #8c9261; --a3: #f1fa8c; --a4: #f4fba3; }
+:root[data-theme="dracula-noche"][data-acento="magenta"] { --a1: #4a374d; --a2: #94527e; --a3: #ff79c6; --a4: #ff94d1; }
+:root[data-theme="dracula-dia"] {
+  --n0: #fffbeb; --n1: #f8f4e9; --n2: #eeece6; --n3: #cfcfde;
+  --n4: #6c664b; --n5: #1f1f1f; --n6: #000000;
+  --a1: #f6ead6; --a2: #dab595; --a3: #a34d14; --a4: #a34d14;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="dracula-dia"][data-acento="verde"] { --a1: #e8edd4; --a2: #a1c491; --a3: #14710a; --a4: #14710a; }
+:root[data-theme="dracula-dia"][data-acento="azul"] { --a1: #f0e9e8; --a2: #c1b4dd; --a3: #644ac9; --a4: #644ac9; }
+:root[data-theme="dracula-dia"][data-acento="ambar"] { --a1: #f3edd6; --a2: #cec395; --a3: #7d6814; --a4: #846e15; }
+:root[data-theme="dracula-dia"][data-acento="magenta"] { --a1: #f6e4db; --a2: #da9fac; --a3: #a3144d; --a4: #a3144d; }
+:root[data-theme="gruvbox-noche"] {
   --n0: #282828; --n1: #2e2d2c; --n2: #363432; --n3: #504945;
   --n4: #a99a85; --n5: #ebdbb2; --n6: #fbf1c7;
   --a1: #4a3626; --a2: #935420; --a3: #fe8019; --a4: #fe9947;
 }
-:root[data-theme="gruvbox"][data-acento="verde"] { --a1: #3f4028; --a2: #707227; --a3: #b8bb26; --a4: #c6c951; }
-:root[data-theme="gruvbox"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #83a598; --a4: #9cb7ad; }
-:root[data-theme="gruvbox"][data-acento="ambar"] { --a1: #4a4029; --a2: #91722c; --a3: #fabd2f; --a4: #fbca59; }
-:root[data-theme="gruvbox"][data-acento="magenta"] { --a1: #43373a; --a2: #7e5762; --a3: #d3869b; --a4: #dc9eaf; }
-:root[data-theme="nord"] {
+:root[data-theme="gruvbox-noche"][data-acento="verde"] { --a1: #3f4028; --a2: #707227; --a3: #b8bb26; --a4: #c6c951; }
+:root[data-theme="gruvbox-noche"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #83a598; --a4: #9cb7ad; }
+:root[data-theme="gruvbox-noche"][data-acento="ambar"] { --a1: #4a4029; --a2: #91722c; --a3: #fabd2f; --a4: #fbca59; }
+:root[data-theme="gruvbox-noche"][data-acento="magenta"] { --a1: #43373a; --a2: #7e5762; --a3: #d3869b; --a4: #dc9eaf; }
+:root[data-theme="gruvbox-dia"] {
+  --n0: #fbf1c7; --n1: #f5eac1; --n2: #eee1ba; --n3: #d5c4a1;
+  --n4: #6d6258; --n5: #3c3836; --n6: #282828;
+  --a1: #f3dfb3; --a2: #dda879; --a3: #af3a03; --a4: #af3a03;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="gruvbox-dia"][data-acento="verde"] { --a1: #eee4b4; --a2: #c7bf7d; --a3: #6a660c; --a4: #79740e; }
+:root[data-theme="gruvbox-dia"][data-acento="azul"] { --a1: #e3e3bf; --a2: #99b9a7; --a3: #076678; --a4: #076678; }
+:root[data-theme="gruvbox-dia"][data-acento="ambar"] { --a1: #f4e5b5; --a2: #dfc07f; --a3: #8a5a0f; --a4: #b57614; }
+:root[data-theme="gruvbox-dia"][data-acento="magenta"] { --a1: #f0dfbe; --a2: #d0aaa5; --a3: #8f3f71; --a4: #8f3f71; }
+:root[data-theme="nord-noche"] {
   --n0: #2e3440; --n1: #323946; --n2: #38404f; --n3: #4c566a;
   --n4: #a4acba; --n5: #d8dee9; --n6: #eceff4;
   --a1: #484148; --a2: #7f5e58; --a3: #d89d8a; --a4: #e0b1a1;
 }
-:root[data-theme="nord"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a3be8c; --a4: #b5cba3; }
-:root[data-theme="nord"][data-acento="azul"] { --a1: #3c4a57; --a2: #5b7a88; --a3: #88c0d0; --a4: #a0cdd9; }
-:root[data-theme="nord"][data-acento="ambar"] { --a1: #4c4c4c; --a2: #8c8066; --a3: #ebcb8b; --a4: #efd5a2; }
-:root[data-theme="nord"][data-acento="magenta"] { --a1: #434251; --a2: #716176; --a3: #c1a1bb; --a4: #cdb4c9; }
-:root[data-theme="solarized-oscuro"] {
+:root[data-theme="nord-noche"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a3be8c; --a4: #b5cba3; }
+:root[data-theme="nord-noche"][data-acento="azul"] { --a1: #3c4a57; --a2: #5b7a88; --a3: #88c0d0; --a4: #a0cdd9; }
+:root[data-theme="nord-noche"][data-acento="ambar"] { --a1: #4c4c4c; --a2: #8c8066; --a3: #ebcb8b; --a4: #efd5a2; }
+:root[data-theme="nord-noche"][data-acento="magenta"] { --a1: #434251; --a2: #716176; --a3: #c1a1bb; --a4: #cdb4c9; }
+:root[data-theme="nord-dia"] {
+  --n0: #eceff4; --n1: #e5e9ef; --n2: #dce1e8; --n3: #bfc6d3;
+  --n4: #4c566a; --n5: #3b4252; --n6: #2e3440;
+  --a1: #e9e5e7; --a2: #e1c5bf; --a3: #875849; --a4: #d08770;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="nord-dia"][data-acento="verde"] { --a1: #e5eaea; --a2: #cfdbca; --a3: #5a684d; --a4: #a3be8c; }
+:root[data-theme="nord-dia"][data-acento="azul"] { --a1: #dee4ed; --a2: #b3c3d7; --a3: #4a6688; --a4: #5e81ac; }
+:root[data-theme="nord-dia"][data-acento="ambar"] { --a1: #ecebea; --a2: #ece1ca; --a3: #716143; --a4: #ebcb8b; }
+:root[data-theme="nord-dia"][data-acento="magenta"] { --a1: #e6e5ed; --a2: #d6c8d8; --a3: #755c70; --a4: #b48ead; }
+:root[data-theme="solarized-noche"] {
   --n0: #002b36; --n1: #08313c; --n2: #123a44; --n3: #33555e;
   --n4: #90a0a6; --n5: #b1bbbb; --n6: #eee8d5;
   --a1: #203031; --a2: #663b26; --a3: #dd8865; --a4: #e4a084;
 }
-:root[data-theme="solarized-oscuro"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #95a621; --a4: #aab84d; }
-:root[data-theme="solarized-oscuro"][data-acento="azul"] { --a1: #063a4f; --a2: #135b84; --a3: #56a5dc; --a4: #78b7e3; }
-:root[data-theme="solarized-oscuro"][data-acento="ambar"] { --a1: #1d3a2d; --a2: #5a5a1b; --a3: #bf9821; --a4: #ccad4d; }
-:root[data-theme="solarized-oscuro"][data-acento="magenta"] { --a1: #222d42; --a2: #6a305c; --a3: #e27cae; --a4: #e896be; }
-:root[data-theme="solarized-claro"] {
+:root[data-theme="solarized-noche"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #95a621; --a4: #aab84d; }
+:root[data-theme="solarized-noche"][data-acento="azul"] { --a1: #063a4f; --a2: #135b84; --a3: #56a5dc; --a4: #78b7e3; }
+:root[data-theme="solarized-noche"][data-acento="ambar"] { --a1: #1d3a2d; --a2: #5a5a1b; --a3: #bf9821; --a4: #ccad4d; }
+:root[data-theme="solarized-noche"][data-acento="magenta"] { --a1: #222d42; --a2: #6a305c; --a3: #e27cae; --a4: #e896be; }
+:root[data-theme="solarized-dia"] {
   --n0: #fdf6e3; --n1: #f3eedd; --n2: #e6e3d4; --n3: #bcc1b8;
   --n4: #55676e; --n5: #425258; --n6: #073642;
   --a1: #f8e5ce; --a2: #e9b291; --a3: #af4013; --a4: #cb4b16;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
 }
-:root[data-theme="solarized-claro"][data-acento="verde"] { --a1: #f1edcc; --a2: #cdd188; --a3: #5d6b00; --a4: #859900; }
-:root[data-theme="solarized-claro"][data-acento="azul"] { --a1: #e8ebe1; --a2: #a7cbdc; --a3: #1d6aa0; --a4: #268bd2; }
-:root[data-theme="solarized-claro"][data-acento="ambar"] { --a1: #f6ebcc; --a2: #e0ca88; --a3: #7f6000; --a4: #b58900; }
-:root[data-theme="solarized-claro"][data-acento="magenta"] { --a1: #f9e3d9; --a2: #eca9bc; --a3: #b52e70; --a4: #d33682; }
-:root[data-theme="catppuccin"] {
+:root[data-theme="solarized-dia"][data-acento="verde"] { --a1: #f1edcc; --a2: #cdd188; --a3: #5d6b00; --a4: #859900; }
+:root[data-theme="solarized-dia"][data-acento="azul"] { --a1: #e8ebe1; --a2: #a7cbdc; --a3: #1d6aa0; --a4: #268bd2; }
+:root[data-theme="solarized-dia"][data-acento="ambar"] { --a1: #f6ebcc; --a2: #e0ca88; --a3: #7f6000; --a4: #b58900; }
+:root[data-theme="solarized-dia"][data-acento="magenta"] { --a1: #f9e3d9; --a2: #eca9bc; --a3: #b52e70; --a4: #d33682; }
+:root[data-theme="catppuccin-noche"] {
   --n0: #1e1e2e; --n1: #242435; --n2: #2c2c3d; --n3: #45475a;
   --n4: #9399b2; --n5: #cdd6f4; --n6: #eef1fc;
   --a1: #41363c; --a2: #8c685a; --a3: #fab387; --a4: #fbc29f;
 }
-:root[data-theme="catppuccin"][data-acento="verde"] { --a1: #343e40; --a2: #628068; --a3: #a6e3a1; --a4: #b8e9b4; }
-:root[data-theme="catppuccin"][data-acento="azul"] { --a1: #2f364f; --a2: #546994; --a3: #89b4fa; --a4: #a1c3fb; }
-:root[data-theme="catppuccin"][data-acento="ambar"] { --a1: #413d43; --a2: #8c806e; --a3: #f9e2af; --a4: #fae8bf; }
-:root[data-theme="catppuccin"][data-acento="magenta"] { --a1: #40384c; --a2: #8a708a; --a3: #f5c2e7; --a4: #f7ceec; }
-:root[data-theme="tokyo-night"] {
+:root[data-theme="catppuccin-noche"][data-acento="verde"] { --a1: #343e40; --a2: #628068; --a3: #a6e3a1; --a4: #b8e9b4; }
+:root[data-theme="catppuccin-noche"][data-acento="azul"] { --a1: #2f364f; --a2: #546994; --a3: #89b4fa; --a4: #a1c3fb; }
+:root[data-theme="catppuccin-noche"][data-acento="ambar"] { --a1: #413d43; --a2: #8c806e; --a3: #f9e2af; --a4: #fae8bf; }
+:root[data-theme="catppuccin-noche"][data-acento="magenta"] { --a1: #3a344e; --a2: #746292; --a3: #cba6f7; --a4: #d5b8f9; }
+:root[data-theme="catppuccin-dia"] {
+  --n0: #eff1f5; --n1: #e7eaef; --n2: #dde0e7; --n3: #bcc0cc;
+  --n4: #5f6275; --n5: #484b64; --n6: #2a2c40;
+  --a1: #f0e3de; --a2: #f5b997; --a3: #aa4307; --a4: #fe640b;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="catppuccin-dia"][data-acento="verde"] { --a1: #dee9e1; --a2: #a9d1a4; --a3: #2d701e; --a4: #40a02b; }
+:root[data-theme="catppuccin-dia"][data-acento="azul"] { --a1: #dae3f5; --a2: #9bb9f5; --a3: #1a5ad8; --a4: #1e66f5; }
+:root[data-theme="catppuccin-dia"][data-acento="ambar"] { --a1: #ede7df; --a2: #e9c99f; --a3: #8a5812; --a4: #df8e1d; }
+:root[data-theme="catppuccin-dia"][data-acento="magenta"] { --a1: #e5dff4; --a2: #c6a7f3; --a3: #7e35de; --a4: #8839ef; }
+:root[data-theme="tokyo-noche"] {
   --n0: #1a1b26; --n1: #1f212f; --n2: #26293b; --n3: #3b4261;
   --n4: #898fb1; --n5: #c0caf5; --n6: #e4e9ff;
   --a1: #3f3030; --a2: #8c5c45; --a3: #ff9e64; --a4: #ffb183;
 }
-:root[data-theme="tokyo-night"][data-acento="verde"] { --a1: #2f3831; --a2: #5c7448; --a3: #9ece6a; --a4: #b1d888; }
-:root[data-theme="tokyo-night"][data-acento="azul"] { --a1: #293147; --a2: #4a5e8e; --a3: #7aa2f7; --a4: #95b5f9; }
-:root[data-theme="tokyo-night"][data-acento="ambar"] { --a1: #3a3331; --a2: #7d6547; --a3: #e0af68; --a4: #e6bf86; }
-:root[data-theme="tokyo-night"][data-acento="magenta"] { --a1: #342f47; --a2: #6a5a8e; --a3: #bb9af7; --a4: #c9aef9; }
+:root[data-theme="tokyo-noche"][data-acento="verde"] { --a1: #2f3831; --a2: #5c7448; --a3: #9ece6a; --a4: #b1d888; }
+:root[data-theme="tokyo-noche"][data-acento="azul"] { --a1: #293147; --a2: #4a5e8e; --a3: #7aa2f7; --a4: #95b5f9; }
+:root[data-theme="tokyo-noche"][data-acento="ambar"] { --a1: #3a3331; --a2: #7d6547; --a3: #e0af68; --a4: #e6bf86; }
+:root[data-theme="tokyo-noche"][data-acento="magenta"] { --a1: #342f47; --a2: #6a5a8e; --a3: #bb9af7; --a4: #c9aef9; }
+:root[data-theme="tokyo-dia"] {
+  --n0: #e1e2e7; --n1: #d8dae3; --n2: #cdd0dd; --n3: #a8aecb;
+  --n4: #4a5786; --n5: #254080; --n6: #1f2a50;
+  --a1: #dcd5d0; --a2: #ceac8b; --a3: #8a4800; --a4: #b15c00;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="tokyo-dia"][data-acento="verde"] { --a1: #d3d7d6; --a2: #aab6a1; --a3: #49612f; --a4: #587539; }
+:root[data-theme="tokyo-dia"][data-acento="azul"] { --a1: #cfd8e7; --a2: #99bae8; --a3: #2058a3; --a4: #2e7de9; }
+:root[data-theme="tokyo-dia"][data-acento="ambar"] { --a1: #d8d6d6; --a2: #bfb3a3; --a3: #6f5531; --a4: #8c6c3e; }
+:root[data-theme="tokyo-dia"][data-acento="magenta"] { --a1: #dad4e8; --a2: #c4a9eb; --a3: #703eb2; --a4: #9854f1; }
+:root[data-theme="puro-noche"] {
+  --n0: #000000; --n1: #080808; --n2: #121212; --n3: #333333;
+  --n4: #9e9e9e; --n5: #e6e6e6; --n6: #ffffff;
+  --a1: #291604; --a2: #80460d; --a3: #ff8c1a; --a4: #ffa348;
+}
+:root[data-theme="puro-noche"][data-acento="verde"] { --a1: #082910; --a2: #1a8033; --a3: #33ff66; --a4: #5cff85; }
+:root[data-theme="puro-noche"][data-acento="azul"] { --a1: #0c1b29; --a2: #265380; --a3: #4da6ff; --a4: #71b8ff; }
+:root[data-theme="puro-noche"][data-acento="ambar"] { --a1: #292100; --a2: #806600; --a3: #ffcc00; --a4: #ffd633; }
+:root[data-theme="puro-noche"][data-acento="magenta"] { --a1: #290c22; --a2: #802669; --a3: #ff4dd2; --a4: #ff71db; }
+:root[data-theme="puro-dia"] {
+  --n0: #ffffff; --n1: #f4f4f4; --n2: #e6e6e6; --n3: #b8b8b8;
+  --n4: #595959; --n5: #1a1a1a; --n6: #000000;
+  --a1: #fcefe6; --a2: #f5be99; --a3: #af4600; --a4: #e65c00;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="puro-dia"][data-acento="verde"] { --a1: #e6f6ec; --a2: #99dab1; --a3: #00772c; --a4: #00a33c; }
+:root[data-theme="puro-dia"][data-acento="azul"] { --a1: #e6f0ff; --a2: #99c2ff; --a3: #005de8; --a4: #0066ff; }
+:root[data-theme="puro-dia"][data-acento="ambar"] { --a1: #faf5e6; --a2: #ebd699; --a3: #836200; --a4: #cc9900; }
+:root[data-theme="puro-dia"][data-acento="magenta"] { --a1: #fbe6f5; --a2: #ef99d9; --a3: #c30091; --a4: #d6009f; }
 /* temas:fin */
+
+/* monocromo (casilla del panel de ajustes): el acento pasa a la rampa neutra del tema, como una terminal sin color.
+   Va después de los temas para ganarles; los canvas leen el hex ya resuelto de var(--n*) */
+:root[data-mono][data-theme][data-acento] { --a1: var(--n2); --a2: var(--n3); --a3: var(--n5); --a4: var(--n6); }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -176,27 +250,38 @@ a:hover { text-decoration-color: var(--a3); }
 .topbar .migas a { color: var(--texto-suave); text-decoration: underline; text-decoration-color: var(--linea-fuerte); text-underline-offset: 3px; }
 .topbar .migas a:hover { color: var(--tinta); }
 .topbar .migas .sep { color: var(--texto-suave); margin: 0 .35rem; }
-/* selector de tema: un segmento "tema: dracula ▾" con un <select> nativo sin aspecto propio */
-.sel-tema {
-  position: relative; display: flex; align-items: center; gap: .45rem;
-  padding: 0 .9rem; border-left: 1px solid var(--linea-fuerte); color: var(--texto-suave); cursor: pointer;
+/* botón de ajustes y su panel: popover nativo centrado en la pantalla (Esc, un clic afuera o [x] lo cierran).
+   Cada opción lleva la marca "[ ]" / "[✓]" de los niveles; el cuadrito de cada acento trae su color en --c (site.js) */
+.btn-ajustes {
+  font: inherit; color: var(--texto); background: transparent; cursor: pointer;
+  border: 0; border-left: 1px solid var(--linea-fuerte); border-radius: 0; padding: 0 .9rem;
 }
-.sel-tema::after { content: "▾"; position: absolute; right: .9rem; pointer-events: none; color: var(--texto); }
-.sel-tema select {
-  appearance: none; field-sizing: content; font: inherit; color: var(--texto); background: transparent;
-  border: 0; border-radius: 0; padding: 0 1.1em 0 0; cursor: pointer;
-}
-.sel-tema:hover, .sel-tema:hover select { color: var(--tinta); background: var(--n1); }
-.sel-tema option { background: var(--n1); color: var(--texto); }
-/* selector de acento: pastillas cuadradas con el color de cada acento */
-.colores { display: flex; align-items: center; gap: 6px; padding: 0 .7rem; border-left: 1px solid var(--linea-fuerte); }
-.colores button {
-  width: 14px; height: 14px; padding: 0; cursor: pointer;
-  background: var(--c); border: 1px solid var(--n4); border-radius: 0;
-}
-.colores button[aria-pressed="true"] { outline: 2px solid var(--tinta); outline-offset: 2px; }
+.btn-ajustes:hover, .topbar:has(.ajustes:popover-open) .btn-ajustes { color: var(--tinta); background: var(--n1); }
 .topbar :focus-visible { outline: 2px solid var(--a3); outline-offset: -2px; }
-.colores button:focus-visible { outline-offset: 2px; }
+.ajustes {
+  width: min(380px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: auto; padding: 1rem 1.2rem 1.2rem;
+  background: var(--fondo); color: var(--texto); border: 1px solid var(--linea-fuerte); box-shadow: 2px 2px 0 var(--n3);
+  font-family: var(--f-mono); font-size: .85rem; line-height: 1.4;
+}
+.ajustes::backdrop { background: rgb(0 0 0 / .45); }
+.aj-cab { display: flex; justify-content: space-between; align-items: center; color: var(--tinta); }
+.aj-cab button { font: inherit; color: var(--texto-suave); background: none; border: 0; padding: .2rem; cursor: pointer; }
+.aj-cab button:hover { color: var(--tinta); }
+.ajustes fieldset {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  border: 0; margin: 1.1rem 0 0; padding: 0; min-width: 0;
+}
+.ajustes fieldset[disabled] { opacity: .4; }
+.ajustes legend { padding: 0 0 .3rem; color: var(--a3); text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; }
+.ajustes label { display: flex; padding: .25rem .3rem; cursor: pointer; white-space: nowrap; }
+.ajustes label:hover { background: var(--n1); color: var(--tinta); }
+.ajustes fieldset[disabled] label { cursor: default; background: none; }
+.ajustes input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.ajustes input:focus-visible + span { outline: 2px solid var(--a3); outline-offset: 2px; }
+.ajustes label span::before { content: "[ ] "; white-space: pre; color: var(--texto-suave); }
+.ajustes input:checked + span { color: var(--tinta); }
+.ajustes input:checked + span::before { content: "[✓] "; color: var(--a3); }
+.ajustes label i { display: inline-block; width: .8em; height: .8em; margin-right: .45rem; background: var(--c); }
 .progreso-lectura { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--a3); }
 
 /* ---------- Botones (la sombra 2px 2px 0 es cromo estructural de la UI, no de las figuras) ---------- */
@@ -472,10 +557,8 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   .leccion, .contenedor, footer.pie { padding-left: 1rem; padding-right: 1rem; }
   .hero { padding: 3rem 1rem 2rem; }
   .topbar .logo span { display: none; }
-  .colores { gap: 5px; padding: 0 .5rem; }
-  .sel-tema { padding: 0 .55rem; }
-  .sel-tema::after { right: .55rem; }
-  .sel-tema > span { display: none; }
+  .btn-ajustes { padding: 0 .7rem; }
+  .btn-ajustes span { display: none; }
   figure.diagrama { margin: 2.5rem 0; padding: 1.4rem .75rem .9rem; }
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
