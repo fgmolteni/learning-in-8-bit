@@ -166,27 +166,62 @@ function montarAvancePortada() {
   });
 }
 
-// ---- índice de la página: solo en niveles largos (≥ 7 secciones, sin contar las fuentes) ----
-function montarIndice() {
-  const obj = document.querySelector(".leccion .objetivos");
-  const hs = [...document.querySelectorAll(".leccion > h2")];
-  if (!obj || hs.length < 7) return;
-  const nav = document.createElement("nav");
-  nav.className = "caja indice";
-  nav.setAttribute("aria-label", "En esta página");
-  nav.innerHTML = "<h4>en esta página</h4><ol></ol>";
+// ---- sidebar de los niveles: niveles del tomo; el nivel abierto despliega sus secciones y marca la que se lee ----
+const SECCIONES = { micro: "Microcontroladores", ia: "IA en el borde" };
+function montarSidebar() {
+  const b = document.body.dataset, curso = CURSOS[b.curso];
+  if (!curso || !b.nivel) return;
+  const ids = Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === curso.seccion), t = ids.indexOf(b.curso);
+  const hechos = LS.get(clave(b.curso), []), actual = Number(b.nivel) - 1;
+  const hs = [...document.querySelectorAll(".leccion > h2")];   // las fuentes quedan afuera (van dentro de su section)
   hs.forEach((h) => {
-    if (!h.id) {
-      let id = h.textContent.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      while (document.getElementById(id)) id += "-2";
-      h.id = id;
-    }
-    const a = document.createElement("a");
-    a.href = "#" + h.id;
-    a.textContent = h.textContent;
-    nav.querySelector("ol").appendChild(document.createElement("li")).appendChild(a);
+    if (h.id) return;
+    let id = h.textContent.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    while (document.getElementById(id)) id += "-2";
+    h.id = id;
   });
-  obj.after(nav);
+  const aside = document.createElement("aside");
+  aside.className = "sidebar"; aside.id = "sidebar"; aside.setAttribute("aria-label", "Contenido del tomo");
+  aside.innerHTML = `
+    <p class="sb-eyebrow">${SECCIONES[curso.seccion]}, Tomo ${t + 1}</p>
+    <a class="sb-tomo" href="index.html">${curso.titulo}</a>
+    <ol class="sb-niveles">${curso.niveles.map((n, k) => `
+      <li${k === actual ? ' class="actual"' : ""}><a href="${n.f}"${k === actual ? ' aria-current="page"' : ""}><span>${String(k + 1).padStart(2, "0")}</span>${n.t}${hechos.includes(n.f) ? '<i title="completado">✓</i>' : ""}</a>${k === actual ? '<ol class="sb-secciones"></ol>' : ""}</li>`).join("")}
+    </ol>
+    <p class="sb-tomos">${t > 0 ? `<a href="../${ids[t - 1]}/index.html">← Tomo ${t}</a>` : "<span></span>"}${t < ids.length - 1 ? `<a href="../${ids[t + 1]}/index.html">Tomo ${t + 2} →</a>` : ""}</p>`;
+  const ol = aside.querySelector(".sb-secciones");
+  const links = ol ? hs.map((h) => {   // sin ol (data-nivel fuera de CURSOS) la sidebar sale sin secciones, sin romper el resto
+    const a = document.createElement("a");
+    a.href = "#" + h.id; a.textContent = h.textContent;
+    ol.appendChild(document.createElement("li")).appendChild(a);
+    return a;
+  }) : [];
+  document.querySelector(".topbar").after(aside);
+  document.body.classList.add("con-sidebar");
+  // en pantallas angostas la sidebar es un panel que abre un botón de la barra
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn-sidebar"; btn.textContent = "índice";
+  btn.setAttribute("aria-controls", "sidebar"); btn.setAttribute("aria-expanded", "false");
+  document.querySelector(".topbar .logo").after(btn);
+  const abrir = (si) => { aside.classList.toggle("abierta", si); btn.setAttribute("aria-expanded", si); };
+  btn.onclick = () => abrir(!aside.classList.contains("abierta"));
+  document.addEventListener("click", (e) => { if (e.target.closest("#sidebar a") || (!aside.contains(e.target) && e.target !== btn)) abrir(false); });
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (aside.contains(document.activeElement)) btn.focus();   // el foco no puede quedar en un panel oculto
+    abrir(false);
+  });
+  // sección que se está leyendo: el último h2 que ya pasó por debajo de la barra
+  let previa = -2;
+  const marcar = () => {
+    let k = -1;
+    hs.forEach((h, j) => { if (h.getBoundingClientRect().top < 120) k = j; });
+    if (k === previa) return;   // sin cambio de sección no se toca el DOM
+    previa = k;
+    links.forEach((a, j) => (j === k ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current")));
+  };
+  addEventListener("scroll", marcar, { passive: true });
+  marcar();
 }
 
 function montarNavLeccion() {
@@ -195,6 +230,7 @@ function montarNavLeccion() {
   const cont = document.querySelector("[data-nav-niveles]");
   if (!curso || !cont) return;
   const i = Number(b.nivel) - 1;
+  if (!curso.niveles[i]) return;   // data-nivel fuera de CURSOS: que no corte el quiz ni lo que sigue
   const ant = curso.niveles[i - 1], sig = curso.niveles[i + 1];
   const f = curso.niveles[i].f;
   const hechos = LS.get(clave(b.curso), []);
@@ -219,6 +255,8 @@ function montarNavLeccion() {
     h = hecho ? [...h, f] : h.filter((x) => x !== f);
     LS.set(clave(b.curso), h);
     e.target.textContent = hecho ? "[✓] nivel completado" : "[ ] marcar nivel como completado";
+    const sb = document.querySelector("#sidebar .sb-niveles li.actual > a");   // el ✓ de la sidebar sigue al botón
+    if (sb) { sb.querySelector("i")?.remove(); if (hecho) sb.insertAdjacentHTML("beforeend", '<i title="completado">✓</i>'); }
   };
 }
 
@@ -257,7 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
   montarBarra();
   montarTemario();
   montarAvancePortada();
-  montarIndice();
+  montarSidebar();
   montarNavLeccion();
   montarQuiz();
   pausarFueraDePantalla();

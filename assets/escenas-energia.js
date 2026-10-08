@@ -98,23 +98,23 @@ PM.escena("chip06-ciclo", {
       m.marco(X0, base - hA, wa, hA, tt >= 0 ? "a3" : "n3");
       // corte del eje
       m.linea(xb + 6, base - 6, xb + 10, base + 6, "n5"); m.linea(xb + 12, base - 6, xb + 16, base + 6, "n5");
-      m.linea(xs, base - 1, Math.max(xs, xp), base - 1, "a4");        // 8 µA: casi pegado al eje
+      m.linea(xs, base - 1, Math.max(xs, xp), base - 1, "b3");        // 8 µA: casi pegado al eje
       m.linea(xp, Y + 1, xp, base - 1, "n4", { punteo: 2 });
     });
     e32(m, () => { if (xp > X0) m.polilinea([[X0, base - hA], [Math.min(xp, xb), base - hA]], "a4", { grosor: 1 }); });
     txt(m, "66 mA", X0 + 2, base - hA - 9, "n6");
-    txt(m, "8 µA", xs + 6, base - 11, "n5");
+    txt(m, "8 µA", xs + 6, base - 11, "b3");
     txt(m, "ACTIVO " + ta + " s", X0, base + 8, "n6");
-    txt(m, "DORMIDO " + ts + " s", xe, base + 8, "n6", { alin: "der" });
+    txt(m, "DORMIDO " + ts + " s", xe, base + 8, "b3", { alin: "der" });
     txt(m, "CORRIENTE (mA)", 8, 5, "n5");
     // carga = área
-    txt(m, "ACTIVO", 8, 133, "n6"); txt(m, "DORMIDO", 8, 147, "n5");
+    txt(m, "ACTIVO", 8, 133, "a3"); txt(m, "DORMIDO", 8, 147, "b3");
     const bar = (y, q, tok) => {
       const w = Math.max(1, Math.round((q / QMAX) * 172));
       e16(m, () => { m.rect(56, y, 172, 9, "n1"); m.rect(56, y, w, 9, tok); m.marco(56, y, 172, 9, "n3"); });
     };
-    bar(131, Qa, "a3"); bar(145, Qs, "n4");
-    txt(m, fmt(Qa, 0) + " mA·s", 234, 133, "n6"); txt(m, fmt(Qs, 1) + " mA·s", 234, 147, "n5");
+    bar(131, Qa, "a3"); bar(145, Qs, "b3");
+    txt(m, fmt(Qa, 0) + " mA·s", 234, 133, "n6"); txt(m, fmt(Qs, 1) + " mA·s", 234, 147, "b3");
     txt(m, "DORMIDO: " + fmt(100 * ts / T_C, 1) + "% DEL TIEMPO, " + fmt(100 * Qs / (Qa + Qs), 1) + "% DE LA CARGA", 8, 164, "a4");
     txt(m, "PROMEDIO ~" + fmt(prom, 2) + " mA", 8, 178, "n6");
     txt(m, "CON 1000 mAh: ~" + Math.round(1000 / prom / 24) + " DIAS (SIN PERDIDAS)", 8, 190, "n6");

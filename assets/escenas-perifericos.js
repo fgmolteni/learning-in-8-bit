@@ -93,7 +93,7 @@ PM.escena("per-pwm", {
     const paso = 100 / L, pasoTxt = (paso >= 1 ? paso.toFixed(paso >= 10 ? 0 : 1) : paso.toFixed(paso >= 0.1 ? 2 : 3)).replace(".", ",") + "%";
     const real = ((N / L) * 100), realTxt = (Number.isInteger(real) ? String(real) : real.toFixed(real < 1 ? 2 : 1)).replace(".", ",") + "%";
 
-    txt(m, "CONTADOR Y UMBRAL", X0, 4, "n6");
+    txt(m, "CONTADOR", X0, 4, "b3"); txt(m, "Y UMBRAL", X0 + 6 * "CONTADOR ".length, 4, "a3");   // 6 u por carácter
     txt(m, "SALIDA", X0, 80, "n6");
     m.en(16, () => {
       m.marco(X0, yA0, W, hA, "n3"); m.marco(X0, yB0, W, hB, "n3");
@@ -108,7 +108,7 @@ PM.escena("per-pwm", {
       let py = null;
       for (let x = 0; x < W; x += 0.5) {
         const u = (x % PER) / PER, y = yA0 + hA - 3 - cont(u) * (hA - 8);
-        if (py !== null) m.linea(X0 + x - 0.5, py, X0 + x, y, "n6");
+        if (py !== null) m.linea(X0 + x - 0.5, py, X0 + x, y, "b3");
         py = y;
       }
       const yh = yB0 + 5, yl = yB0 + hB - 5;
@@ -121,7 +121,7 @@ PM.escena("per-pwm", {
       // cursor de tiempo
       const xc = X0 + ((t / 4) % 1) * W, u = (((xc - X0) % PER) / PER);
       m.linea(xc, yA0, xc, yB0 + hB, "n4", { punteo: 2 });
-      m.rect(xc - 2, yA0 + hA - 3 - cont(u) * (hA - 8) - 2, 4, 4, "a4");
+      m.rect(xc - 2, yA0 + hA - 3 - cont(u) * (hA - 8) - 2, 4, 4, "b4");
       m.rect(xc - 2, (Math.floor(u * L) < N ? yh : yl) - 2, 4, 4, "a4");
     });
     // lectura
@@ -162,9 +162,9 @@ PM.escena("per-sar", {
         else if (p.keep) m.rect(X0 + j * CW + 1, Y1 - h, CW - 2, h, "a2");
         else m.tramado(X0 + j * CW + 1, Y1 - h, CW - 2, h, "n3");
       }
-      m.linea(X0 - 2, yv(code), X0 + CW * N_BITS + 2, yv(code), "n6", { grosor: 2 });
+      m.linea(X0 - 2, yv(code), X0 + CW * N_BITS + 2, yv(code), "b3", { grosor: 2 });
     });
-    txt(m, "VIN", X0 + CW * N_BITS - 16, yv(code) < 32 ? yv(code) + 5 : yv(code) - 10, "n6");
+    txt(m, "VIN", X0 + CW * N_BITS - 16, yv(code) < 32 ? yv(code) + 5 : yv(code) - 10, "b3");
     txt(m, "MSB", X0 + 7, 134, "n4", { alin: "centro" }); txt(m, "LSB", X0 + CW * (N_BITS - 1) + 7, 134, "n4", { alin: "centro" });
     // registro de resultado
     txt(m, "REG", 4, 154, "n4");
@@ -182,7 +182,7 @@ PM.escena("per-sar", {
     // lectura
     const X1 = 220;
     txt(m, fin ? "LISTO" : "PASO " + (k + 1) + "/" + N_BITS, X1, 16, fin ? "a3" : "n6");
-    txt(m, "VIN", X1, 32, "n4"); txt(m, String(code), X1, 42, "n6");
+    txt(m, "VIN", X1, 32, "n4"); txt(m, String(code), X1, 42, "b3");
     if (cur) {
       txt(m, "DAC PRUEBA", X1, 58, "n4"); txt(m, String(cur.prueba), X1, 68, "a3");
       txt(m, "VIN>=DAC?", X1, 84, "n4"); txt(m, cur.keep ? "SI: BIT=1" : "NO: BIT=0", X1, 94, "n6");
@@ -230,13 +230,13 @@ PM.escena("per-buses", {
     // I2C
     txt(m, "I2C: DOS HILOS, RELOJ COMPARTIDO", 8, 52, "n6"); txt(m, "100-400 kHz", 312, 52, "n4", { alin: "der" });
     MI.cronograma(m, { x: X, y: 62, w: W, h: 36, ventana: 1, t: u, desde: 0, señales: [
-      { nombre: "SCL", tok: "a3", f: (v) => i2c(v)[0] }, { nombre: "SDA", tok: "n6", f: (v) => i2c(v)[1] }] });
+      { nombre: "SCL", tok: "b3", f: (v) => i2c(v)[0] }, { nombre: "SDA", tok: "a3", f: (v) => i2c(v)[1] }] });
     an("S", 22, 1.5, 101); an("DIR 7 BITS+W", 22, 6, 101); an("A", 22, 10.5, 101); an("DATO 8 BITS", 22, 15, 101); an("A", 22, 19.5, 101); an("P", 22, 20.5, 101);
     // SPI
     txt(m, "SPI: RELOJ, 2 DATOS Y CS", 8, 114, "n6"); txt(m, "hasta 80 MHz", 312, 114, "n4", { alin: "der" });
     MI.cronograma(m, { x: X, y: 124, w: W, h: 60, ventana: 1, t: u, desde: 0, señales: [
-      { nombre: "CS", tok: "n6", f: (v) => spi(v).cs }, { nombre: "SCK", tok: "a3", f: (v) => spi(v).sck },
-      { nombre: "MOSI", tok: "n6", f: (v) => spi(v).mosi }, { nombre: "MISO", tok: "n5", f: (v) => spi(v).miso }] });
+      { nombre: "CS", tok: "n6", f: (v) => spi(v).cs }, { nombre: "SCK", tok: "b3", f: (v) => spi(v).sck },
+      { nombre: "MOSI", tok: "a3", f: (v) => spi(v).mosi }, { nombre: "MISO", tok: "n5", f: (v) => spi(v).miso }] });
     an("CS BAJA", 10, 1, 187); an("8 CICLOS DE SCK", 10, 5, 187); an("CS SUBE", 10, 9, 187);
     txt(m, "BYTE DE DATOS: 10100101", 8, 199, "n4");
   },
@@ -310,11 +310,11 @@ PM.escena("per-tactil", {
       for (let i = 0; i < TC.N; i++) {
         const x = 164 + i * 37, lleno = i < hechas ? 1 : i === hechas ? fa - j0 - hechas : 0;
         m.marco(x, 112, 35, 10, "n3");
-        if (lleno > 0) m.rect(x + 1, 113, Math.max(1, Math.round(lleno * 33)), 8, i < hechas ? "a3" : "n2");
+        if (lleno > 0) m.rect(x + 1, 113, Math.max(1, Math.round(lleno * 33)), 8, i < hechas ? "b3" : "n2");
       }
     });
     txt(m, "TIEMPO " + Math.round((t - ts) * 100), 164, 128, "n6");
-    txt(m, "ULTIMA LECTURA " + Math.round((ts - tcTiempo(j0 - TC.N)) * 100), 164, 140, "a3");
+    txt(m, "ULTIMA LECTURA " + Math.round((ts - tcTiempo(j0 - TC.N)) * 100), 164, 140, "b3");
     txt(m, "AL TOCAR, SUBE", 164, 152, "n4");
     txt(m, "10 pF + 4 pF DEL DEDO: CADA RAMPA TARDA 40 % MAS", 8, 170, "n4");
   },
@@ -344,19 +344,19 @@ PM.escena("per-encoder", {
         for (let r = 28; r <= 35; r++) m.rect(Math.round(CX + Math.sin(ang) * r) - 1, Math.round(CY - Math.cos(ang) * r) - 1, 2, 2, "n0");
       }
     });
-    // sensor: ventana sobre el anillo de ranuras; en acento cuando ve luz (señal en 1)
-    const sensor = (phi, v, nombre) => {
+    // sensor: ventana sobre el anillo de ranuras; en el color de su señal (A segundo, B acento) cuando ve luz (señal en 1)
+    const sensor = (phi, v, nombre, tok) => {
       const x = Math.round(CX + Math.sin(phi) * 32), y = Math.round(CY - Math.cos(phi) * 32);
-      m.en(16, () => { m.marco(x - 6, y - 6, 12, 12, v ? "a3" : "n6"); m.marco(x - 7, y - 7, 14, 14, v ? "a3" : "n6"); });
+      m.en(16, () => { m.marco(x - 6, y - 6, 12, 12, v ? tok : "n6"); m.marco(x - 7, y - 7, 14, 14, v ? tok : "n6"); });
       const xl = Math.round(CX + Math.sin(phi) * (R + 10)), yl = Math.round(CY - Math.cos(phi) * (R + 10));
-      txt(m, nombre, xl, yl - 3, v ? "a3" : "n5", { alin: "centro" });
+      txt(m, nombre, xl, yl - 3, v ? tok : "n5", { alin: "centro" });
     };
-    sensor(0, enA(t), "A"); sensor(2.75 * PASO, enB(t), "B");
+    sensor(0, enA(t), "A", "b3"); sensor(2.75 * PASO, enB(t), "B", "a3");
     txt(m, suma ? "GIRA ANTIHORARIO" : "GIRA HORARIO", CX, 146, "n6", { alin: "centro" });
     txt(m, "12 RANURAS", CX, 156, "n4", { alin: "centro" });
     // señales y cuenta
     MI.cronograma(m, { x: 150, y: 16, w: 162, h: 36, ventana: 3, t, señales: [
-      { nombre: "A", tok: "n6", f: enA }, { nombre: "B", tok: "a3", f: enB }] });
+      { nombre: "A", tok: "b3", f: enA }, { nombre: "B", tok: "a3", f: enB }] });
     m.osciloscopio({ x: 150, y: 60, w: 162, h: 56, t, ventana: 3, rango: [-2, 26], divs: [6, 4], ejes: false, rotulos: false, trazos: [{ f: enCuenta, tok: "a3" }] });
     txt(m, "CUENTA", 146, 62, "n4", { alin: "der" });
     txt(m, "CUENTA", 150, 124, "n4"); txt(m, String(enCuenta(t)), 150, 134, "n6", { tam: 14 });
@@ -380,7 +380,7 @@ PM.escena("per-uart-error", {
     const mu = UA_TX.map((_, k) => { const p = (k + 0.5) * (1 + e); return { k, p, bit: nivel(p), ok: Math.floor(p) === k }; });
     const u = Math.min(1, (frac(t / 6) * 6) / 4.5), xc = xs(u * 11), fin = u >= 1;
     txt(m, "EL RECEPTOR MUESTREA CON SU RELOJ", 8, 4, "n6");
-    txt(m, "RX " + ST.uart.e + " % LENTO", 312, 4, e ? "a3" : "n4", { alin: "der" });
+    txt(m, "RX " + ST.uart.e + " % LENTO", 312, 4, e ? "b3" : "n4", { alin: "der" });
     ["INI", "B0", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "FIN"].forEach((s, i) => txt(m, s, xs(i + 0.5), 16, "n4", { alin: "centro" }));
     m.en(16, () => {
       const yv = (b) => (b ? Y + 4 : Y + H - 4);
@@ -392,13 +392,13 @@ PM.escena("per-uart-error", {
       mu.forEach((s) => {
         const x = xs(s.p), x0 = xs(s.k + 0.5);
         if (x > xc) return;
-        m.linea(x, Y - 2, x, Y + H + 10, s.ok ? "n4" : "a3", { punteo: 2 });
+        m.linea(x, Y - 2, x, Y + H + 10, s.ok ? "b2" : "a3", { punteo: 2 });
         if (x - x0 >= 1) m.linea(x0, Y + H + 6, x, Y + H + 6, "a3", { grosor: 2 });   // corrimiento acumulado
-        m.rect(x - 2, Y + H + 10, 4, 4, s.ok ? "n5" : "a3");
+        m.rect(x - 2, Y + H + 10, 4, 4, s.ok ? "b3" : "a3");
       });
       if (!fin) m.linea(xc, Y - 4, xc, Y + H + 14, "a4");
     });
-    mu.forEach((s) => { if (xs(s.p) <= xc) txt(m, String(s.bit), xs(s.p), Y + H + 17, s.ok ? "n5" : "a3", { alin: "centro" }); });
+    mu.forEach((s) => { if (xs(s.p) <= xc) txt(m, String(s.bit), xs(s.p), Y + H + 17, s.ok ? "b3" : "a3", { alin: "centro" }); });
     // corrimiento en el bit de parada, contra el límite práctico (0,4 bit) y el borde de la celda (0,5 bit)
     const d9 = Math.round(9.5 * ST.uart.e) / 100, BX = 16, BW = 288, BY = 104;
     const malos = mu.filter((s) => !s.ok && s.k >= 1 && s.k <= 8).length, leido = mu.slice(1, 9).reduce((v, s, i) => v | (s.bit << i), 0);
@@ -442,12 +442,13 @@ PM.escena("per-i2s", {
     txt(m, "I2S: TRAMA ESTEREO DE 16 BITS", 8, 4, "n6");
     const fila = (nombre, bs, y, s0, valor) => {
       const est = (i) => { const s = s0 + i; return !fin && s === cur ? "act" : fin || s < cur ? "hecho" : "falta"; };
-      txt(m, nombre, 8, y + 2, "n4");
+      const [c1, c3] = s0 === 1 ? ["a1", "a3"] : ["b1", "b3"];
+      txt(m, nombre, 8, y + 2, c3);
       m.en(16, () => bs.forEach((_, i) => {
         const x = 32 + i * 9, e = est(i);
-        m.rect(x, y, 8, 11, e === "act" ? "a1" : e === "hecho" ? "n1" : "n0"); m.marco(x, y, 8, 11, e === "act" ? "a3" : "n3");
+        m.rect(x, y, 8, 11, e === "act" ? c1 : e === "hecho" ? "n1" : "n0"); m.marco(x, y, 8, 11, e === "act" ? c3 : "n3");
       }));
-      bs.forEach((b, i) => { const e = est(i); txt(m, String(b), 32 + i * 9 + 4, y + 2, e === "act" ? "a3" : e === "hecho" ? "n4" : "n6", { alin: "centro" }); });
+      bs.forEach((b, i) => { const e = est(i); txt(m, String(b), 32 + i * 9 + 4, y + 2, e === "act" ? c3 : e === "hecho" ? "n4" : "n6", { alin: "centro" }); });
       txt(m, (valor > 0 ? "+" : "") + valor, 182, y + 2, "n6");
     };
     fila("IZQ", bl, 16, 1, l); fila("DER", br, 30, 17, r);
@@ -459,13 +460,13 @@ PM.escena("per-i2s", {
       { nombre: "WS", tok: "n6", f: (v) => ws(ranura(v)) },
       { nombre: "SD", tok: "a3", f: (v) => sd(ranura(v)) }] });
     m.en(16, () => [1, 17].forEach((s) => m.linea(X + s * 8, 48, X + s * 8, 112, "n4", { punteo: 2 })));
-    txt(m, "IZQUIERDO, WS=0", X + 9 * 8, 115, "n5", { alin: "centro" }); txt(m, "DERECHO, WS=1", X + 25 * 8, 115, "n5", { alin: "centro" });
+    txt(m, "IZQUIERDO, WS=0", X + 9 * 8, 115, "a3", { alin: "centro" }); txt(m, "DERECHO, WS=1", X + 25 * 8, 115, "b3", { alin: "centro" });
     txt(m, "MSB", X + 8 + 1, 125, "a3"); txt(m, "LSB", X + 17 * 8 - 3, 125, "a3", { alin: "der" });
-    txt(m, "MSB", X + 17 * 8 + 3, 125, "a3"); txt(m, "LSB", X + W, 125, "a3", { alin: "der" });
+    txt(m, "MSB", X + 17 * 8 + 3, 125, "b3"); txt(m, "LSB", X + W, 125, "b3", { alin: "der" });
     txt(m, "WS CAMBIA 1 CICLO ANTES DEL MSB", X, 137, "n4");
     const k = (cur - 1) % 16;
     txt(m, fin ? "TRAMA COMPLETA: 32 BITS" : cur === 0 ? "SALE EL ULTIMO BIT DE LA TRAMA ANTERIOR"
-      : "SALE " + (cur <= 16 ? "IZQ" : "DER") + " BIT " + (15 - k) + (k === 0 ? " (MSB)" : k === 15 ? " (LSB)" : ""), X, 149, "a3");
+      : "SALE " + (cur <= 16 ? "IZQ" : "DER") + " BIT " + (15 - k) + (k === 0 ? " (MSB)" : k === 15 ? " (LSB)" : ""), X, 149, cur > 16 && !fin ? "b3" : "a3");
   },
 });
 
@@ -497,9 +498,9 @@ PM.escena("per-dma", {
       const ocupadas = llena ? llenas : cpu ? Math.ceil(DM.N * (1 - tb / DM.TPROC)) : 0;
       m.caja(x, CY, CW, CH, { estilo: llena ? "activo" : cpu ? "normal" : "apagado" });
       txt(m, "DESC " + j, x + 6, CY + 5, llena || cpu ? "n6" : "n4");
-      txt(m, cpu ? "BIT 0: CPU" : "BIT 1: DMA", x + 6, CY + 16, llena ? "a3" : cpu ? "n6" : "n5");
-      m.en(16, () => { for (let i = 0; i < DM.N; i++) { const cx = x + 8 + i * 10; m.rect(cx, CY + 30, 9, 12, i < ocupadas ? (llena ? "a3" : "n5") : "n0"); m.marco(cx, CY + 30, 9, 12, "n3"); } });
-      txt(m, llena ? "EL DMA LLENA" : cpu ? "LA CPU LEE" : "LIBRE", x + 6, CY + 47, llena ? "a3" : cpu ? "n6" : "n4");
+      txt(m, cpu ? "BIT 0: CPU" : "BIT 1: DMA", x + 6, CY + 16, llena ? "a3" : cpu ? "b3" : "n5");
+      m.en(16, () => { for (let i = 0; i < DM.N; i++) { const cx = x + 8 + i * 10; m.rect(cx, CY + 30, 9, 12, i < ocupadas ? (llena ? "a3" : "b3") : "n0"); m.marco(cx, CY + 30, 9, 12, "n3"); } });
+      txt(m, llena ? "EL DMA LLENA" : cpu ? "LA CPU LEE" : "LIBRE", x + 6, CY + 47, llena ? "a3" : cpu ? "b3" : "n4");
     }
     // la palabra en viaje: primero de la FIFO al GDMA, después al búfer activo
     const fv = w - llenas, dx = CX[jc] + 12 + llenas * 10;
@@ -507,14 +508,14 @@ PM.escena("per-dma", {
     else MI.paquete(m, { camino: [[160, 40], [160, 50], [dx, 50], [dx, CY - 2]], t: (fv - 0.4) / 0.6, periodo: 1, tok: "a4", tam: 4 });
     // línea de tiempo de los últimos 8 s
     const TX = 40, TW = 272, VEN = 8, xt = (tt) => TX + TW - ((t - tt) / VEN) * TW;
-    txt(m, "DMA", 34, 138, "n4", { alin: "der" }); txt(m, "CPU", 34, 154, "n4", { alin: "der" });
+    txt(m, "DMA", 34, 138, "a3", { alin: "der" }); txt(m, "CPU", 34, 154, "b3", { alin: "der" });
     m.en(16, () => {
       m.marco(TX, 136, TW, 10, "n3"); m.marco(TX, 152, TW, 10, "n3");
-      for (let k = Math.ceil((t - VEN) / DM.TW); k * DM.TW <= t; k++) m.rect(xt(k * DM.TW), 138, 2, 6, "n5");
+      for (let k = Math.ceil((t - VEN) / DM.TW); k * DM.TW <= t; k++) m.rect(xt(k * DM.TW), 138, 2, 6, "a3");
       for (let k = Math.max(1, Math.floor((t - VEN) / DM_TB)); k * DM_TB <= t; k++) {
         const a = Math.max(t - VEN, k * DM_TB), z = Math.min(t, k * DM_TB + DM.TPROC);
-        if (z > a) m.rect(xt(a), 153, Math.max(1, xt(z) - xt(a)), 8, "a3");
-        if (k * DM_TB >= t - VEN) m.linea(xt(k * DM_TB), 149, xt(k * DM_TB), 164, "a4");
+        if (z > a) m.rect(xt(a), 153, Math.max(1, xt(z) - xt(a)), 8, "b3");
+        if (k * DM_TB >= t - VEN) m.linea(xt(k * DM_TB), 149, xt(k * DM_TB), 164, "b4");
       }
     });
     txt(m, "LA CPU SOLO TRABAJA DESPUES DE CADA INTERRUPCION", 8, 172, "n4");

@@ -81,7 +81,7 @@ function gantt(modo) {
   const rl = (c) => { const s = []; c.forEach((k, i) => { if (s.length && s[s.length - 1][2] === k) s[s.length - 1][1] = i + 1; else s.push([i, i + 1, k]); }); return s; };
   return (G_CACHE[modo] = { c0, c1, s0: rl(c0), s1: rl(c1), fin });
 }
-const G_TOK = { w: "n6", t: "n5", l: "n4", f: "a3" };
+const G_TOK = { w: "b3", t: "n5", l: "n4", f: "a3" };
 PM.escena("chip05-gantt", {
   alto: 158, tFijo: 8,
   descripcion: "Diagrama de Gantt de dos núcleos durante 100 milisegundos, con una marca de tick cada 10 milisegundos. El núcleo 0 atiende ráfagas de Wi-Fi, del temporizador y de la pila TCP/IP. Con la inferencia anclada al núcleo 1 termina a los 54 milisegundos sin interrupciones; con todo anclado al núcleo 0 la inferencia solo corre en los huecos y termina a los 92 milisegundos mientras el núcleo 1 queda ocioso.",
@@ -99,7 +99,7 @@ PM.escena("chip05-gantt", {
         });
       });
       for (let k = 0; k <= 10; k++) m.linea(xs(k * 10), 22, xs(k * 10), 88, "n4", { punteo: 2 });
-      [[8, "n6"], [66, "n5"], [132, "n4"], [192, "a3"]].forEach(([x, k]) => m.rect(x, 104, 7, 7, k));
+      [[8, "b3"], [66, "n5"], [132, "n4"], [192, "a3"]].forEach(([x, k]) => m.rect(x, 104, 7, 7, k));
       m.tramado(272, 104, 7, 7, "n3"); m.marco(272, 104, 7, 7, "n3");
     });
     txt(m, "VENTANA DE 100 ms, TICK CADA 10 ms (100 Hz)", 8, 2, "n6");
@@ -155,8 +155,8 @@ PM.escena("chip05-cola", {
       flecha([[300, 110], [300, 150]], "n4");
       [124, 168].forEach((x) => { m.marco(x, 28, 16, 16, "n3", { punteo: 2 }); m.marco(x, 120, 16, 16, "n3", { punteo: 2 }); });
     });
-    txt(m, "CAMARA", 40, 61, "n6", { alin: "centro" }); txt(m, "SIN CPU", 40, 71, "n4", { alin: "centro" });
-    txt(m, "INFERENCIA", 280, 61, "n6", { alin: "centro" }); txt(m, "NUCLEO 1", 280, 71, "n4", { alin: "centro" });
+    txt(m, "CAMARA", 40, 61, "a3", { alin: "centro" }); txt(m, "SIN CPU", 40, 71, "n4", { alin: "centro" });
+    txt(m, "INFERENCIA", 280, 61, "b3", { alin: "centro" }); txt(m, "NUCLEO 1", 280, 71, "n4", { alin: "centro" });
     txt(m, "COLA LLENAS", 160, 12, "n5", { alin: "centro" }); txt(m, "COLA LIBRES", 160, 146, "n5", { alin: "centro" });
     txt(m, "RESULT", 262, 118, "n4");
     // buffers: [letra, centro, relleno]
@@ -176,8 +176,8 @@ PM.escena("chip05-cola", {
     bufs.forEach(([l, [cx, cy], p, proc]) => {
       e16(m, () => {
         m.rect(Math.round(cx - 8), Math.round(cy - 8), 16, 16, "n2");
-        if (p > 0) m.rect(Math.round(cx - 8), Math.round(cy - 8), Math.max(1, Math.round(16 * p)), 16, proc ? "n5" : "a3");
-        m.marco(Math.round(cx - 8), Math.round(cy - 8), 16, 16, proc ? "n6" : "a3");
+        if (p > 0) m.rect(Math.round(cx - 8), Math.round(cy - 8), Math.max(1, Math.round(16 * p)), 16, proc ? "b3" : "a3");
+        m.marco(Math.round(cx - 8), Math.round(cy - 8), 16, 16, proc ? "b3" : "a3");
       });
       txt(m, l, cx, cy - 3, p >= 1 ? "n0" : "n6", { alin: "centro" });
     });

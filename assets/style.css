@@ -6,8 +6,16 @@
   /* rampa neutra pizarra (oscuro / terminal): n0 = fondo … n6 = tinta máxima */
   --n0: #0a0e16; --n1: #111722; --n2: #1b2331; --n3: #3a4659;
   --n4: #97a4b8; --n5: #cdd5e1; --n6: #f2f5f9;
-  /* acento (naranja por defecto): a1 relleno · a2 borde suave · a3 acento/texto · a4 brillante */
-  --a1: #301c12; --a2: #82482b; --a3: #ef986c; --a4: #f8a981;
+  /* rampas de color, una sola vez por tono (1 relleno · 2 borde suave · 3 acento/texto · 4 brillante); las de claro van abajo */
+  --naranja1: #301c12; --naranja2: #82482b; --naranja3: #ef986c; --naranja4: #f8a981;
+  --azul1: #122030; --azul2: #2b5482; --azul3: #75aef0; --azul4: #81b9f8;
+  --verde1: #12301f; --verde2: #2b824f; --verde3: #19e66f; --verde4: #81f8b3;
+  --magenta1: #301225; --magenta2: #822b62; --magenta3: #f183c9; --magenta4: #f881cd;
+  /* acento (naranja por defecto) */
+  --a1: var(--naranja1); --a2: var(--naranja2); --a3: var(--naranja3); --a4: var(--naranja4);
+  /* segundo color, solo para figuras: distingue una segunda cosa (señal B, CPU frente a DMA, canal derecho).
+     Contrasta con el acento: naranja y ámbar llevan azul; verde, magenta; azul, naranja; magenta, verde */
+  --b1: var(--azul1); --b2: var(--azul2); --b3: var(--azul3); --b4: var(--azul4);
 
   /* alias para canvas y figuras viejas (hex de 6 dígitos, los lee diagramas.js) */
   --m0: var(--n0); --m1: var(--n1); --m2: var(--n2); --m3: var(--n3);
@@ -33,26 +41,30 @@
   --esc-t: polygon(0 2px, 2px 2px, 2px -3em, calc(100% - 2px) -3em, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
 
   --ancho-lectura: 68ch;
+  --sb-w: 16rem;   /* ancho de la sidebar de niveles (ver más abajo) */
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
   --n0: #ffffff; --n1: #f4f6f9; --n2: #e2e7ee; --n3: #b3bdcb;
   --n4: #586478; --n5: #2f394b; --n6: #151b28;
-  --a1: #fdefe7; --a2: #f1b99d; --a3: #b84b14; --a4: #e8692c;
+  --naranja1: #fdefe7; --naranja2: #f1b99d; --naranja3: #b84b14; --naranja4: #e8692c;
+  --azul1: #e7f2fd; --azul2: #9dc4f1; --azul3: #166aca; --azul4: #2c83e8;
+  --verde1: #e7fdf0; --verde2: #9df1c0; --verde3: #0e813e; --verde4: #2ce87a;
+  --magenta1: #fde7f5; --magenta2: #f19dd2; --magenta3: #c51685; --magenta4: #e82ca3;
   --brillo: none;
   color-scheme: light;
 }
 
-/* acentos alternativos (el selector de la barra pone data-acento en <html>) */
-:root[data-acento="verde"] { --a1: #12301f; --a2: #2b824f; --a3: #19e66f; --a4: #81f8b3; }
-:root[data-theme="light"][data-acento="verde"] { --a1: #e7fdf0; --a2: #9df1c0; --a3: #0e813e; --a4: #2ce87a; }
-:root[data-acento="azul"] { --a1: #122030; --a2: #2b5482; --a3: #75aef0; --a4: #81b9f8; }
-:root[data-theme="light"][data-acento="azul"] { --a1: #e7f2fd; --a2: #9dc4f1; --a3: #166aca; --a4: #2c83e8; }
+/* acentos alternativos (el selector de la barra pone data-acento en <html>); su segundo color es el de enfrente */
+:root[data-acento="verde"] { --a1: var(--verde1); --a2: var(--verde2); --a3: var(--verde3); --a4: var(--verde4);
+    --b1: var(--magenta1); --b2: var(--magenta2); --b3: var(--magenta3); --b4: var(--magenta4); }
+:root[data-acento="azul"] { --a1: var(--azul1); --a2: var(--azul2); --a3: var(--azul3); --a4: var(--azul4);
+    --b1: var(--naranja1); --b2: var(--naranja2); --b3: var(--naranja3); --b4: var(--naranja4); }
+:root[data-acento="magenta"] { --a1: var(--magenta1); --a2: var(--magenta2); --a3: var(--magenta3); --a4: var(--magenta4);
+    --b1: var(--verde1); --b2: var(--verde2); --b3: var(--verde3); --b4: var(--verde4); }
 :root[data-acento="ambar"] { --a1: #302712; --a2: #82672b; --a3: #e7a923; --a4: #f8d381; }
 :root[data-theme="light"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #956704; --a4: #e8ac2c; }
-:root[data-acento="magenta"] { --a1: #301225; --a2: #822b62; --a3: #f183c9; --a4: #f881cd; }
-:root[data-theme="light"][data-acento="magenta"] { --a1: #fde7f5; --a2: #f19dd2; --a3: #c51685; --a4: #e82ca3; }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -121,6 +133,41 @@ a:hover { text-decoration-color: var(--a3); }
 .topbar :focus-visible { outline: 2px solid var(--a3); outline-offset: -2px; }
 .colores button:focus-visible { outline-offset: 2px; }
 .progreso-lectura { position: absolute; left: 0; bottom: -1px; height: 2px; width: 0; background: var(--a3); }
+
+/* ---------- Sidebar de los niveles (site.js): niveles del tomo y secciones del nivel abierto ----------
+   1100 px o más: fija a la izquierda y la hoja se corre. Más angosto: panel que abre el botón "índice". */
+.sidebar {
+  position: fixed; top: 34px; bottom: 0; left: 0; z-index: 15; width: var(--sb-w); overflow-y: auto;
+  padding: 1.4rem 1rem 1.5rem; background: var(--fondo); border-right: 1px solid var(--linea-fuerte);
+  font-size: .88rem; line-height: 1.45;
+}
+.sidebar a { color: var(--texto); text-decoration: none; }
+.sidebar a:hover { color: var(--tinta); }
+.sb-eyebrow { margin: 0; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--a3); }
+.sidebar .sb-tomo { display: block; margin: .25rem 0 1rem; font-family: var(--f-serif); font-size: 1.35rem; line-height: 1.15; color: var(--tinta); }
+.sb-niveles, .sb-secciones { list-style: none; margin: 0; padding: 0; }
+.sb-niveles > li > a { display: flex; gap: .55rem; padding: .35rem .5rem; border-left: 2px solid transparent; }
+.sb-niveles > li > a span { flex: none; font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); padding-top: .1rem; }
+.sb-niveles > li > a i { margin-left: auto; padding-left: .4rem; font-style: normal; font-family: var(--f-mono); color: var(--a3); }
+.sb-niveles > li.actual > a { border-left-color: var(--a3); background: var(--a1); color: var(--tinta); font-weight: 600; }
+.sb-secciones { margin: .25rem 0 .6rem 1.75rem; border-left: 1px solid var(--linea-fuerte); }
+.sidebar .sb-secciones a { display: block; margin-left: -1px; padding: .2rem .6rem; border-left: 2px solid transparent; font-size: .8rem; color: var(--texto-suave); }
+.sidebar .sb-secciones a[aria-current] { border-left-color: var(--a3); color: var(--tinta); }
+.sb-tomos { display: flex; justify-content: space-between; margin: 1.2rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); font-family: var(--f-mono); font-size: .75rem; }
+.btn-sidebar {
+  font-family: var(--f-mono); font-size: .8rem; background: transparent; color: var(--texto);
+  border: 0; border-right: 1px solid var(--linea-fuerte); padding: 0 .9rem; cursor: pointer;
+}
+.btn-sidebar:hover, .btn-sidebar[aria-expanded="true"] { color: var(--tinta); background: var(--n1); }
+@media (min-width: 1100px) {
+  body.con-sidebar { padding-left: var(--sb-w); }
+  body.con-sidebar .topbar { margin-left: calc(-1 * var(--sb-w)); }
+  .btn-sidebar { display: none; }
+}
+@media (max-width: 1099.98px) {
+  .sidebar { width: min(20rem, 85vw); visibility: hidden; transform: translateX(-100%); }
+  .sidebar.abierta { visibility: visible; transform: none; }
+}
 
 /* ---------- Botones (la sombra 2px 2px 0 es cromo estructural de la UI, no de las figuras) ---------- */
 .btn {
@@ -282,12 +329,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .caja.clave { border-color: var(--a3); }
 .objetivos { margin: 2.5rem 0; }
 .objetivos ul { margin: 0; }
-/* índice de la página (site.js, niveles con 7 secciones o más) */
-.indice ol { columns: 2; column-gap: 2.5rem; margin: 0; }
-.indice li { break-inside: avoid; }
-.indice a { color: var(--texto); text-decoration-color: var(--linea-fuerte); }
-.indice a:hover { color: var(--tinta); text-decoration-color: var(--a3); }
-.leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde el índice */
+.leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde la sidebar */
 
 /* figuras */
 figure.diagrama { margin: 2.5rem -1rem; padding: 1.5rem 1.25rem 1.25rem; background: var(--n0); clip-path: var(--esc-t); }
@@ -383,7 +425,6 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
   .nav-niveles a + a { border-left: 0; border-top: 1px solid var(--linea-fuerte); text-align: left; }
-  .indice ol { columns: 1; }
 }
 
 /* árbol de decisión (Nivel 7): reutiliza el look del quiz */
@@ -408,6 +449,8 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
 .s4 { stroke: var(--n4); } .s5 { stroke: var(--n5); } .s6 { stroke: var(--n6); }
 .fa1 { fill: var(--a1); } .fa2 { fill: var(--a2); } .fa3 { fill: var(--a3); } .fa4 { fill: var(--a4); }
 .sa1 { stroke: var(--a1); } .sa2 { stroke: var(--a2); } .sa3 { stroke: var(--a3); } .sa4 { stroke: var(--a4); }
+.fb1 { fill: var(--b1); } .fb2 { fill: var(--b2); } .fb3 { fill: var(--b3); } .fb4 { fill: var(--b4); }
+.sb1 { stroke: var(--b1); } .sb2 { stroke: var(--b2); } .sb3 { stroke: var(--b3); } .sb4 { stroke: var(--b4); }
 /* texto de figuras: 8-bit, Jersey 10 (grilla de 10 px; 10–20 px), 1 color, sin suavizado */
 .sv-lbl, .sv-tit, .sv-tag { font-family: "Jersey 10", var(--f-pixel), monospace; font-size: 20px; font-weight: 400; letter-spacing: 0; text-rendering: optimizeSpeed; -webkit-font-smoothing: none; font-smooth: never; }
 .sv-tag { font-size: 20px; text-transform: uppercase; }

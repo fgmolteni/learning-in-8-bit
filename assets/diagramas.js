@@ -16,11 +16,13 @@ function leerPaleta() {
   for (const [n, k] of Object.entries(NIVELES)) PAL[n] = m[k];
   PAL.rampa = m;
   PAL.acento = [null, 1, 2, 3, 4].map((k) => (k ? cs.getPropertyValue("--a" + k).trim() : ""));
+  PAL.segundo = [null, 1, 2, 3, 4].map((k) => (k ? cs.getPropertyValue("--b" + k).trim() : ""));
 }
 const PIX = '"Jersey 10", "Press Start 2P", monospace';   // texto 8-bit: pixel font con tildes, ñ, µ, ° y ×
 const W = 640, MG = 16;                       // ancho lógico y margen
 const R = (n) => PAL.rampa[n];
 const A = (n) => PAL.acento[n];             // acento 1..4
+const B = (n) => PAL.segundo[n];            // segundo color 1..4 (contrasta con el acento)
 
 function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 function mezcla(a, b, t) {
@@ -68,7 +70,7 @@ const etiqueta = (g, s, x, y, color = R(5), alin = "left") => txt(g, s, x, y, co
 const numero = (g, s, x, y, color = R(6), alin = "left", tam = 20) => txt(g, s, x, y, color, alin, Math.max(20, Math.round(tam / 10) * 10));
 
 // ---- formas
-const ESTILOS = { normal: [() => R(1), () => R(3)], activo: [() => A(1), () => A(3)], apagado: [() => R(1), () => R(2)] };   // [relleno, trazo]
+const ESTILOS = { normal: [() => R(1), () => R(3)], activo: [() => A(1), () => A(3)], segundo: [() => B(1), () => B(3)], apagado: [() => R(1), () => R(2)] };   // [relleno, trazo]
 // rect con esquinas escalonadas de 2 px (solo si la caja es grande)
 function rectEsc(g, x, y, w, h) {
   if (w < 28 || h < 28) { g.fillRect(x, y, w, h); return; }
@@ -315,8 +317,8 @@ function widgetSeparable(cv) {
     etiqueta(g, "CANAL", 16, 16, R(4));
     etiqueta(g, "3×3", 76, 16, fA ? A(3) : R(4));
     if (sep) etiqueta(g, "MAPAS", 146, 16, fA ? A(3) : R(4));
-    etiqueta(g, sep ? "1×1×C" : "Σ", 216, 16, pA ? A(3) : R(4));
-    etiqueta(g, "SALIDA", 290, 16, pA ? A(3) : R(4));
+    etiqueta(g, sep ? "1×1×C" : "Σ", 216, 16, pA ? B(3) : R(4));
+    etiqueta(g, "SALIDA", 290, 16, pA ? B(3) : R(4));
 
     filas.forEach((y, i) => {
       contorno(g, 16, y, 32, 32, R(3)); g.fillStyle = R(1); g.fillRect(18, y + 2, 28, 28);
@@ -327,21 +329,21 @@ function widgetSeparable(cv) {
       if (sep) {
         flecha(g, 110, y + 16, 32, fA ? A(3) : R(3));
         contorno(g, 146, y, 32, 32, fA ? A(3) : R(3)); g.fillStyle = fA ? A(1) : R(1); g.fillRect(148, y + 2, 28, 28);
-        flecha(g, 182, y + 16, 30, pA ? A(3) : R(3));
+        flecha(g, 182, y + 16, 30, pA ? B(3) : R(3));
       } else flecha(g, 110, y + 16, 102, R(3));
     });
     txt(g, "⋮", 32, 208, R(4), "center", 20);
     // barra de mezcla (Σ o 1×1×C)
-    g.fillStyle = pA ? A(3) : R(3); g.fillRect(216, 30, 24, 168);
-    g.fillStyle = pA ? A(1) : R(1); g.fillRect(218, 32, 20, 164);
-    flecha(g, 242, 114, 44, pA ? A(3) : R(3));
-    contorno(g, 290, 98, 32, 32, pA ? A(3) : R(3)); g.fillStyle = pA ? A(1) : R(1); g.fillRect(292, 100, 28, 28);
+    g.fillStyle = pA ? B(3) : R(3); g.fillRect(216, 30, 24, 168);
+    g.fillStyle = pA ? B(1) : R(1); g.fillRect(218, 32, 20, 164);
+    flecha(g, 242, 114, 44, pA ? B(3) : R(3));
+    contorno(g, 290, 98, 32, 32, pA ? B(3) : R(3)); g.fillStyle = pA ? B(1) : R(1); g.fillRect(292, 100, 28, 28);
     if (!sep) punteado(g, 70, 28, 42, 172, A(3));                // los 32 cortes forman UN solo filtro 3×3×32
 
     const l1 = sep ? "etapa 1: 32 filtros 3×3, uno por canal" : "1 filtro 3×3×32 mira todos los canales";
     const l2 = sep ? "etapa 2: 1×1×32 mezcla canales (×64)" : "y se repite 64 veces (uno por salida)";
     rotulo(g, l1, 16, 228, sep ? (fA ? A(3) : R(4)) : R(5));
-    rotulo(g, l2, 16, 250, sep ? (pA ? A(3) : R(4)) : R(5));
+    rotulo(g, l2, 16, 250, sep ? (pA ? B(3) : R(4)) : R(5));
 
     // panel de costo
     const px = 360, pw = 264;
@@ -352,7 +354,8 @@ function widgetSeparable(cv) {
     g.fillStyle = R(1); g.fillRect(px, 90, pw, 16); tramado(g, px, 90, pw, 16, R(3)); contorno(g, px, 90, pw, 16, R(3));
     rotulo(g, "separable " + fmtM(macsS), px, 124, sep ? A(3) : R(4));
     const wD = Math.max(2, Math.round(pw * macsD / macsE)), wP = Math.max(2, Math.round(pw * macsP / macsE));
-    g.fillStyle = sep ? A(3) : R(3); g.fillRect(px, 136, wD, 16); g.fillRect(px + wD + 2, 136, wP, 16);
+    g.fillStyle = sep ? A(3) : R(3); g.fillRect(px, 136, wD, 16);
+    g.fillStyle = sep ? B(3) : R(3); g.fillRect(px + wD + 2, 136, wP, 16);
     rotulo(g, `dw ${fmtM(macsD)} + pw ${fmtM(macsP)}`, px, 170, R(4));
     if (sep) {
       const w = numero(g, coma((macsE / macsS).toFixed(1)) + "×", px, 200, A(3), "left", 30);
@@ -523,19 +526,19 @@ function widgetSimd(cv) {
   const act = Array.from({ length: N }, (_, k) => (k * 11) % 5);
 
   function fila(y, titulo, hechos, ciclos, carriles) {
-    etiqueta(g, titulo, MG, y, carriles > 1 ? A(3) : R(5));
+    etiqueta(g, titulo, MG, y, carriles > 1 ? A(3) : B(3));
     const cw = 9, x0 = MG, y0 = y + 16;
     for (let k = 0; k < N; k++) {
       const activa = k >= hechos && k < hechos + carriles && hechos < N;
       const vec = carriles > 1;
-      g.fillStyle = k < hechos ? (vec ? A(3) : R(3)) : activa ? (vec ? A(4) : R(5)) : R(1);
+      g.fillStyle = k < hechos ? (vec ? A(3) : B(2)) : activa ? (vec ? A(4) : B(4)) : R(1);
       g.fillRect(x0 + k * cw, y0, cw - 2, 16);
       if (k < hechos && !vec) tramado(g, x0 + k * cw, y0, cw - 2, 16, R(1));
     }
     const suma = pesos.slice(0, hechos).reduce((s, w, k) => s + w * act[k], 0);
     rotulo(g, `ciclos: ${ciclos}`, MG, y0 + 36, R(5));
     rotulo(g, `acumulador = ${suma}`, 200, y0 + 36, R(5));
-    if (hechos >= N) etiqueta(g, "LISTO", W - MG, y0 + 36, carriles > 1 ? A(3) : R(5), "right");
+    if (hechos >= N) etiqueta(g, "LISTO", W - MG, y0 + 36, carriles > 1 ? A(3) : B(3), "right");
   }
 
   function dibujar() {
@@ -858,11 +861,11 @@ function widgetMacs(cv) {
     const macsS = hw * hw * cin * (k * k + cout), parS = k * k * cin + cin * cout + cout;
     const max = macsE, Wb = W - 2 * MG;
     const barra = (y, etq, v, acc) => {
-      etiqueta(g, etq, MG, y, acc ? A(3) : R(5));
-      rotulo(g, fmt(v) + " MAC", W - MG, y, acc ? A(3) : R(5), "right");
+      etiqueta(g, etq, MG, y, acc ? A(3) : B(3));
+      rotulo(g, fmt(v) + " MAC", W - MG, y, acc ? A(3) : B(3), "right");
       const w = Math.max(4, Math.round(Wb * v / max));
       if (acc) { g.fillStyle = A(3); g.fillRect(MG, y + 16, w, 24); }
-      else { g.fillStyle = R(1); g.fillRect(MG, y + 16, w, 24); tramado(g, MG, y + 16, w, 24, R(3)); contorno(g, MG, y + 16, w, 24, R(3)); }
+      else { g.fillStyle = B(1); g.fillRect(MG, y + 16, w, 24); tramado(g, MG, y + 16, w, 24, B(3)); contorno(g, MG, y + 16, w, 24, B(3)); }
     };
     barra(16, "ESTÁNDAR", macsE, false);
     barra(80, "SEPARABLE", macsS, true);
@@ -901,7 +904,7 @@ function widgetTiming(cv) {
     const carriles = ["cámara", "preproceso", "inferencia", "decisión"];
     const cy = (i) => 56 + i * 44;
     carriles.forEach((c, i) => {
-      rotulo(g, c, MG, cy(i), i === 2 ? A(3) : R(5));
+      rotulo(g, c, MG, cy(i), i === 2 ? A(3) : i === 0 ? B(3) : R(5));
       g.fillStyle = R(2); g.fillRect(X0, cy(i) + 12, X1 - X0, 2);
     });
     const ventana = (X1 - X0) / esc; // ms visibles
@@ -927,10 +930,10 @@ function widgetTiming(cv) {
       if (w < 8) { g.fillStyle = R(4); g.fillRect(x, cy(fila) - 10, w, 20); return; }
       caja(g, x, cy(fila) - 10, w - 2, 20, estilo);
       const vis = Math.min(x + w, X1) - Math.max(x, X0);
-      if (etq && vis > 34) rotulo(g, etq, Math.max(x, X0) + 6, cy(fila), estilo === "activo" ? A(3) : R(5));
+      if (etq && vis > 34) rotulo(g, etq, Math.max(x, X0) + 6, cy(fila), estilo === "activo" ? A(3) : estilo === "segundo" ? B(3) : R(5));
     };
     cuadros.forEach((c) => {
-      bloque(c.capIni, c.capFin, 0, "normal", "#" + c.n);
+      bloque(c.capIni, c.capFin, 0, "segundo", "#" + c.n);
       bloque(c.preIni, c.preFin, 1, "normal", "");
       bloque(c.infIni, c.infFin, 2, "activo", "#" + c.n);
       bloque(c.infFin, c.infFin + 3, 3, "normal", "");
@@ -972,18 +975,20 @@ function widgetBateria(cv) {
     const Wb = W - 2 * MG;
     etiqueta(g, "ENERGÍA POR DÍA", MG, 16, R(5));
     caja(g, MG, 32, Wb, 24, "normal");
-    g.fillStyle = A(3); g.fillRect(MG + 2, 34, Math.max(2, Math.round((Wb - 4) * frac)), 20);
+    const wA = Math.max(2, Math.round((Wb - 4) * frac));
+    g.fillStyle = A(3); g.fillRect(MG + 2, 34, wA, 20);
+    g.fillStyle = B(2); g.fillRect(MG + 2 + wA, 34, Wb - 4 - wA, 20);
     rotulo(g, `despierto ${eActivo.toFixed(1)} J`, MG, 72, A(3));
-    rotulo(g, `dormido ${eSueno.toFixed(1)} J`, W - MG, 72, R(4), "right");
+    rotulo(g, `dormido ${eSueno.toFixed(1)} J`, W - MG, 72, B(3), "right");
     etiqueta(g, "AUTONOMÍA ESTIMADA", MG, 108, R(4));
     numero(g, dias > 730 ? (dias / 365).toFixed(1) + " años" : dias.toFixed(0) + " días", MG, 136, A(3), "left", 28);
     // gráfico i(t) de un evento
     etiqueta(g, "I(T) DE UN DESPERTAR", MG, 172, R(4));
     const y0 = 240, h = 40;
     base(g, MG, y0 + 6, Wb, 3);
-    g.fillStyle = A(3);
-    g.fillRect(MG, y0 - 2, 160, 2); g.fillRect(176, y0 - h, 2, h); g.fillRect(176, y0 - h, 160, 2); g.fillRect(336, y0 - h, 2, h); g.fillRect(336, y0 - 2, W - MG - 336, 2);
-    rotulo(g, `${p.sueno} µA`, MG + 8, y0 - 16, R(4));
+    g.fillStyle = B(3); g.fillRect(MG, y0 - 2, 160, 2); g.fillRect(336, y0 - 2, W - MG - 336, 2);   // dormido
+    g.fillStyle = A(3); g.fillRect(176, y0 - h, 2, h); g.fillRect(176, y0 - h, 160, 2); g.fillRect(336, y0 - h, 2, h);   // despierto
+    rotulo(g, `${p.sueno} µA`, MG + 8, y0 - 16, B(3));
     rotulo(g, `${p.ma} mA, ${p.activo} ms`, 184, y0 - h - 12, R(5));
   }
   const ctl = fig.querySelector(".controles");

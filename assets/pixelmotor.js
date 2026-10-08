@@ -11,13 +11,13 @@
   const FPS = { 8: 10, 16: 20, 32: 60 };
   const CAPA_K = { 8: 0.5, 16: 1, 32: 2 };   // unidades → px de cada capa (factores enteros ×4 ×2 ×1)
   const CAPA_W = { 8: 160, 16: 320, 32: 640 };
-  // 8-bit: cada token cae en uno de 4 colores
-  const A_8BIT = { n0: "n0", n1: "n0", n2: "n3", n3: "n3", n4: "n3", n5: "n6", n6: "n6", a1: "n0", a2: "a3", a3: "a3", a4: "a3" };
+  // 8-bit: cada token cae en uno de 5 colores (neutros n0, n3, n6 más a3 y b3)
+  const A_8BIT = { n0: "n0", n1: "n0", n2: "n3", n3: "n3", n4: "n3", n5: "n6", n6: "n6", a1: "n0", a2: "a3", a3: "a3", a4: "a3", b1: "n0", b2: "b3", b3: "b3", b4: "b3" };
 
   const COL = {};
   function leerColores() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ["n0", "n1", "n2", "n3", "n4", "n5", "n6", "a1", "a2", "a3", "a4"]) {
+    for (const k of ["n0", "n1", "n2", "n3", "n4", "n5", "n6", "a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4"]) {
       const alias = k[0] === "n" ? "--m" + k[1] : "--" + k;
       COL[k] = (cs.getPropertyValue("--" + k) || cs.getPropertyValue(alias)).trim() || "#888888";
     }
@@ -172,7 +172,7 @@
     // caja de la lámina: relleno plano, borde, esquinas escalonadas (sin sombra: estética plana)
     caja(x, y, w, h, { estilo = "normal", titulo, sub } = {}) {
       this._def(16, () => {
-        const [rel, bor, tt] = estilo === "activo" ? ["a1", "a3", "n6"] : estilo === "apagado" ? ["n1", "n2", "n4"] : ["n1", "n3", "n6"];
+        const [rel, bor, tt] = estilo === "activo" ? ["a1", "a3", "n6"] : estilo === "apagado" ? ["n1", "n2", "n4"] : estilo === "segundo" ? ["b1", "b3", "n6"] : ["n1", "n3", "n6"];
         this.rect(x, y, w, h, rel);
         this.marco(x, y, w, h, bor);
         if (this._pass !== 32) { this.punto(x, y, "n0"); this.punto(x + w, y, "n0"); this.punto(x, y + h, "n0"); this.punto(x + w, y + h, "n0"); }

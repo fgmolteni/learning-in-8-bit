@@ -102,7 +102,7 @@ PM.escena("mem-cache", {
     // paquetes que viajan (detalle fino, capa 32)
     e32(m, () => {
       const pq = (x, y, tok) => m.rect(x - 2, y - 2, 4, 4, tok);
-      if (cur && cur.hit) pq(p < 0.5 ? 60 + (p / 0.5) * 32 : 92 - ((p - 0.5) / 0.5) * 32, 50, "a4");
+      if (cur && cur.hit) pq(p < 0.5 ? 60 + (p / 0.5) * 32 : 92 - ((p - 0.5) / 0.5) * 32, 50, "b4");
       if (miss) {
         if (p >= 0.05 && p < 0.5) pq(60 + ((p - 0.05) / 0.45) * 192, 50, "a4");           // petición CPU → flash
         if (p >= 0.55 && p < 0.9) for (let i = 0; i < 3; i++) pq(252 - (((p - 0.55) / 0.35 + i * 0.12) % 1) * 160, 47 + (i % 2) * 6, "a3"); // línea de vuelta
@@ -111,15 +111,15 @@ PM.escena("mem-cache", {
     });
     // contadores y barras: ciclos reales vs ideales (todo acierto)
     const esc = MISS_C * N_ACC, ideal = HIT_C * Math.min(N_ACC, acc);
-    txt(m, "HITS " + hits, 8, 102, "a4"); txt(m, "MISS " + misses, 110, 102, "n6"); txt(m, "CICLOS " + Math.round(cyc), 312, 102, "n6", { alin: "der" });
+    txt(m, "HITS " + hits, 8, 102, "b3"); txt(m, "MISS " + misses, 110, 102, "a3"); txt(m, "CICLOS " + Math.round(cyc), 312, 102, "n6", { alin: "der" });
     e16(m, () => {
       m.rect(68, 116, 244, 9, "n1"); m.rect(68, 116, Math.round(244 * cyc / esc), 9, "a3"); m.marco(68, 116, 244, 9, "n3");
-      m.rect(68, 130, 244, 9, "n1"); m.rect(68, 130, Math.round(244 * ideal / esc), 9, "n4"); m.marco(68, 130, 244, 9, "n3");
+      m.rect(68, 130, 244, 9, "n1"); m.rect(68, 130, Math.round(244 * ideal / esc), 9, "b3"); m.marco(68, 130, 244, 9, "n3");
     });
-    txt(m, "REAL", 8, 117, "n6"); txt(m, "IDEAL", 8, 131, "n4");
+    txt(m, "REAL", 8, 117, "a3"); txt(m, "IDEAL", 8, 131, "b3");
     let msg, tok = "n6";
     if (fin) { const R = ev[ev.length - 1].c0 + ev[ev.length - 1].c; msg = N_ACC + " ACCESOS: " + R + " CICLOS, " + (R / (HIT_C * N_ACC)).toFixed(1) + " VECES MAS LENTO"; }
-    else if (cur.hit) { msg = "HIT: ~1-2 CICLOS, LA LINEA YA ESTABA EN CACHE"; tok = "a4"; }
+    else if (cur.hit) { msg = "HIT: ~1-2 CICLOS, LA LINEA YA ESTABA EN CACHE"; tok = "b3"; }
     else msg = p < 0.9 ? "MISS: ~40 CICLOS, LA CPU ESPERA AL BUS SPI" : "LINEA CARGADA: LOS VECINOS SERAN HITS";
     txt(m, msg, 8, 150, tok);
   },
@@ -191,11 +191,11 @@ PM.escena("simd-stalls", {
         const x = X0 + i * PIT;
         e16(m, () => {
           if (tp === "M") m.rect(x, y0, 11, 63, "a3");
-          else if (tp === "C") m.rect(x, y0, 11, 63, "n2");
+          else if (tp === "C") m.rect(x, y0, 11, 63, "b2");
           else m.tramado(x, y0, 11, 63, "n3");
           if (tp !== "P") for (let l = 1; l < 16; l++) m.linea(x, y0 + l * 4 - 1, x + 10, y0 + l * 4 - 1, "n0");
         });
-        txt(m, tp, x + 3, y0 - 9, tp === "M" ? "a4" : "n4");
+        txt(m, tp, x + 3, y0 - 9, tp === "M" ? "a4" : tp === "C" ? "b3" : "n4");
       });
       e16(m, () => m.marco(X0 - 1, y0 - 1, seq.length * PIT + 1, 64, "n3"));
       e32(m, () => m.linea(X0 + Math.min(c, seq.length) * PIT, y0 - 2, X0 + Math.min(c, seq.length) * PIT, y0 + 64, "n5"));
@@ -204,7 +204,7 @@ PM.escena("simd-stalls", {
     txt(m, "IDEAL", 4, 34, "a4"); txt(m, "4 CICLOS", 4, 44, "n6"); txt(m, "UTIL 100%", 4, 54, "n5");
     txt(m, "REAL", 4, 117, "n6"); txt(m, real.length + " CICLOS", 4, 127, "n6"); txt(m, "UTIL " + Math.round(400 / real.length) + "%", 4, 137, "n5");
     txt(m, "16 LANES", 4, 66, "n4");
-    e16(m, () => { m.rect(8, 172, 7, 7, "a3"); m.rect(110, 172, 7, 7, "n2"); m.tramado(222, 172, 7, 7, "n3"); m.marco(222, 172, 7, 7, "n3"); });
+    e16(m, () => { m.rect(8, 172, 7, 7, "a3"); m.rect(110, 172, 7, 7, "b2"); m.tramado(222, 172, 7, 7, "n3"); m.marco(222, 172, 7, 7, "n3"); });
     txt(m, "M 16 MAC", 20, 172, "n5"); txt(m, "C CARGA SRAM", 122, 172, "n5"); txt(m, "P PERDIDO", 234, 172, "n5");
   },
 });
