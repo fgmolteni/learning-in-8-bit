@@ -22,6 +22,8 @@
   --tinta: var(--n6);
   /* --brillo: glow del cursor del hero (cromo de UI, no figuras: ahí rige la estética plana v3) */
   --brillo: 0 0 6px color-mix(in srgb, var(--a3) 45%, transparent);
+  /* --pantalla: fondo del monitor de la foto ASCII del pie; en los temas claros sigue oscuro (n6) */
+  --pantalla: var(--n0);
 
   --f-serif: "Instrument Serif", Georgia, serif;
   --f-cuerpo: "Geist", system-ui, sans-serif;
@@ -40,7 +42,7 @@
   --n0: #ffffff; --n1: #f4f6f9; --n2: #e2e7ee; --n3: #b3bdcb;
   --n4: #586478; --n5: #2f394b; --n6: #151b28;
   --a1: #fdefe7; --a2: #f1b99d; --a3: #b84b14; --a4: #e8692c;
-  --brillo: none;
+  --brillo: none; --pantalla: var(--n6);
   color-scheme: light;
 }
 
@@ -53,6 +55,75 @@
 :root[data-theme="light"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #956704; --a4: #e8ac2c; }
 :root[data-acento="magenta"] { --a1: #301225; --a2: #822b62; --a3: #f183c9; --a4: #f881cd; }
 :root[data-theme="light"][data-acento="magenta"] { --a1: #fde7f5; --a2: #f19dd2; --a3: #c51685; --a4: #e82ca3; }
+
+/* temas de terminal (selector "tema" de la barra; ids en TEMAS de site.js). Cada uno trae sus cinco acentos.
+   No editar a mano: salen de herramientas/temas.py, que corrige el contraste */
+/* temas:inicio */
+:root[data-theme="dracula"] {
+  --n0: #282a36; --n1: #2e303d; --n2: #353747; --n3: #4d5066;
+  --n4: #96a1c2; --n5: #f8f8f2; --n6: #ffffff;
+  --a1: #4a413f; --a2: #947151; --a3: #ffb86c; --a4: #ffc689;
+}
+:root[data-theme="dracula"][data-acento="verde"] { --a1: #2e4b41; --a2: #3c9258; --a3: #50fa7b; --a4: #73fb95; }
+:root[data-theme="dracula"][data-acento="azul"] { --a1: #384956; --a2: #5a8a9a; --a3: #8be9fd; --a4: #a2edfd; }
+:root[data-theme="dracula"][data-acento="ambar"] { --a1: #484b44; --a2: #8c9261; --a3: #f1fa8c; --a4: #f4fba3; }
+:root[data-theme="dracula"][data-acento="magenta"] { --a1: #4a374d; --a2: #94527e; --a3: #ff79c6; --a4: #ff94d1; }
+:root[data-theme="gruvbox"] {
+  --n0: #282828; --n1: #2e2d2c; --n2: #363432; --n3: #504945;
+  --n4: #a99a85; --n5: #ebdbb2; --n6: #fbf1c7;
+  --a1: #4a3626; --a2: #935420; --a3: #fe8019; --a4: #fe9947;
+}
+:root[data-theme="gruvbox"][data-acento="verde"] { --a1: #3f4028; --a2: #707227; --a3: #b8bb26; --a4: #c6c951; }
+:root[data-theme="gruvbox"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #83a598; --a4: #9cb7ad; }
+:root[data-theme="gruvbox"][data-acento="ambar"] { --a1: #4a4029; --a2: #91722c; --a3: #fabd2f; --a4: #fbca59; }
+:root[data-theme="gruvbox"][data-acento="magenta"] { --a1: #43373a; --a2: #7e5762; --a3: #d3869b; --a4: #dc9eaf; }
+:root[data-theme="nord"] {
+  --n0: #2e3440; --n1: #323946; --n2: #38404f; --n3: #4c566a;
+  --n4: #a4acba; --n5: #d8dee9; --n6: #eceff4;
+  --a1: #484148; --a2: #7f5e58; --a3: #d89d8a; --a4: #e0b1a1;
+}
+:root[data-theme="nord"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a3be8c; --a4: #b5cba3; }
+:root[data-theme="nord"][data-acento="azul"] { --a1: #3c4a57; --a2: #5b7a88; --a3: #88c0d0; --a4: #a0cdd9; }
+:root[data-theme="nord"][data-acento="ambar"] { --a1: #4c4c4c; --a2: #8c8066; --a3: #ebcb8b; --a4: #efd5a2; }
+:root[data-theme="nord"][data-acento="magenta"] { --a1: #434251; --a2: #716176; --a3: #c1a1bb; --a4: #cdb4c9; }
+:root[data-theme="solarized-oscuro"] {
+  --n0: #002b36; --n1: #08313c; --n2: #123a44; --n3: #33555e;
+  --n4: #90a0a6; --n5: #b1bbbb; --n6: #eee8d5;
+  --a1: #203031; --a2: #663b26; --a3: #dd8865; --a4: #e4a084;
+}
+:root[data-theme="solarized-oscuro"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #95a621; --a4: #aab84d; }
+:root[data-theme="solarized-oscuro"][data-acento="azul"] { --a1: #063a4f; --a2: #135b84; --a3: #56a5dc; --a4: #78b7e3; }
+:root[data-theme="solarized-oscuro"][data-acento="ambar"] { --a1: #1d3a2d; --a2: #5a5a1b; --a3: #bf9821; --a4: #ccad4d; }
+:root[data-theme="solarized-oscuro"][data-acento="magenta"] { --a1: #222d42; --a2: #6a305c; --a3: #e27cae; --a4: #e896be; }
+:root[data-theme="solarized-claro"] {
+  --n0: #fdf6e3; --n1: #f3eedd; --n2: #e6e3d4; --n3: #bcc1b8;
+  --n4: #55676e; --n5: #425258; --n6: #073642;
+  --a1: #f8e5ce; --a2: #e9b291; --a3: #af4013; --a4: #cb4b16;
+  --brillo: none; --pantalla: var(--n6); color-scheme: light;
+}
+:root[data-theme="solarized-claro"][data-acento="verde"] { --a1: #f1edcc; --a2: #cdd188; --a3: #5d6b00; --a4: #859900; }
+:root[data-theme="solarized-claro"][data-acento="azul"] { --a1: #e8ebe1; --a2: #a7cbdc; --a3: #1d6aa0; --a4: #268bd2; }
+:root[data-theme="solarized-claro"][data-acento="ambar"] { --a1: #f6ebcc; --a2: #e0ca88; --a3: #7f6000; --a4: #b58900; }
+:root[data-theme="solarized-claro"][data-acento="magenta"] { --a1: #f9e3d9; --a2: #eca9bc; --a3: #b52e70; --a4: #d33682; }
+:root[data-theme="catppuccin"] {
+  --n0: #1e1e2e; --n1: #242435; --n2: #2c2c3d; --n3: #45475a;
+  --n4: #9399b2; --n5: #cdd6f4; --n6: #eef1fc;
+  --a1: #41363c; --a2: #8c685a; --a3: #fab387; --a4: #fbc29f;
+}
+:root[data-theme="catppuccin"][data-acento="verde"] { --a1: #343e40; --a2: #628068; --a3: #a6e3a1; --a4: #b8e9b4; }
+:root[data-theme="catppuccin"][data-acento="azul"] { --a1: #2f364f; --a2: #546994; --a3: #89b4fa; --a4: #a1c3fb; }
+:root[data-theme="catppuccin"][data-acento="ambar"] { --a1: #413d43; --a2: #8c806e; --a3: #f9e2af; --a4: #fae8bf; }
+:root[data-theme="catppuccin"][data-acento="magenta"] { --a1: #40384c; --a2: #8a708a; --a3: #f5c2e7; --a4: #f7ceec; }
+:root[data-theme="tokyo-night"] {
+  --n0: #1a1b26; --n1: #1f212f; --n2: #26293b; --n3: #3b4261;
+  --n4: #898fb1; --n5: #c0caf5; --n6: #e4e9ff;
+  --a1: #3f3030; --a2: #8c5c45; --a3: #ff9e64; --a4: #ffb183;
+}
+:root[data-theme="tokyo-night"][data-acento="verde"] { --a1: #2f3831; --a2: #5c7448; --a3: #9ece6a; --a4: #b1d888; }
+:root[data-theme="tokyo-night"][data-acento="azul"] { --a1: #293147; --a2: #4a5e8e; --a3: #7aa2f7; --a4: #95b5f9; }
+:root[data-theme="tokyo-night"][data-acento="ambar"] { --a1: #3a3331; --a2: #7d6547; --a3: #e0af68; --a4: #e6bf86; }
+:root[data-theme="tokyo-night"][data-acento="magenta"] { --a1: #342f47; --a2: #6a5a8e; --a3: #bb9af7; --a4: #c9aef9; }
+/* temas:fin */
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -105,12 +176,18 @@ a:hover { text-decoration-color: var(--a3); }
 .topbar .migas a { color: var(--texto-suave); text-decoration: underline; text-decoration-color: var(--linea-fuerte); text-underline-offset: 3px; }
 .topbar .migas a:hover { color: var(--tinta); }
 .topbar .migas .sep { color: var(--texto-suave); margin: 0 .35rem; }
-.btn-tema {
-  font-family: var(--f-mono); font-size: .8rem;
-  background: transparent; color: var(--texto);
-  border: 0; border-left: 1px solid var(--linea-fuerte); padding: 0 .9rem; cursor: pointer;
+/* selector de tema: un segmento "tema: dracula ▾" con un <select> nativo sin aspecto propio */
+.sel-tema {
+  position: relative; display: flex; align-items: center; gap: .45rem;
+  padding: 0 .9rem; border-left: 1px solid var(--linea-fuerte); color: var(--texto-suave); cursor: pointer;
 }
-.btn-tema:hover { color: var(--tinta); background: var(--n1); }
+.sel-tema::after { content: "▾"; position: absolute; right: .9rem; pointer-events: none; color: var(--texto); }
+.sel-tema select {
+  appearance: none; field-sizing: content; font: inherit; color: var(--texto); background: transparent;
+  border: 0; border-radius: 0; padding: 0 1.1em 0 0; cursor: pointer;
+}
+.sel-tema:hover, .sel-tema:hover select { color: var(--tinta); background: var(--n1); }
+.sel-tema option { background: var(--n1); color: var(--texto); }
 /* selector de acento: pastillas cuadradas con el color de cada acento */
 .colores { display: flex; align-items: center; gap: 6px; padding: 0 .7rem; border-left: 1px solid var(--linea-fuerte); }
 .colores button {
@@ -179,6 +256,9 @@ a:hover { text-decoration-color: var(--a3); }
   color: var(--tinta); margin: 1.2rem 0 1.4rem; letter-spacing: -.01em;
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
+/* línea de comando de la 404 */
+.prompt { margin-top: 1.5rem; font-family: var(--f-mono); font-size: .85rem; line-height: 1.6; color: var(--texto-suave); }
+.prompt b { color: var(--a3); font-weight: 500; }
 /* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho y el canvas va detrás; el texto queda
    alineado a la izquierda de la columna de 1100 px, igual que las tarjetas y el pie */
 .hero.hero-ascii {
@@ -393,7 +473,9 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   .hero { padding: 3rem 1rem 2rem; }
   .topbar .logo span { display: none; }
   .colores { gap: 5px; padding: 0 .5rem; }
-  .btn-tema { padding: 0 .55rem; }
+  .sel-tema { padding: 0 .55rem; }
+  .sel-tema::after { right: .55rem; }
+  .sel-tema > span { display: none; }
   figure.diagrama { margin: 2.5rem 0; padding: 1.4rem .75rem .9rem; }
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
@@ -452,13 +534,11 @@ footer.pie.pie-portada {
 /* foto de perfil en ASCII (40 × 20, generada de la foto de GitHub): fósforo del acento sobre una pantalla
    oscura con líneas de barrido, como un monitor de los 80. En claro la pantalla sigue oscura (n6) */
 .pie-foto {
-  --pantalla: var(--n0);
   position: relative; flex: none; margin: 0; padding: 5px; overflow: hidden;
   font: 5.4px/6.48px var(--f-mono); letter-spacing: 0; white-space: pre;
   color: var(--a4); background: var(--pantalla); text-shadow: var(--brillo);
   border: 1px solid var(--linea-fuerte);
 }
-:root[data-theme="light"] .pie-foto { --pantalla: var(--n6); }
 .pie-foto::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: repeating-linear-gradient(transparent 0 2px, color-mix(in srgb, var(--pantalla) 35%, transparent) 2px 3px);
@@ -473,4 +553,3 @@ footer.pie.pie-portada {
 }
 @media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; gap: 1.4rem; } }
 @media (max-width: 640px) { footer.pie.pie-portada { padding: 1.6rem 1rem 1rem; } }
-}

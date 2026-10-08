@@ -54,9 +54,19 @@ const LS = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// ---- tema claro/oscuro: lo guardado; si no hay, prefers-color-scheme ----
+// ---- tema: lo guardado; si no hay, prefers-color-scheme elige entre pizarra (dark) y papel (light) ----
+// Como en una terminal: cada tema es un esquema de color con su propia versión de los cinco acentos.
+// Los hex viven en style.css (pizarra y papel a mano; el resto sale de herramientas/temas.py).
+const TEMAS = {
+  dark: "pizarra", light: "papel", dracula: "dracula", gruvbox: "gruvbox", nord: "nord",
+  "solarized-oscuro": "solarized oscuro", "solarized-claro": "solarized claro",
+  catppuccin: "catppuccin", "tokyo-night": "tokyo night",
+};
 const html = document.documentElement;
-html.dataset.theme = LS.get("tema", null) ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+{
+  const t = LS.get("tema", null);
+  html.dataset.theme = TEMAS[t] ? t : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
 
 // ---- acento: los hex viven solo en style.css ([data-acento]); acá el id, el nombre y la pastilla (lee --a4) ----
 const ACENTOS = { naranja: "naranja", verde: "verde", azul: "azul", ambar: "ámbar", magenta: "magenta" };
@@ -80,10 +90,9 @@ function elegirColor(id) {
   document.dispatchEvent(new Event("tema"));
 }
 
-function alternarTema() {
-  const nuevo = html.dataset.theme === "light" ? "dark" : "light";
-  html.dataset.theme = nuevo;
-  LS.set("tema", nuevo);
+function elegirTema(id) {
+  html.dataset.theme = id;
+  LS.set("tema", id);
   document.dispatchEvent(new Event("tema"));
 }
 
@@ -104,13 +113,14 @@ function montarBarra() {
     <div class="migas">${migas}</div>
     <div class="colores" role="group" aria-label="Color de acento">${Object.entries(ACENTOS).map(([id, n]) =>
       `<button type="button" data-color="${id}" aria-label="Acento ${n}" title="${n}" aria-pressed="${html.dataset.acento === id}"></button>`).join("")}</div>
-    <button class="btn-tema" type="button" aria-label="Cambiar tema claro/oscuro">tema</button>
+    <label class="sel-tema"><span>tema:</span><select aria-label="Tema de colores">${Object.entries(TEMAS).map(([id, n]) =>
+      `<option value="${id}"${html.dataset.theme === id ? " selected" : ""}>${n}</option>`).join("")}</select></label>
     <div class="progreso-lectura" aria-hidden="true"></div>`;
   document.body.prepend(barra);
-  barra.querySelector(".btn-tema").onclick = alternarTema;
+  barra.querySelector(".sel-tema select").onchange = (e) => elegirTema(e.target.value);
   barra.querySelectorAll(".colores button").forEach((b) => (b.onclick = () => elegirColor(b.dataset.color)));
   pintarPastillas();
-  document.addEventListener("tema", pintarPastillas); // --a4 cambia con el tema claro/oscuro
+  document.addEventListener("tema", pintarPastillas); // --a4 cambia con el tema
 
   const prog = barra.querySelector(".progreso-lectura");
   const act = () => {
