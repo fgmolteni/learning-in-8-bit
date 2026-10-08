@@ -179,18 +179,11 @@ a:hover { text-decoration-color: var(--a3); }
   color: var(--tinta); margin: 1.2rem 0 1.4rem; letter-spacing: -.01em;
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
-/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho, el canvas va detrás y el texto,
-   contra el borde izquierdo, sobre un panel de vidrio ahumado que desenfoca el ASCII de atrás */
+/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho, el texto va contra el borde izquierdo
+   y el canvas detrás, con las escenas centradas */
 .hero.hero-ascii {
-  position: relative; isolation: isolate; max-width: none; padding: 1.1rem 2rem;
+  position: relative; isolation: isolate; max-width: none; padding: 2.4rem 2rem;
   border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea);
-}
-.hero-vidrio {
-  width: fit-content; max-width: 100%; padding: 1.1rem 1.6rem 1.3rem;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--fondo) 22%, transparent), color-mix(in srgb, var(--fondo) 62%, transparent));
-  -webkit-backdrop-filter: blur(2.5px) saturate(1.3); backdrop-filter: blur(2.5px) saturate(1.3);
-  border: 1px solid color-mix(in srgb, var(--n4) 28%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--n6) 14%, transparent);
 }
 .hero-ascii h1 { margin: .5rem 0 .7rem; }
 .hero-ascii p { max-width: 40ch; }
@@ -202,7 +195,7 @@ a:hover { text-decoration-color: var(--a3); }
 .ascii-pie span { background: var(--fondo); padding: 0 .3rem; }
 .ascii-pie button { font: inherit; color: inherit; background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .15rem .55rem; cursor: pointer; }
 .ascii-pie button:hover { color: var(--tinta); border-color: var(--a3); }
-@media (max-width: 640px) { .hero.hero-ascii { padding: 1rem 1rem 3.2rem; } .hero-vidrio { padding: 1rem 1.1rem 1.2rem; } .ascii-pie span { display: none; } }
+@media (max-width: 640px) { .hero.hero-ascii { padding: 2rem 1rem 3.2rem; } .ascii-pie span { display: none; } }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
 .seccion-titulo {

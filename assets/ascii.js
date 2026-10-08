@@ -1,78 +1,120 @@
 // Apuntes en bits — fondo ASCII del hero de la portada (<canvas data-ascii>)
-// Tres escenas que se turnan cada 12 s, con un fundido de bits (0 y 1) entre una y otra:
-//   placa: una ESP32-DevKitC en 3D que gira (un rayo por celda contra cajas alineadas, con sombras)
+// Tres escenas centradas que se turnan cada 12 s, con un fundido de bits (0 y 1) entre una y otra:
+//   esp32: una ESP32-DevKitC en 3D que gira (un rayo por celda contra cajas alineadas, con sombras)
 //   red:   red neuronal densa en 3D; en cada pasada hacia adelante la activación viaja capa por capa
-//   audio: espectro de un micrófono I2S en cascada; la línea nueva entra adelante y las viejas se alejan
-// El texto del hero va sobre un panel de vidrio (CSS) que desenfoca lo que queda atrás.
+//   uno:   una Arduino Uno en 3D que gira, con el ATmega328P en su zócalo y los LED L, TX y RX
+// Cada pieza lleva uno de los cinco colores de la barra (naranja, azul, verde, magenta, ámbar), en tres
+// niveles según la luz; las piezas sin color usan la rampa neutra.
 // Con data-fuente="ruta.mp4" (o .webm, .png, .jpg) convierte ese video o imagen a ASCII en vivo.
 // En file:// el navegador no deja leer los píxeles de un video: ahí vuelve a las escenas.
 (() => {
   const RAMPA = " .:-=+*#%@", DURA = 12, FUNDE = 1.2;   // s por escena, s de fundido
   const reducir = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const hash = (a, b = 0) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
-  // tono de cada celda: 0..2 tinta según el brillo, 3 acento, 4 segundo color; -1 = vacía
+
+  // tintas: "n" neutra y los acentos de la barra; cada una aporta tres tonos (sombra, medio, luz)
+  const TINTAS = ["n", "naranja", "azul", "verde", "magenta", "ambar"];
+  const T = Object.fromEntries(TINTAS.map((h, i) => [h, i * 3]));   // primer tono de cada tinta
+  // los hex viven solo en style.css: prueba cada [data-acento] y lee --a2..--a4 (sincrónico, sin repintar)
   function colores() {
-    const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
-    return [v("--n3"), v("--n4"), v("--n5"), v("--a3"), v("--b3")];
+    const html = document.documentElement, actual = html.dataset.acento;
+    const v = (n) => getComputedStyle(html).getPropertyValue(n).trim();
+    const out = [v("--n3"), v("--n4"), v("--n5")];
+    for (const t of TINTAS.slice(1)) { html.dataset.acento = t; out.push(v("--a2"), v("--a3"), v("--a4")); }
+    if (actual === undefined) delete html.dataset.acento; else html.dataset.acento = actual;
+    return out;
   }
 
   // ---------------------------------------------------------------- geometría (cajas en mm)
-  // caja: [x0, x1, y0, y1, z0, z1, material]; material = albedo 0..1, "a" acento o "b" segundo color (emiten)
+  // caja: [x0, x1, y0, y1, z0, z1, material, tinta]; material = albedo 0..1 o "e" (LED: emite, va al tono más claro)
   const METAL = 0.92;
 
-  // placa ESP32-DevKitC: x a lo largo, z a lo ancho, y hacia arriba
-  function placa(led) {
+  // ESP32-DevKitC: x a lo largo, z a lo ancho, y hacia arriba
+  function esp32(led) {
     const C = [
-      [-27.2, 27.2, -0.8, 0.8, -14, 14, 0.34],          // PCB 54,4 × 27,9 mm
-      [3.7, 29.2, 0.8, 1.6, -9, 9, 0.42],               // PCB del módulo WROOM (la antena sobresale)
-      [4.6, 21.6, 1.6, 3.9, -8.6, 8.6, METAL],          // blindaje metálico
-      [-28.2, -22.6, 0.8, 3.6, -3.9, 3.9, METAL],       // micro USB
-      [-25.5, -21, 0.8, 2.3, -11, -6.8, 0.62],          // pulsador EN
-      [-24.2, -22.3, 2.3, 3.3, -9.9, -7.9, 0.2],
-      [-25.5, -21, 0.8, 2.3, 6.8, 11, 0.62],            // pulsador BOOT
-      [-24.2, -22.3, 2.3, 3.3, 7.9, 9.9, 0.2],
-      [-16.5, -11.5, 0.8, 1.8, 0.5, 5.5, 0.16],         // puente USB-UART
-      [-17, -10.5, 0.8, 2.4, -9.5, -6, 0.16],           // regulador 3,3 V
-      [-12.5, -10, 0.8, 2.6, -9, -6.5, 0.7],            // su aleta
-      [-19.5, -17.5, 0.8, 1.7, -5, -3.4, "b"],          // LED de encendido
-      [-6, -4, 0.8, 1.7, -5, -3.4, led ? "a" : 0.3],    // LED de usuario
+      [-27.2, 27.2, -0.8, 0.8, -14, 14, 0.34, "verde"],          // PCB 54,4 × 27,9 mm
+      [3.7, 29.2, 0.8, 1.6, -9, 9, 0.42, "verde"],               // PCB del módulo WROOM (la antena sobresale)
+      [4.6, 21.6, 1.6, 3.9, -8.6, 8.6, METAL, "n"],              // blindaje metálico
+      [-28.2, -22.6, 0.8, 3.6, -3.9, 3.9, METAL, "n"],           // micro USB
+      [-25.5, -21, 0.8, 2.3, -11, -6.8, 0.62, "n"],              // pulsador EN
+      [-24.2, -22.3, 2.3, 3.3, -9.9, -7.9, 0.7, "magenta"],
+      [-25.5, -21, 0.8, 2.3, 6.8, 11, 0.62, "n"],                // pulsador BOOT
+      [-24.2, -22.3, 2.3, 3.3, 7.9, 9.9, 0.7, "azul"],
+      [-16.5, -11.5, 0.8, 1.8, 0.5, 5.5, 0.16, "n"],             // puente USB-UART
+      [-17, -10.5, 0.8, 2.4, -9.5, -6, 0.16, "n"],               // regulador 3,3 V
+      [-12.5, -10, 0.8, 2.6, -9, -6.5, 0.7, "n"],                // su aleta
+      [-19.5, -17.5, 0.8, 1.7, -5, -3.4, "e", "naranja"],        // LED de encendido
+      [-6, -4, 0.8, 1.7, -5, -3.4, led ? "e" : 0.3, "azul"],     // LED de usuario (GPIO2)
     ];
     // pistas de cobre entre el puente USB, el regulador y el módulo
-    for (const z of [-6, -4.6, -3.2, 3.6, 5, 6.4]) C.push([-9.5, 3.7, 0.8, 0.9, z - 0.25, z + 0.25, 0.62]);
-    for (const x of [-8, -3, 1.5]) { C.push([x - 0.25, x + 0.25, 0.8, 0.9, -11.4, -7.5, 0.62]); C.push([x - 0.25, x + 0.25, 0.8, 0.9, 7.5, 11.4, 0.62]); }
+    for (const z of [-6, -4.6, -3.2, 3.6, 5, 6.4]) C.push([-9.5, 3.7, 0.8, 0.9, z - 0.25, z + 0.25, 0.62, "ambar"]);
+    for (const x of [-8, -3, 1.5]) for (const [z0, z1] of [[-11.4, -7.5], [7.5, 11.4]]) C.push([x - 0.25, x + 0.25, 0.8, 0.9, z0, z1, 0.62, "ambar"]);
     // antena serpenteante del módulo
-    for (let i = 0; i < 4; i++) C.push([22.6 + i * 1.6, 23.4 + i * 1.6, 1.6, 1.85, -7.5, 7.5, 0.85]);
+    for (let i = 0; i < 4; i++) C.push([22.6 + i * 1.6, 23.4 + i * 1.6, 1.6, 1.85, -7.5, 7.5, 0.85, "ambar"]);
     // dos tiras de 19 pines (paso 2,54 mm, filas a 25,4 mm)
     for (const z of [-12.7, 12.7]) {
-      C.push([-24.1, 24.1, 0.8, 3.3, z - 1.27, z + 1.27, 0.14]);
-      for (let i = 0; i < 19; i++) { const x = (i - 9) * 2.54; C.push([x - 0.4, x + 0.4, 3.3, 5, z - 0.4, z + 0.4, METAL]); }
+      C.push([-24.1, 24.1, 0.8, 3.3, z - 1.27, z + 1.27, 0.14, "n"]);
+      for (let i = 0; i < 19; i++) { const x = (i - 9) * 2.54; C.push([x - 0.4, x + 0.4, 3.3, 5, z - 0.4, z + 0.4, METAL, "ambar"]); }
     }
     return C;
   }
-  const PLACA = [placa(false), placa(true)];
+  const ESP32 = [esp32(false), esp32(true)];
 
-  // red neuronal densa: capas en columnas (x); los nodos alternan en z para que el giro muestre profundidad
-  const CAPAS = [4, 6, 6, 3], NODOS = [], ARISTAS = [];
+  // Arduino Uno: 68,6 × 53,4 mm; USB-B y jack sobre el borde izquierdo
+  function uno(led, tx) {
+    const C = [
+      [-34.3, 34.3, -0.8, 0.8, -26.7, 26.7, 0.3, "azul"],        // PCB
+      [-40.3, -24.3, 0.8, 11.7, 6.7, 18.7, METAL, "n"],          // USB-B
+      [-36.3, -22.3, 0.8, 11.8, -23.5, -14.5, 0.14, "n"],        // jack de alimentación
+      [-4.5, 32, 0.8, 3.8, -21.3, -12.7, 0.2, "n"],              // zócalo DIP-28
+      [-4, 31.6, 3.8, 7.3, -20.6, -13.4, 0.12, "n"],             // ATmega328P
+      [-12, -1, 0.8, 4.3, -4.5, -0.5, METAL, "n"],               // cristal de 16 MHz
+      [-20, -15, 0.8, 1.7, 6, 11, 0.16, "n"],                    // ATmega16U2 (USB)
+      [-27, -21, 0.8, 4, 19, 25, 0.55, "n"],                     // pulsador RESET
+      [-25.5, -22.5, 4, 5.5, 20.5, 23.5, 0.8, "naranja"],
+      [-26, -19.5, 0.8, 2.4, -11, -7.5, 0.16, "n"],              // regulador 5 V
+      [-21, -15.5, 0.8, 7.5, -25, -19.5, 0.6, "n"],              // electrolíticos
+      [-14.5, -9, 0.8, 7.5, -25, -19.5, 0.6, "n"],
+      [-2, -0.4, 0.8, 1.6, 14, 15.4, led ? "e" : 0.3, "ambar"],  // LED L (pin 13)
+      [-2, -0.4, 0.8, 1.6, 11.4, 12.8, tx ? "e" : 0.3, "naranja"], // TX
+      [-2, -0.4, 0.8, 1.6, 8.8, 10.2, tx ? 0.3 : "e", "naranja"],  // RX
+      [24, 25.6, 0.8, 1.6, 10, 11.4, "e", "verde"],              // ON
+      [28, 33, 0.8, 3.3, -3.9, 3.9, 0.14, "n"],                  // ICSP
+    ];
+    // patas del DIP-28, 14 por lado
+    for (let i = 0; i < 14; i++) {
+      const x = -2.5 + i * 2.54;
+      C.push([x - 0.4, x + 0.4, 3, 5, -21.3, -20.6, METAL, "n"], [x - 0.4, x + 0.4, 3, 5, -13.4, -12.7, METAL, "n"]);
+    }
+    for (const x of [29.3, 31.8]) for (const z of [-2.54, 0, 2.54]) C.push([x - 0.4, x + 0.4, 3.3, 9, z - 0.4, z + 0.4, METAL, "ambar"]);
+    // serigrafía blanca "UNO" (fuente de 4×5, celdas de 1,6 mm; la fila 0 queda hacia los headers digitales)
+    const LETRAS = ["#..#.#..#.####", "#..#.##.#.#..#", "#..#.#.##.#..#", "#..#.#..#.#..#", "####.#..#.####"];
+    LETRAS.forEach((fila, i) => [...fila].forEach((p, j) => {
+      if (p === "#") C.push([3 + j * 1.6, 4.5 + j * 1.6, 0.8, 0.86, 6 - (i + 1) * 1.6, 6 - i * 1.6, 0.95, "n"]);
+    }));
+    // headers hembra: digitales arriba (10 + 8), alimentación y analógicos abajo (8 + 6), contactos dorados
+    for (const [x0, n, z] of [[-13.5, 10, 24.5], [13.4, 8, 24.5], [-6.5, 8, -24.5], [17.5, 6, -24.5]]) {
+      C.push([x0, x0 + n * 2.54, 0.8, 9.3, z - 1.3, z + 1.3, 0.12, "n"]);
+      for (let i = 0; i < n; i++) { const x = x0 + (i + 0.5) * 2.54; C.push([x - 0.5, x + 0.5, 9.3, 9.45, z - 0.5, z + 0.5, METAL, "ambar"]); }
+    }
+    return C;
+  }
+  const UNO = [uno(false, false), uno(false, true), uno(true, false), uno(true, true)];
+
+  // red neuronal densa: capas en columnas (x), una tinta por capa; los nodos alternan en z para que el giro
+  // muestre profundidad
+  const CAPAS = [4, 6, 6, 3], TINTA_CAPA = ["azul", "verde", "magenta", "naranja"], NODOS = [], ARISTAS = [];
   CAPAS.forEach((n, l) => { for (let q = 0; q < n; q++) NODOS.push({ l, q, p: [-21 + l * 14, (q - (n - 1) / 2) * 4.4, q % 2 ? 2.5 : -2.5] }); });
   NODOS.forEach((a) => NODOS.forEach((b) => { if (b.l === a.l + 1) ARISTAS.push({ a, b, w: hash(a.l * 10 + a.q, b.q) }); }));
   const PASO = 0.7;                                      // s que tarda la activación en cruzar de una capa a la siguiente
 
-  // espectro de una nota: armónicos de f0 que decaen, sobre un piso de ruido (x = frecuencia 0..1)
-  function espectro(n, x) {
-    const nota = Math.floor(n / 21), k = n - nota * 21;          // nota nueva cada 21 líneas (3 s)
-    const f0 = 0.05 + 0.05 * hash(nota), env = Math.exp(-k / 9) * (0.55 + 0.45 * hash(nota, 1));
-    let a = 0.05 * hash(n, Math.floor(x * 90));
-    for (let h = 1; h <= 7; h++) { const dx = (x - h * f0) / 0.011; a += env * Math.exp(-dx * dx) / h ** 0.6; }
-    return Math.min(1, a);
-  }
-
   // ---------------------------------------------------------------- trazado
   // cámara ortográfica: filas de M (objeto → vista) = Rx(pitch)·Ry(yaw); M^T lleva la vista al objeto
+  const LV = [-0.45, 0.75, -0.5].map((x, _, v) => x / Math.hypot(...v));   // luz arriba a la izquierda, del lado de la cámara
   function camara(yaw, pitch) {
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
     const ex = [cy, 0, sy], ey = [sp * sy, cp, -sp * cy], d = [-cp * sy, sp, cp * cy];
-    const lv = [-0.45, 0.75, -0.5], ln = Math.hypot(...lv);    // luz arriba a la izquierda, del lado de la cámara
-    const L = [0, 1, 2].map((i) => (ex[i] * lv[0] + ey[i] * lv[1] + d[i] * lv[2]) / ln);
+    const L = [0, 1, 2].map((i) => ex[i] * LV[0] + ey[i] * LV[1] + d[i] * LV[2]);
     const Hm = L.map((x, i) => x - d[i]), hn = Math.hypot(...Hm);
     return { ex, ey, d, L, Hv: Hm.map((x) => x / hn), inv: d.map((x) => 1 / x), invL: L.map((x) => 1 / x) };
   }
@@ -90,9 +132,9 @@
     return { cols, rows, car: new Array(n).fill(" "), tono: new Int8Array(n).fill(-1), prof: new Float32Array(n) };
   }
   function limpiar(g) { g.car.fill(" "); g.tono.fill(-1); g.prof.fill(Infinity); }
-  function luz(g, i, l) {
+  function luz(g, i, l, tinta = "n") {
     g.car[i] = RAMPA[Math.min(RAMPA.length - 1, 1 + Math.floor(l * (RAMPA.length - 1)))];
-    g.tono[i] = l < 0.3 ? 0 : l < 0.6 ? 1 : 2;
+    g.tono[i] = T[tinta] + (l < 0.3 ? 0 : l < 0.6 ? 1 : 2);
   }
 
   function montar(cv) {
@@ -100,7 +142,7 @@
     let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A;
     let corriendo = !reducir, visible = true, t = reducir ? 7 : 0, ultimo = 0, fuente = null, escena = -1;
 
-    // un rayo ortográfico por celda contra las cajas; guarda la profundidad para las líneas
+    // un rayo ortográfico por celda contra las cajas
     function trazar(g, cajas, cam, k, px0, py0) {
       const { ex, ey, d, L, Hv, inv, invL } = cam;
       const lim = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
@@ -124,7 +166,7 @@
           if (!caja) continue;
           const i = r * g.cols + c, m = caja[6];
           g.prof[i] = mejor;
-          if (m === "a" || m === "b") { g.car[i] = "@"; g.tono[i] = m === "a" ? 3 : 4; continue; }
+          if (m === "e") { g.car[i] = "@"; g.tono[i] = T[caja[7]] + 2; continue; }
           const s = -Math.sign(d[eje]);
           let nl = Math.max(0, s * L[eje]);
           if (nl > 0) {   // sombra: un segundo rayo desde el punto hacia la luz
@@ -133,7 +175,7 @@
           }
           let l = m * (0.2 + 0.8 * nl);
           if (m === METAL && nl > 0) l += 0.55 * Math.max(0, s * Hv[eje]) ** 24;
-          luz(g, i, Math.min(1, l));
+          luz(g, i, Math.min(1, l), caja[7]);
         }
       }
     }
@@ -158,9 +200,8 @@
       for (let j = 0; j <= n; j++) { const f = j / n; marca(g, x0 + dx * f, y0 + dy * f, z0 + (z1 - z0) * f, car, tono); }
     }
 
-    // esfera sombreada de radio rad (mm); encendida va en acento
-    const LV = [-0.45, 0.75, -0.5].map((x, _, v) => x / Math.hypot(...v));
-    function esfera(g, [x, y, z], rad, k, encendida) {
+    // esfera sombreada de radio rad (mm); encendida se ve más clara
+    function esfera(g, [x, y, z], rad, k, tinta, encendida) {
       const R = rad * k;
       for (let r = Math.max(0, Math.floor((y - R) / ch)); r <= Math.min(g.rows - 1, Math.floor((y + R) / ch)); r++) {
         for (let c = Math.max(0, Math.floor((x - R) / cw)); c <= Math.min(g.cols - 1, Math.floor((x + R) / cw)); c++) {
@@ -170,71 +211,47 @@
           if (zz > g.prof[i]) continue;
           g.prof[i] = zz;
           const l = 0.25 + 0.75 * Math.max(0, nx * LV[0] - ny * LV[1] - nz * LV[2]);
-          luz(g, i, l);
-          if (encendida) g.tono[i] = 3;
+          luz(g, i, encendida ? 0.6 + 0.4 * l : 0.55 * l, tinta);
         }
       }
     }
 
-    // tamaño y centro de las escenas 3D: en escritorio, apenas a la derecha del vidrio (una parte queda detrás
-    // y se ve desenfocada); en móvil, centradas detrás del texto. cx = cuánto sale del vidrio, en medias escenas
-    let vidrioDer = 0;
-    function encuadre(tam, cx) {
-      const ancho = W >= 760, k = (ancho ? Math.min(W * 0.4, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam;
-      return { k, px0: ancho ? vidrioDer + cx * k * tam / 2 : W / 2, py0: H * 0.5 };
+    // tamaño de las escenas 3D (tam = lo que mide la pieza, en mm); siempre centradas en el hero
+    function encuadre(tam) {
+      const k = (W >= 760 ? Math.min(W * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam;
+      return { k, px0: W / 2, py0: H / 2 };
     }
 
-    function escenaPlaca(g, ts) {
-      const { k, px0, py0 } = encuadre(58, -0.05);
-      trazar(g, PLACA[+(Math.sin(ts * Math.PI * 1.6) > 0)], camara(ts * Math.PI * 2 / 26 + 0.6, -0.62 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
+    function escenaEsp32(g, ts) {
+      const { k, px0, py0 } = encuadre(58);
+      trazar(g, ESP32[+(Math.sin(ts * Math.PI * 1.6) > 0)], camara(ts * Math.PI * 2 / 26 + 0.6, -0.62 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
+    }
+
+    function escenaUno(g, ts) {
+      const { k, px0, py0 } = encuadre(90);
+      const led = Math.sin(ts * Math.PI) > 0, tx = Math.sin(ts * Math.PI * 5) > 0;
+      trazar(g, UNO[2 * led + tx], camara(-ts * Math.PI * 2 / 28 - 0.5, -0.66 + 0.07 * Math.sin(ts * 0.4)), k, px0, py0);
     }
 
     function escenaRed(g, ts) {
-      const { k, px0, py0 } = encuadre(48, 0.1), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
+      const { k, px0, py0 } = encuadre(48), cam = camara(0.55 * Math.sin(ts * 0.3) - 0.15, -0.2);
       const P = proyectar(cam, k, px0, py0), tau = ts % (PASO * (CAPAS.length + 1));
-      // solo las aristas de más peso, en tinta tenue (las más fuertes, un tono más); el pulso viaja en acento
+      // solo las aristas de más peso, en la tinta de su capa de origen; el pulso viaja en el tono más claro
       for (const e of ARISTAS) {
         if (e.w < 0.45) continue;
-        const A = P(e.a.p), B = P(e.b.p), f = (tau - e.a.l * PASO) / PASO;
-        segmento(g, A, B, e.w > 0.8 ? 1 : 0);
+        const A = P(e.a.p), B = P(e.b.p), f = (tau - e.a.l * PASO) / PASO, tc = T[TINTA_CAPA[e.a.l]];
+        segmento(g, A, B, tc + (e.w > 0.8 ? 1 : 0));
         if (f >= 0 && f <= 1 && e.w > 0.6) {
           const en = (u) => [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u, A[2] + (B[2] - A[2]) * u - 0.5];
-          marca(g, ...en(f), "@", 3);
-          if (f > 0.06) marca(g, ...en(f - 0.06), "o", 3);
+          marca(g, ...en(f), "@", tc + 2);
+          if (f > 0.06) marca(g, ...en(f - 0.06), "o", tc + 2);
         }
       }
       // nodos: se encienden cuando les llega la activación; al final queda la salida ganadora
       const ultima = CAPAS.length - 1;
       for (const n of NODOS) {
         const llega = tau >= n.l * PASO && tau < n.l * PASO + PASO * 1.2 && (n.l === 0 || hash(n.l, n.q) > 0.3);
-        esfera(g, P(n.p), 2, k, n.l === ultima ? n.q === 1 && tau >= ultima * PASO : llega);
-      }
-    }
-
-    // cascada de espectros, de adelante hacia atrás: cada línea solo se ve por encima del horizonte de las de adelante
-    function escenaAudio(g, ts) {
-      const N = 28, f = ts * 7 + 400, base = Math.floor(f), frac = f - base;
-      const hor = new Float32Array(g.cols).fill(g.rows), Y = new Float32Array(g.cols);
-      for (let i = 0; i < N; i++) {
-        const q = (i + frac) / N, n = base - i;              // q: 0 adelante … 1 atrás
-        const yb = g.rows * (0.97 - 0.66 * q), amp = g.rows * 0.42 * (1 - 0.45 * q);
-        const mitad = g.cols * 0.49 * (1 - 0.3 * q), c0 = Math.round(g.cols / 2 - mitad), c1 = Math.round(g.cols / 2 + mitad);
-        const tono = i === 0 ? 3 : q < 0.3 ? 2 : q < 0.65 ? 1 : 0;
-        Y.fill(NaN);
-        for (let c = Math.max(0, c0); c <= Math.min(g.cols - 1, c1); c++) Y[c] = yb - amp * espectro(n, (c - c0) / (c1 - c0));
-        const yy = (j, y) => (j >= 0 && j < g.cols && Y[j] === Y[j] ? Y[j] : y);
-        const nuevo = hor.slice();
-        for (let c = 0; c < g.cols; c++) {
-          const y = Y[c];
-          if (y !== y) continue;
-          const r = Math.round(y), rp = Math.round(yy(c - 1, y)), m = (yy(c + 1, y) - yy(c - 1, y)) / 2 * ch / cw;
-          const car = Math.abs(m) < 0.3 ? "_" : Math.abs(m) > 2.2 ? "|" : m < 0 ? "/" : "\\";
-          const pon = (rr, cc) => { if (rr >= 0 && rr < hor[c]) { const i = rr * g.cols + c; g.car[i] = cc; g.tono[i] = tono; } };
-          pon(r, car);
-          for (let rr = Math.min(r, rp) + 1; rr < Math.max(r, rp); rr++) pon(rr, "|");
-          nuevo[c] = Math.min(nuevo[c], rp < r - 1 ? rp + 1 : r);
-        }
-        hor.set(nuevo);
+        esfera(g, P(n.p), 2, k, TINTA_CAPA[n.l], n.l === ultima ? n.q === 1 && tau >= ultima * PASO : llega);
       }
     }
 
@@ -258,9 +275,9 @@
     }
 
     const ESCENAS = [
-      ["placa ESP32-DevKitC", escenaPlaca],
+      ["placa ESP32-DevKitC", escenaEsp32],
       ["red neuronal: una pasada hacia adelante", escenaRed],
-      ["espectro de un micrófono I2S", escenaAudio],
+      ["placa Arduino Uno", escenaUno],
     ];
     const pintar = (g, e, ts) => { limpiar(g); ESCENAS[e][1](g, ts); };
 
@@ -269,14 +286,14 @@
       if (!(fuente && medio(A))) {
         pintar(A, e, ts);
         if (e !== escena) { escena = e; rotulo.textContent = ESCENAS[e][0]; }
-        // fundido: cada celda pasa de la escena anterior a la nueva en su momento; en el borde, bits
+        // fundido: cada celda pasa de la escena anterior a la nueva en su momento; en el borde, bits de colores
         if (ts < FUNDE && t >= DURA) {
           pintar(B, (e + ESCENAS.length - 1) % ESCENAS.length, ts + DURA);
           const p = ts / FUNDE * 1.2;
           for (let i = 0; i < A.car.length; i++) {
             const h = hash(i, 7);
             if (h < p - 0.2 || (A.tono[i] < 0 && B.tono[i] < 0)) continue;
-            if (h < p) { A.car[i] = hash(i, t * 9 | 0) < 0.5 ? "0" : "1"; A.tono[i] = 3; }
+            if (h < p) { A.car[i] = hash(i, t * 9 | 0) < 0.5 ? "0" : "1"; A.tono[i] = 3 + 3 * Math.floor(hash(i, 3) * 5) + 2; }
             else { A.car[i] = B.car[i]; A.tono[i] = B.tono[i]; }
           }
         }
@@ -286,22 +303,23 @@
       ctx.clearRect(0, 0, W, H);
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
       ctx.textBaseline = "top";
-      // una cadena por fila y por tono
-      const capas = col.map(() => new Array(A.cols));
+      // una cadena por fila y por tono (solo los tonos que aparecen en la fila)
+      const capas = col.map(() => new Array(A.cols)), usado = new Uint8Array(col.length);
       for (let r = 0; r < A.rows; r++) {
-        capas.forEach((cap) => cap.fill(" "));
+        usado.fill(0);
         for (let c = 0; c < A.cols; c++) {
-          const i = r * A.cols + c;
-          if (A.tono[i] >= 0) capas[A.tono[i]][c] = A.car[i];
+          const i = r * A.cols + c, tn = A.tono[i];
+          if (tn < 0) continue;
+          if (!usado[tn]) { usado[tn] = 1; capas[tn].fill(" "); }
+          capas[tn][c] = A.car[i];
         }
-        capas.forEach((cap, n) => { ctx.fillStyle = col[n]; ctx.fillText(cap.join(""), 0, r * ch); });
+        capas.forEach((cap, n) => { if (usado[n]) { ctx.fillStyle = col[n]; ctx.fillText(cap.join(""), 0, r * ch); } });
       }
     }
 
     function medir() {
       const rc = hero.getBoundingClientRect(), dpr = devicePixelRatio || 1;
       W = rc.width; H = rc.height;
-      vidrioDer = hero.querySelector(".hero-vidrio").getBoundingClientRect().right - rc.left;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       fs = W < 640 ? 9 : 10;
       ctx.font = `${fs}px "Geist Mono", ui-monospace, monospace`;
