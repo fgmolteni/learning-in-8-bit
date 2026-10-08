@@ -437,30 +437,40 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   figure.diagrama figcaption { position: sticky; left: 0; max-width: calc(100vw - 3rem); }
 }
 
-/* ---------- Portada: pie con autor, aviso y una placa en ASCII quieta (solo index.html) ----------
-   Banda a todo el ancho como el hero; el contenido va en la columna de 1100 px */
+/* ---------- Portada: pie con autor y aviso sobre un cielo en ASCII quieto (solo index.html) ----------
+   Banda a todo el ancho como el hero; el canvas (escena cielo de ascii.js) va detrás y el contenido, en la
+   columna de 1100 px */
 footer.pie.pie-portada {
+  position: relative; isolation: isolate;
   max-width: none; border-left: 0; border-right: 0; border-top: 1px solid var(--linea-fuerte);
-  padding: 2.6rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 1.4rem;
+  padding: 1.8rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 1rem;
   font-family: var(--f-cuerpo); font-size: .95rem; letter-spacing: 0; color: var(--texto);
 }
-.pie-grilla { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, .85fr); gap: 2.5rem; align-items: start; }
-.pie-portada h2 { font-family: var(--f-serif); font-weight: 400; font-size: 1.7rem; line-height: 1.1; color: var(--tinta); margin: 0 0 .35rem; }
-.pie-autor { display: flex; gap: 1.2rem; align-items: flex-start; }
-.pie-foto { flex: none; width: 96px; height: 96px; object-fit: cover; image-rendering: auto; border: 1px solid var(--linea-fuerte); }
-.pie-rol { margin: 0 0 .7rem; line-height: 1.5; }
+.pie-grilla { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 2.5rem; align-items: center; }
+.pie-portada h2 { font-family: var(--f-serif); font-weight: 400; font-size: 1.7rem; line-height: 1.1; color: var(--tinta); margin: 0 0 .5rem; }
+.pie-autor { display: flex; gap: 1.2rem; align-items: center; }
+/* foto de perfil en ASCII (40 × 20, generada de la foto de GitHub): fósforo del acento sobre una pantalla
+   oscura con líneas de barrido, como un monitor de los 80. En claro la pantalla sigue oscura (n6) */
+.pie-foto {
+  --pantalla: var(--n0);
+  position: relative; flex: none; margin: 0; padding: 5px; overflow: hidden;
+  font: 5.4px/6.48px var(--f-mono); letter-spacing: 0; white-space: pre;
+  color: var(--a4); background: var(--pantalla); text-shadow: var(--brillo);
+  border: 1px solid var(--linea-fuerte);
+}
+:root[data-theme="light"] .pie-foto { --pantalla: var(--n6); }
+.pie-foto::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(transparent 0 2px, color-mix(in srgb, var(--pantalla) 35%, transparent) 2px 3px);
+}
 .pie-enlaces { margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-size: .9rem; }
-.pie-aviso h2 { font-family: var(--f-cuerpo); font-size: .95rem; font-weight: 600; margin-bottom: .5rem; }
+.pie-aviso h2 { font-family: var(--f-cuerpo); font-size: .95rem; font-weight: 600; margin-bottom: .4rem; }
 .pie-aviso p { margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; }
-.pie-arte { position: relative; isolation: isolate; height: 230px; }
 .pie-base {
   display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
-  margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--linea);
+  margin-top: 1.4rem; padding-top: .8rem; border-top: 1px solid var(--linea);
   font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
 }
-@media (max-width: 900px) {
-  .pie-grilla { grid-template-columns: 1fr; gap: 1.8rem; }
-  .pie-arte { height: 190px; }
-}
-@media (max-width: 640px) { footer.pie.pie-portada { padding: 2rem 1rem 1.2rem; } }
+@media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; gap: 1.4rem; } }
+@media (max-width: 640px) { footer.pie.pie-portada { padding: 1.6rem 1rem 1rem; } }
 }
