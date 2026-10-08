@@ -54,37 +54,92 @@ const LS = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// ---- tema claro/oscuro: lo guardado; si no hay, prefers-color-scheme ----
+// ---- ajustes de color: tema (como en una terminal), modo día/noche y acento ----
+// En <html>: data-theme="<tema>-<dia|noche>" y data-acento. Los hex viven solo en style.css ("apuntes" a mano,
+// el resto sale de herramientas/temas.py). Cada tema llena los cinco casilleros de acento (ascii.js usa sus ids)
+// con colores propios: acá van sus nombres y el acento por defecto. El acento elegido se recuerda por tema.
+const TEMAS = {
+  apuntes: { acento: "naranja", nombres: "naranja verde azul ámbar magenta" },
+  dracula: { acento: "azul", nombres: "naranja verde púrpura amarillo rosa" },
+  gruvbox: { acento: "naranja", nombres: "naranja verde azul amarillo púrpura" },
+  nord: { acento: "azul", nombres: "naranja verde escarcha amarillo púrpura" },
+  solarized: { acento: "azul", nombres: "naranja verde azul amarillo magenta" },
+  catppuccin: { acento: "magenta", nombres: "durazno verde azul amarillo malva" },
+  tokyo: { nombre: "tokyo night", acento: "azul", nombres: "naranja verde azul amarillo magenta" },
+  puro: { nombre: { noche: "negro puro", dia: "blanco puro" }, acento: "verde", nombres: "naranja verde azul ámbar magenta" },
+};
+const CASILLEROS = ["naranja", "verde", "azul", "ambar", "magenta"];
 const html = document.documentElement;
-html.dataset.theme = LS.get("tema", null) ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 
-// ---- acento: los hex viven solo en style.css ([data-acento]); acá el id, el nombre y la pastilla (lee --a4) ----
-const ACENTOS = { naranja: "naranja", verde: "verde", azul: "azul", ambar: "ámbar", magenta: "magenta" };
-{
-  const a = LS.get("acento", null);
-  html.dataset.acento = ACENTOS[a] ? a : "naranja";
+// se guardan en la cookie "ajustes" (un año, todo el sitio); en file:// el navegador no guarda cookies y
+// quedan en localStorage
+function leerAjustes() {
+  const m = document.cookie.match(/(?:^|; )ajustes=([^;]*)/);
+  let v = null;
+  try { v = m ? JSON.parse(decodeURIComponent(m[1])) : LS.get("ajustes", null); } catch {}
+  return v && typeof v === "object" ? v : null;
 }
-// pastilla de cada acento: prueba cada [data-acento] y lee --a4 (sincrónico, sin repintar), luego restaura
-function pintarPastillas() {
-  const actual = html.dataset.acento;
-  document.querySelectorAll(".colores button").forEach((b) => {
-    html.dataset.acento = b.dataset.color;
-    b.style.setProperty("--c", getComputedStyle(html).getPropertyValue("--a4").trim());
+function guardarAjustes() {
+  const v = encodeURIComponent(JSON.stringify(AJ));
+  document.cookie = `ajustes=${v}; path=/; max-age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  if (!document.cookie.includes("ajustes=")) LS.set("ajustes", AJ);
+}
+// sin ajustes guardados: los valores viejos de localStorage ("tema" dark/light y "acento") o prefers-color-scheme
+const AJ = leerAjustes() ?? {
+  tema: "apuntes",
+  modo: { light: "dia", dark: "noche" }[LS.get("tema", null)] ?? (matchMedia("(prefers-color-scheme: light)").matches ? "dia" : "noche"),
+  acentos: { apuntes: LS.get("acento", null) },
+};
+const acentoDe = (t) => (CASILLEROS.includes(AJ.acentos?.[t]) ? AJ.acentos[t] : TEMAS[t].acento);
+const nombreDe = (t) => TEMAS[t].nombre?.[AJ.modo] ?? TEMAS[t].nombre ?? t;
+
+function aplicarAjustes() {
+  if (!TEMAS[AJ.tema]) AJ.tema = "apuntes";
+  if (AJ.modo !== "dia") AJ.modo = "noche";
+  if (!AJ.acentos || typeof AJ.acentos !== "object") AJ.acentos = {};
+  AJ.mono = AJ.mono === true;
+  html.dataset.theme = `${AJ.tema}-${AJ.modo}`;
+  html.dataset.acento = acentoDe(AJ.tema);
+  html.toggleAttribute("data-mono", AJ.mono);
+}
+aplicarAjustes();
+
+function cambiarAjuste(campo, valor) {
+  if (campo === "acento") AJ.acentos[AJ.tema] = valor;
+  else AJ[campo] = valor;
+  aplicarAjustes();
+  guardarAjustes();
+  pintarAjustes();
+  document.dispatchEvent(new Event("tema"));
+}
+
+// panel: cabecera con [x], modo (+ monocromo), tema y acento; las marcas [ ] / [✓] las dibuja style.css
+function htmlAjustes() {
+  const opcion = (g, v, txt = "", tipo = "radio") =>
+    `<label><input type="${tipo}" name="aj-${g}" value="${v}"><span>${txt}</span></label>`;
+  return `
+    <div class="aj-cab"><span>ajustes</span><button type="button" popovertarget="ajustes" popovertargetaction="hide" aria-label="Cerrar">[x]</button></div>
+    <fieldset><legend>modo</legend>${opcion("modo", "noche", "noche")}${opcion("modo", "dia", "día")}${opcion("mono", "si", "monocromo", "checkbox")}</fieldset>
+    <fieldset><legend>tema</legend>${Object.keys(TEMAS).map((t) => opcion("tema", t)).join("")}</fieldset>
+    <fieldset class="aj-acentos"><legend>acento</legend>${CASILLEROS.map((a) => opcion("acento", a)).join("")}</fieldset>`;
+}
+// nombres que dependen del tema y del modo, y el color de cada acento: prueba cada [data-acento] en <html> y lee
+// --a3 (sincrónico, sin repintar), sin monocromo para que se vea el color; luego restaura
+function pintarAjustes() {
+  const p = document.getElementById("ajustes");
+  if (!p) return;
+  const cs = getComputedStyle(html), nombres = TEMAS[AJ.tema].nombres.split(" ");
+  p.querySelectorAll('[name="aj-tema"]').forEach((i) => (i.nextElementSibling.textContent = nombreDe(i.value)));
+  html.removeAttribute("data-mono");
+  p.querySelectorAll('[name="aj-acento"]').forEach((i, k) => {
+    html.dataset.acento = i.value;
+    i.nextElementSibling.innerHTML = `<i style="--c:${cs.getPropertyValue("--a3").trim()}"></i>${nombres[k]}`;
   });
-  html.dataset.acento = actual;
-}
-function elegirColor(id) {
-  html.dataset.acento = id;
-  LS.set("acento", id);
-  document.querySelectorAll(".colores button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.color === id));
-  document.dispatchEvent(new Event("tema"));
-}
-
-function alternarTema() {
-  const nuevo = html.dataset.theme === "light" ? "dark" : "light";
-  html.dataset.theme = nuevo;
-  LS.set("tema", nuevo);
-  document.dispatchEvent(new Event("tema"));
+  aplicarAjustes();
+  p.querySelector(".aj-acentos").disabled = AJ.mono;   // en monocromo el acento no se usa
+  p.querySelector('[name="aj-mono"]').checked = AJ.mono;
+  for (const [g, val] of [["modo", AJ.modo], ["tema", AJ.tema], ["acento", html.dataset.acento]])
+    p.querySelector(`[name="aj-${g}"][value="${val}"]`).checked = true;
 }
 
 // ---- barra superior ----
@@ -102,15 +157,15 @@ function montarBarra() {
   barra.innerHTML = `
     <a class="logo" href="${raiz}index.html">▚ <span>apuntes.bin</span></a>
     <div class="migas">${migas}</div>
-    <div class="colores" role="group" aria-label="Color de acento">${Object.entries(ACENTOS).map(([id, n]) =>
-      `<button type="button" data-color="${id}" aria-label="Acento ${n}" title="${n}" aria-pressed="${html.dataset.acento === id}"></button>`).join("")}</div>
-    <button class="btn-tema" type="button" aria-label="Cambiar tema claro/oscuro">tema</button>
+    <button class="btn-ajustes" type="button" popovertarget="ajustes" aria-label="Ajustes de color">⚙︎<span> ajustes</span></button>
+    <div class="ajustes" id="ajustes" popover role="dialog" aria-label="Ajustes de color">${htmlAjustes()}</div>
     <div class="progreso-lectura" aria-hidden="true"></div>`;
   document.body.prepend(barra);
-  barra.querySelector(".btn-tema").onclick = alternarTema;
-  barra.querySelectorAll(".colores button").forEach((b) => (b.onclick = () => elegirColor(b.dataset.color)));
-  pintarPastillas();
-  document.addEventListener("tema", pintarPastillas); // --a4 cambia con el tema claro/oscuro
+  const panel = barra.querySelector(".ajustes");
+  // los colores de los acentos se calculan al abrir: probar cada uno recalcula estilos de toda la página
+  panel.addEventListener("beforetoggle", (e) => e.newState === "open" && pintarAjustes());
+  panel.addEventListener("change", (e) =>
+    cambiarAjuste(e.target.name.slice(3), e.target.type === "checkbox" ? e.target.checked : e.target.value));
 
   const prog = barra.querySelector(".progreso-lectura");
   const act = () => {
