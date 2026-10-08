@@ -181,6 +181,17 @@ a:hover { text-decoration-color: var(--a3); }
   color: var(--tinta); margin: 1.2rem 0 1.4rem; letter-spacing: -.01em;
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
+/* hero de la portada con fondo ASCII (ascii.js): el canvas va detrás del texto, dentro de la hoja */
+.hero-ascii { position: relative; isolation: isolate; min-height: 34rem; display: flex; flex-direction: column; justify-content: center; }
+.hero-ascii p { max-width: 44ch; }
+.ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.ascii-pausa {
+  position: absolute; right: 1rem; bottom: 1rem;
+  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
+  background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .2rem .6rem; cursor: pointer;
+}
+.ascii-pausa:hover { color: var(--tinta); border-color: var(--a3); }
+@media (max-width: 759.98px) { .hero.hero-ascii { justify-content: flex-start; padding-bottom: calc(62vw + 3rem); } }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
 .seccion-titulo {
