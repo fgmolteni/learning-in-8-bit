@@ -5,6 +5,8 @@
 //   uno:   una Arduino Uno en 3D que gira, con el ATmega328P en su zócalo y los LED L, TX y RX
 // Cada pieza lleva uno de los cinco colores de la barra (naranja, azul, verde, magenta, ámbar), en tres
 // niveles según la luz; las piezas sin color usan la rampa neutra.
+// Con data-escena="esp32|red|uno" muestra solo esa escena; con data-fijo además dibuja un único cuadro, sin bucle
+// ni pausa (data-t = instante en s, fija el ángulo). Es el modo del pie de la portada.
 // Con data-fuente="ruta.mp4" (o .webm, .png, .jpg) convierte ese video o imagen a ASCII en vivo.
 // En file:// el navegador no deja leer los píxeles de un video: ahí vuelve a las escenas.
 (() => {
@@ -140,7 +142,8 @@
   function montar(cv) {
     const hero = cv.parentElement, ctx = cv.getContext("2d");
     let col = colores(), cw = 7, ch = 12, fs = 10, W = 0, H = 0, A = grilla(0, 0), B = A, mascara = new Uint8Array(0), textoDer = 0;
-    let corriendo = !reducir, visible = true, t = reducir ? 7 : 0, ultimo = 0, fuente = null, escena = -1;
+    const fijo = cv.hasAttribute("data-fijo");
+    let corriendo = !reducir && !fijo, visible = true, t = fijo ? +(cv.dataset.t || 7) : reducir ? 7 : 0, ultimo = 0, fuente = null, escena = -1;
 
     // un rayo ortográfico por celda contra las cajas
     function trazar(g, cajas, cam, k, px0, py0) {
@@ -220,6 +223,7 @@
     // al girar (mm). En escritorio va centrada si no toca el texto; si no, se corre a la derecha lo justo, sin
     // salirse del hero. En móvil va centrada detrás del texto (ahí la máscara la atenúa).
     function encuadre(tam, radio) {
+      if (fijo) return { k: Math.min(W / (2 * radio), H * 1.3 / tam), px0: W / 2, py0: H / 2 };   // llena su recuadro
       const k = (W >= 760 ? Math.min(W * 0.5, H * 1.3) : Math.min(W * 0.95, H * 1.3)) / tam, R = radio * k;
       const px0 = W >= 760 ? Math.min(Math.max(W / 2, textoDer + 2 * cw + R), W - R) : W / 2;
       return { k, px0, py0: H / 2 };
@@ -278,19 +282,20 @@
     }
 
     const ESCENAS = [
-      ["placa ESP32-DevKitC", escenaEsp32],
-      ["red neuronal: una pasada hacia adelante", escenaRed],
-      ["placa Arduino Uno", escenaUno],
+      ["esp32", "placa ESP32-DevKitC", escenaEsp32],
+      ["red", "red neuronal: una pasada hacia adelante", escenaRed],
+      ["uno", "placa Arduino Uno", escenaUno],
     ];
-    const pintar = (g, e, ts) => { limpiar(g); ESCENAS[e][1](g, ts); };
+    const unica = ESCENAS.findIndex((x) => x[0] === cv.dataset.escena);   // -1: se turnan todas
+    const pintar = (g, e, ts) => { limpiar(g); ESCENAS[e][2](g, ts); };
 
     function dibujar() {
-      const e = Math.floor(t / DURA) % ESCENAS.length, ts = t % DURA;
+      const e = unica >= 0 ? unica : Math.floor(t / DURA) % ESCENAS.length, ts = unica >= 0 ? t : t % DURA;
       if (!(fuente && medio(A))) {
         pintar(A, e, ts);
-        if (e !== escena) { escena = e; rotulo.textContent = ESCENAS[e][0]; }
+        if (e !== escena) { escena = e; rotulo.textContent = ESCENAS[e][1]; }
         // fundido: cada celda pasa de la escena anterior a la nueva en su momento; en el borde, bits de colores
-        if (ts < FUNDE && t >= DURA) {
+        if (unica < 0 && ts < FUNDE && t >= DURA) {
           pintar(B, (e + ESCENAS.length - 1) % ESCENAS.length, ts + DURA);
           const p = ts / FUNDE * 1.2;
           for (let i = 0; i < A.car.length; i++) {
@@ -366,12 +371,13 @@
       if (fuente?.play) corriendo ? fuente.play() : fuente.pause();
     };
     pie.append(rotulo, btn);
-    hero.append(pie);
+    if (!fijo) hero.append(pie);
 
-    new IntersectionObserver((es) => (visible = es.at(-1).isIntersecting)).observe(hero);
     document.addEventListener("tema", () => { col = colores(); dibujar(); });
     new ResizeObserver(medir).observe(hero);
     document.fonts?.ready.then(medir);
+    if (fijo) return;
+    new IntersectionObserver((es) => (visible = es.at(-1).isIntersecting)).observe(hero);
 
     let cuadro = 0;
     function bucle(ahora) {

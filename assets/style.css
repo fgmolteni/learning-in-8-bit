@@ -179,17 +179,17 @@ a:hover { text-decoration-color: var(--a3); }
   color: var(--tinta); margin: 1.2rem 0 1.4rem; letter-spacing: -.01em;
 }
 .hero p { max-width: 58ch; margin: 0; color: var(--texto); font-size: 1.15rem; }
-/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho, el texto va contra el borde izquierdo
-   y el canvas detrás, con las escenas centradas */
+/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho y el canvas va detrás; el texto queda
+   alineado a la izquierda de la columna de 1100 px, igual que las tarjetas y el pie */
 .hero.hero-ascii {
-  position: relative; isolation: isolate; max-width: none; padding: 2.4rem 2rem;
+  position: relative; isolation: isolate; max-width: none; padding: 2.4rem max(2rem, calc((100% - 1100px) / 2 + 2rem));
   border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea);
 }
 .hero-ascii h1 { margin: .5rem 0 .7rem; }
 .hero-ascii p { max-width: 40ch; }
 .ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 .ascii-pie {
-  position: absolute; right: 1rem; bottom: .8rem; display: flex; align-items: center; gap: .6rem;
+  position: absolute; right: max(1rem, calc((100% - 1100px) / 2 + 1rem)); bottom: .8rem; display: flex; align-items: center; gap: .6rem;
   font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap;
 }
 .ascii-pie span { background: var(--fondo); padding: 0 .3rem; }
@@ -437,23 +437,30 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   figure.diagrama figcaption { position: sticky; left: 0; max-width: calc(100vw - 3rem); }
 }
 
-/* ---------- Portada: autor + aviso en un solo panel (solo index.html) ---------- */
-.acerca {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  border: 1px solid var(--linea-fuerte); background: var(--panel); clip-path: var(--esc); margin: 0 0 3rem;
+/* ---------- Portada: pie con autor, aviso y una placa en ASCII quieta (solo index.html) ----------
+   Banda a todo el ancho como el hero; el contenido va en la columna de 1100 px */
+footer.pie.pie-portada {
+  max-width: none; border-left: 0; border-right: 0; border-top: 1px solid var(--linea-fuerte);
+  padding: 2.6rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 1.4rem;
+  font-family: var(--f-cuerpo); font-size: .95rem; letter-spacing: 0; color: var(--texto);
 }
-.acerca > div { padding: 1.1rem 1.3rem; }
-.acerca-autor { display: flex; gap: 1rem; align-items: flex-start; }
-.acerca-aviso { border-left: 1px dashed var(--a3); background: var(--a1); font-size: .9rem; line-height: 1.55; }
-.acerca-aviso p { margin: 0; }
-.acerca .avatar { flex: none; width: 56px; height: 56px; border: 1px solid var(--linea-fuerte); background: var(--fondo); display: grid; place-items: center; }
-.acerca .prompt { font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); margin: 0 0 .25rem; }
-.acerca .prompt b { color: var(--a3); font-weight: 400; }
-.acerca h3 { font-family: var(--f-serif); font-weight: 400; font-size: 1.6rem; line-height: 1.05; margin: 0 0 .25rem; color: var(--tinta); text-transform: none; letter-spacing: 0; }
-.acerca .rol { margin: 0 0 .4rem; font-size: .9rem; color: var(--texto); }
-.acerca .enlaces { margin: 0; font-family: var(--f-mono); font-size: .8rem; }
-.acerca .enlaces a { color: var(--a3); }
-@media (max-width: 720px) {
-  .acerca { grid-template-columns: 1fr; }
-  .acerca-aviso { border-left: 0; border-top: 1px dashed var(--a3); }
+.pie-grilla { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, .85fr); gap: 2.5rem; align-items: start; }
+.pie-portada h2 { font-family: var(--f-serif); font-weight: 400; font-size: 1.7rem; line-height: 1.1; color: var(--tinta); margin: 0 0 .35rem; }
+.pie-autor { display: flex; gap: 1.2rem; align-items: flex-start; }
+.pie-foto { flex: none; width: 96px; height: 96px; object-fit: cover; image-rendering: auto; border: 1px solid var(--linea-fuerte); }
+.pie-rol { margin: 0 0 .7rem; line-height: 1.5; }
+.pie-enlaces { margin: 0; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-size: .9rem; }
+.pie-aviso h2 { font-family: var(--f-cuerpo); font-size: .95rem; font-weight: 600; margin-bottom: .5rem; }
+.pie-aviso p { margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; }
+.pie-arte { position: relative; isolation: isolate; height: 230px; }
+.pie-base {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
+  margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--linea);
+  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
+}
+@media (max-width: 900px) {
+  .pie-grilla { grid-template-columns: 1fr; gap: 1.8rem; }
+  .pie-arte { height: 190px; }
+}
+@media (max-width: 640px) { footer.pie.pie-portada { padding: 2rem 1rem 1.2rem; } }
 }
