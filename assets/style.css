@@ -596,6 +596,18 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .caja.ojo { border: 2px dashed var(--a3); background: var(--relleno); }
 .caja.clave { border-color: var(--a3); }
 .objetivos { margin: var(--e4) 0; }
+/* caja de cálculo: fórmula en su línea, datos, resultado e interpretación (h4 "cálculo: …"). Borde azul: canal b, el de las magnitudes */
+.caja.calculo { border-left: 4px solid var(--b3); }
+.caja.calculo .formula {
+  margin: 0 0 var(--e2); padding: .5rem .75rem; overflow-x: auto; white-space: nowrap;
+  background: var(--n1); border: 1px solid var(--linea);
+  font-family: var(--f-mono); font-size: 1rem; line-height: 1.75; color: var(--tinta);
+}
+.caja.calculo var { font-style: italic; }
+.caja.calculo dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem 1rem; margin: 0 0 var(--e2); font-size: 1rem; line-height: 1.5; }
+.caja.calculo dt { font-family: var(--f-mono); font-size: .9375rem; color: var(--texto-suave); }
+.caja.calculo dd { margin: 0; }
+.caja.calculo .resultado { margin: 0 0 var(--e1); padding-top: .5rem; border-top: 1px solid var(--linea); font-family: var(--f-mono); font-size: 1rem; color: var(--tinta); }
 .objetivos ul { margin: 0; }
 .leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde la sidebar */
 
