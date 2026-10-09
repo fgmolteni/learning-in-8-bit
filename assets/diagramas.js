@@ -1042,5 +1042,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   leerPaleta();
   document.addEventListener("tema", () => { leerPaleta(); document.dispatchEvent(new Event("redibujar")); });
   document.querySelectorAll("canvas[data-widget]").forEach((cv) => WIDGETS[cv.dataset.widget]?.(cv));
+  // nombre accesible: el figcaption describe la figura (los que ya traen aria-label se respetan)
+  document.querySelectorAll("canvas[data-widget]").forEach((cv) => {
+    if (cv.getAttribute("aria-label")) return;
+    const txt = cv.closest("figure")?.querySelector("figcaption")?.textContent.trim();
+    cv.setAttribute("role", "img");
+    cv.setAttribute("aria-label", txt || `Figura interactiva: ${cv.dataset.widget}`);
+  });
   document.querySelectorAll("[data-arbol]").forEach(montarArbol);
 });

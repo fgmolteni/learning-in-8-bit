@@ -316,7 +316,7 @@ a:hover { text-decoration-color: var(--a3); }
 }
 .sidebar a { color: var(--texto); text-decoration: none; }
 .sidebar a:hover { color: var(--tinta); }
-.sb-eyebrow { margin: 0; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--a3); }
+.sb-eyebrow { margin: 0; font-family: var(--f-mono); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--a3); }
 .sidebar .sb-tomo { display: block; margin: .25rem 0 1rem; font-family: var(--f-serif); font-size: 1.35rem; line-height: 1.15; color: var(--tinta); }
 .sb-niveles, .sb-secciones { list-style: none; margin: 0; padding: 0; }
 .sb-niveles > li > a { display: flex; gap: .55rem; padding: .35rem .5rem; border-left: 2px solid transparent; }
@@ -447,7 +447,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .libro.bloqueado h3 { color: var(--texto-suave); }
 .etiqueta {
   align-self: flex-start;
-  font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em;
+  font-family: var(--f-mono); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
   padding: .15rem .5rem; border: 1px solid var(--a3); color: var(--a3);
   clip-path: var(--esc);
 }
@@ -690,3 +690,7 @@ footer.pie.pie-portada {
 }
 @media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; gap: 1.4rem; } }
 @media (max-width: 640px) { footer.pie.pie-portada { padding: 1.6rem 1rem 1rem; } }
+/* objetivos táctiles de 40 px en móvil */
+@media (max-width: 700px) {
+  .controles button, .controles select, .btn { min-height: 40px; }
+}
