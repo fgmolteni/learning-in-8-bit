@@ -13,6 +13,8 @@
   --magenta1: #301225; --magenta2: #822b62; --magenta3: #f183c9; --magenta4: #f881cd;
   /* acento de la UI (naranja por defecto; lo elige el lector). Las figuras no lo usan: van con los 4 canales */
   --a1: var(--naranja1); --a2: var(--naranja2); --a3: var(--naranja3); --a4: var(--naranja4);
+  /* fondo de los elementos marcados donde va texto de acento encima: --a1 acercado al fondo para dejar 0,3 o más de margen sobre 4,5 */
+  --relleno: color-mix(in srgb, var(--a1) 60%, var(--fondo));
   /* 4 canales fijos de las figuras, como las puntas de un osciloscopio (clases fa/fb/fc/fd, tokens a/b/c/d):
      a naranja = dato, lo que se explica · b azul = reloj, tiempo, la contraparte · c verde = control,
      selección, habilitación · d magenta = evento, interrupción, respuesta. Sin señales, van por orden a b c d */
@@ -46,9 +48,12 @@
   --esc: polygon(0 2px, 2px 2px, 2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
   --esc-t: polygon(0 2px, 2px 2px, 2px -3em, calc(100% - 2px) -3em, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
 
-  /* columna de lectura (~74 caracteres por línea); las figuras van centradas a su ancho lógico, 640 px, escala 1:1 */
-  --ancho-lectura: 760px;
+  /* columna de lectura: 54ch de Geist a 18 px = 644 px = 67 caracteres por línea de mediana y 75 como máximo (medido con la
+     fuente real; 1ch ≈ 1,24 caracteres de texto). Se mide en ch, no en px, para que siga al tamaño de letra.
+     Las figuras van centradas a su ancho lógico, 640 px, escala 1:1; ver docs/investigacion-lectura.md */
+  --ancho-lectura: 54ch;
   --ancho-figura: 640px;
+  --ancho-codigo: 60ch;   /* bloques de código: 60 caracteres por línea como máximo */
   --sb-w: 16rem;   /* ancho de la sidebar de niveles (ver más abajo) */
   color-scheme: dark;
 }
@@ -56,7 +61,7 @@
 :root[data-theme="apuntes-dia"] {
   --n0: #ffffff; --n1: #f4f6f9; --n2: #e2e7ee; --n3: #b3bdcb;
   --n4: #586478; --n5: #2f394b; --n6: #151b28;
-  --a1: #fdefe7; --a2: #f1b99d; --a3: #b84b14; --a4: #e8692c;
+  --a1: #fdefe7; --a2: #f1b99d; --a3: #b54a14; --a4: #e8692c;
   --brillo: none; --pantalla: var(--n6);
   color-scheme: light;
 }
@@ -72,11 +77,11 @@
 /* tema "apuntes": pizarra de noche (:root) y papel de día. site.js pone data-theme="<tema>-<dia|noche>" y
    data-acento en <html> según los ajustes. Acentos alternativos de apuntes: */
 :root[data-acento="verde"] { --a1: #12301f; --a2: #2b824f; --a3: #19e66f; --a4: #81f8b3; }
-:root[data-theme="apuntes-dia"][data-acento="verde"] { --a1: #e7fdf0; --a2: #9df1c0; --a3: #0e813e; --a4: #2ce87a; }
+:root[data-theme="apuntes-dia"][data-acento="verde"] { --a1: #e7fdf0; --a2: #9df1c0; --a3: #0d7b3b; --a4: #2ce87a; }
 :root[data-acento="azul"] { --a1: #122030; --a2: #2b5482; --a3: #75aef0; --a4: #81b9f8; }
 :root[data-theme="apuntes-dia"][data-acento="azul"] { --a1: #e7f2fd; --a2: #9dc4f1; --a3: #166aca; --a4: #2c83e8; }
 :root[data-acento="ambar"] { --a1: #302712; --a2: #82672b; --a3: #e7a923; --a4: #f8d381; }
-:root[data-theme="apuntes-dia"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #956704; --a4: #e8ac2c; }
+:root[data-theme="apuntes-dia"][data-acento="ambar"] { --a1: #fdf6e7; --a2: #f1d69d; --a3: #8f6304; --a4: #e8ac2c; }
 :root[data-acento="magenta"] { --a1: #301225; --a2: #822b62; --a3: #f183c9; --a4: #f881cd; }
 :root[data-theme="apuntes-dia"][data-acento="magenta"] { --a1: #fde7f5; --a2: #f19dd2; --a3: #c51685; --a4: #e82ca3; }
 
@@ -247,7 +252,7 @@
 :root[data-theme="tokyo-dia"][data-acento="magenta"] { --a1: #dad4e8; --a2: #c4a9eb; --a3: #703eb2; --a4: #9854f1; }
 :root[data-theme="puro-noche"] {
   --n0: #000000; --n1: #080808; --n2: #121212; --n3: #333333;
-  --n4: #9e9e9e; --n5: #e6e6e6; --n6: #ffffff;
+  --n4: #9e9e9e; --n5: #cfcfcf; --n6: #e6e6e6;   /* tinta a 90 % de blanco: el blanco puro sobre negro puro cansa */
   --a1: #291604; --a2: #80460d; --a3: #ff8c1a; --a4: #ffa348;
   --naranja1: #291604; --naranja2: #80460d; --naranja3: #ff8c1a; --naranja4: #ffa348;
   --verde1: #082910; --verde2: #1a8033; --verde3: #33ff66; --verde4: #5cff85;
@@ -382,7 +387,7 @@ a:hover { text-decoration-color: var(--a3); }
 .sb-niveles > li > a { display: flex; gap: .55rem; padding: .35rem .5rem; border-left: 2px solid transparent; }
 .sb-niveles > li > a span { flex: none; font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); padding-top: .1rem; }
 .sb-niveles > li > a i { margin-left: auto; padding-left: .4rem; font-style: normal; font-family: var(--f-mono); color: var(--a3); }
-.sb-niveles > li.actual > a { border-left-color: var(--a3); background: var(--a1); color: var(--tinta); font-weight: 600; }
+.sb-niveles > li.actual > a { border-left-color: var(--a3); background: var(--relleno); color: var(--tinta); font-weight: 600; }
 .sb-secciones { margin: .25rem 0 .6rem 1.75rem; border-left: 1px solid var(--linea-fuerte); }
 .sidebar .sb-secciones a { display: block; margin-left: -1px; padding: .2rem .6rem; border-left: 2px solid transparent; font-size: .875rem; color: var(--texto-suave); }
 .sidebar .sb-secciones a[aria-current] { border-left-color: var(--a3); color: var(--tinta); }
@@ -545,6 +550,9 @@ a.libro:hover .lomo { border-color: var(--a3); }
 }
 .leccion .bajada { font-size: 1.25rem; color: var(--n4); margin-top: 0; line-height: 1.4; }
 .leccion p { margin: 0 0 var(--e2); }
+/* ajuste de líneas: pretty evita la última línea con una sola palabra; balance reparte los títulos. Sin soporte, el navegador lo ignora */
+.leccion p, .leccion li, .leccion figcaption { text-wrap: pretty; }
+.leccion h1, .leccion h2, .leccion h3, .leccion .bajada { text-wrap: balance; }
 .leccion h2 {
   font-family: var(--f-serif); font-weight: 400; font-size: 2rem; line-height: 1.25; letter-spacing: 0;
   margin: var(--e6) 0 var(--e2); color: var(--tinta);
@@ -557,6 +565,15 @@ a.libro:hover .lomo { border-color: var(--a3); }
   margin: var(--e4) 0 var(--e1); color: var(--tinta);
 }
 .leccion strong { color: var(--tinta); font-weight: 600; }
+/* código: mono de 15 px sobre renglón de 24, 60 caracteres por línea como máximo (ancho de la caja = --ancho-codigo); la explicación va fuera del bloque.
+   Aún no hay bloques en los artículos; estas reglas fijan cómo se verán el primero y los siguientes */
+.leccion code { font-family: var(--f-mono); font-size: .9375rem; color: var(--tinta); background: var(--n1); padding: .05em .3em; border: 1px solid var(--linea); }
+.leccion pre {
+  margin: var(--e4) 0; padding: var(--e2) var(--e3); max-width: calc(var(--ancho-codigo) + 2 * var(--e3) + 2px);
+  overflow-x: auto; background: var(--n1); border: 1px solid var(--linea-fuerte);
+  font-family: var(--f-mono); font-size: .9375rem; line-height: 1.6; tab-size: 4;
+}
+.leccion pre code { font-size: inherit; padding: 0; border: 0; background: transparent; color: var(--texto); }
 .leccion ul, .leccion ol { padding-left: 1.6rem; }
 /* números de ol dentro de la columna (no sobresalen a la izquierda) */
 .leccion ol { list-style-position: outside; padding-left: 2.2rem; }
@@ -576,7 +593,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .caja p:first-of-type { margin-top: 0; }
 .caja.analogia { border-style: dashed; border-color: var(--linea-fuerte); }
 .caja.dato { border-left: 4px solid var(--a3); }
-.caja.ojo { border: 2px dashed var(--a3); background: var(--a1); }
+.caja.ojo { border: 2px dashed var(--a3); background: var(--relleno); }
 .caja.clave { border-color: var(--a3); }
 .objetivos { margin: var(--e4) 0; }
 .objetivos ul { margin: 0; }
@@ -640,7 +657,7 @@ abbr[title], .termino { text-decoration: underline dotted var(--texto-suave); te
 .quiz button:last-child { border-bottom: 0; }
 .quiz button::before { content: "[ ]"; font-family: var(--f-mono); color: var(--texto-suave); flex: none; }
 .quiz button:hover { background: var(--n2); }
-.quiz button.ok { background: var(--a1); color: var(--tinta); box-shadow: inset 3px 0 0 var(--a3); }
+.quiz button.ok { background: var(--relleno); color: var(--tinta); box-shadow: inset 3px 0 0 var(--a3); }
 .quiz button.ok::before { content: "[✓]"; color: var(--a3); }
 .quiz button.mal { text-decoration: line-through; color: var(--texto-suave); }
 .quiz button.mal::before { content: "[✗]"; }
