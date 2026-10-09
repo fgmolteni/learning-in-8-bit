@@ -161,6 +161,15 @@ function montarBarra() {
     <div class="ajustes" id="ajustes" popover role="dialog" aria-label="Ajustes de color">${htmlAjustes()}</div>
     <div class="progreso-lectura" aria-hidden="true"></div>`;
   document.body.prepend(barra);
+  const principal = document.querySelector("main");
+  if (principal) {
+    principal.id ||= "principal";
+    const saltar = document.createElement("a");
+    saltar.className = "saltar";
+    saltar.href = "#" + principal.id;
+    saltar.textContent = "Saltar al contenido";
+    document.body.prepend(saltar);
+  }
   const panel = barra.querySelector(".ajustes");
   // los colores de los acentos se calculan al abrir: probar cada uno recalcula estilos de toda la página
   panel.addEventListener("beforetoggle", (e) => e.newState === "open" && pintarAjustes());

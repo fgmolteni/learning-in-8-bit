@@ -547,7 +547,17 @@ figure.diagrama figcaption b { font-family: var(--f-mono); font-weight: 500; fon
 .controles output { color: var(--tinta); min-width: 7ch; }
 
 /* tablas */
-.tabla-scroll { overflow-x: auto; margin: 1.8rem 0; }
+/* sombra en el borde que tapa el scroll: avisa que la tabla sigue (cromo de UI, no figura) */
+.tabla-scroll {
+  overflow-x: auto; margin: 1.8rem 0;
+  background:
+    linear-gradient(90deg, var(--fondo) 30%, transparent) left / 2rem 100% no-repeat local,
+    linear-gradient(270deg, var(--fondo) 30%, transparent) right / 2rem 100% no-repeat local,
+    linear-gradient(90deg, var(--linea-fuerte), transparent) left / .5rem 100% no-repeat scroll,
+    linear-gradient(270deg, var(--linea-fuerte), transparent) right / .5rem 100% no-repeat scroll;
+}
+.saltar { position: absolute; left: .5rem; top: -4rem; z-index: 100; padding: .5rem .8rem; background: var(--a3); color: var(--fondo); font-family: var(--f-mono); font-size: .8rem; }
+.saltar:focus { top: .5rem; }
 table { border-collapse: collapse; width: 100%; font-size: .98rem; line-height: 1.55; }
 th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--linea); vertical-align: top; }
 th { font-family: var(--f-mono); font-weight: 500; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); white-space: nowrap; border-bottom: 1px solid var(--linea-fuerte); }
