@@ -1,6 +1,9 @@
 // Apuntes en bits — comportamiento común (tema, barra, navegación, progreso, quiz)
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
+// versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
+const VERSION = "0.1.11";
+
 const CURSOS = {
   micro: {
     titulo: "El microcontrolador por dentro", seccion: "micro",
@@ -355,7 +358,13 @@ function pausarFueraDePantalla() {
   svgs.forEach((s) => io.observe(s));
 }
 
+function montarVersion() {
+  const pie = document.querySelector("footer.pie");
+  if (pie) (pie.querySelector(".pie-base span") || pie).append(`, v${VERSION}`);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  montarVersion();
   montarBarra();
   montarTemario();
   montarAvancePortada();

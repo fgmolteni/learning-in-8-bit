@@ -88,18 +88,18 @@
   --a1: #4a413f; --a2: #947151; --a3: #ffb86c; --a4: #ffc689;
 }
 :root[data-theme="dracula-noche"][data-acento="verde"] { --a1: #2e4b41; --a2: #3c9258; --a3: #50fa7b; --a4: #73fb95; }
-:root[data-theme="dracula-noche"][data-acento="azul"] { --a1: #403b55; --a2: #725e98; --a3: #bd93f9; --a4: #caa9fa; }
+:root[data-theme="dracula-noche"][data-acento="azul"] { --a1: #403b55; --a2: #725e98; --a3: #bf96f9; --a4: #ccabfa; }
 :root[data-theme="dracula-noche"][data-acento="ambar"] { --a1: #484b44; --a2: #8c9261; --a3: #f1fa8c; --a4: #f4fba3; }
 :root[data-theme="dracula-noche"][data-acento="magenta"] { --a1: #4a374d; --a2: #94527e; --a3: #ff79c6; --a4: #ff94d1; }
 :root[data-theme="dracula-dia"] {
-  --n0: #fffbeb; --n1: #f8f4e9; --n2: #eeece6; --n3: #cfcfde;
+  --n0: #fffbeb; --n1: #f7f3e8; --n2: #ebe9e3; --n3: #c7c7d5;
   --n4: #6c664b; --n5: #1f1f1f; --n6: #000000;
   --a1: #f6ead6; --a2: #dab595; --a3: #a34d14; --a4: #a34d14;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
 }
 :root[data-theme="dracula-dia"][data-acento="verde"] { --a1: #e8edd4; --a2: #a1c491; --a3: #14710a; --a4: #14710a; }
 :root[data-theme="dracula-dia"][data-acento="azul"] { --a1: #f0e9e8; --a2: #c1b4dd; --a3: #644ac9; --a4: #644ac9; }
-:root[data-theme="dracula-dia"][data-acento="ambar"] { --a1: #f3edd6; --a2: #cec395; --a3: #7d6814; --a4: #846e15; }
+:root[data-theme="dracula-dia"][data-acento="ambar"] { --a1: #f3edd6; --a2: #cec395; --a3: #7c6714; --a4: #846e15; }
 :root[data-theme="dracula-dia"][data-acento="magenta"] { --a1: #f6e4db; --a2: #da9fac; --a3: #a3144d; --a4: #a3144d; }
 :root[data-theme="gruvbox-noche"] {
   --n0: #282828; --n1: #2e2d2c; --n2: #363432; --n3: #504945;
@@ -107,44 +107,44 @@
   --a1: #4a3626; --a2: #935420; --a3: #fe8019; --a4: #fe9947;
 }
 :root[data-theme="gruvbox-noche"][data-acento="verde"] { --a1: #3f4028; --a2: #707227; --a3: #b8bb26; --a4: #c6c951; }
-:root[data-theme="gruvbox-noche"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #83a598; --a4: #9cb7ad; }
+:root[data-theme="gruvbox-noche"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #8cab9f; --a4: #a3bcb2; }
 :root[data-theme="gruvbox-noche"][data-acento="ambar"] { --a1: #4a4029; --a2: #91722c; --a3: #fabd2f; --a4: #fbca59; }
-:root[data-theme="gruvbox-noche"][data-acento="magenta"] { --a1: #43373a; --a2: #7e5762; --a3: #d3869b; --a4: #dc9eaf; }
+:root[data-theme="gruvbox-noche"][data-acento="magenta"] { --a1: #43373a; --a2: #7e5762; --a3: #d790a3; --a4: #dfa6b5; }
 :root[data-theme="gruvbox-dia"] {
-  --n0: #fbf1c7; --n1: #f5eac1; --n2: #eee1ba; --n3: #d5c4a1;
-  --n4: #6d6258; --n5: #3c3836; --n6: #282828;
+  --n0: #fbf1c7; --n1: #f4e9c1; --n2: #ecdfb8; --n3: #cfbe9c;
+  --n4: #6c6157; --n5: #3c3836; --n6: #282828;
   --a1: #f3dfb3; --a2: #dda879; --a3: #af3a03; --a4: #af3a03;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
 }
-:root[data-theme="gruvbox-dia"][data-acento="verde"] { --a1: #eee4b4; --a2: #c7bf7d; --a3: #6a660c; --a4: #79740e; }
+:root[data-theme="gruvbox-dia"][data-acento="verde"] { --a1: #eee4b4; --a2: #c7bf7d; --a3: #69650c; --a4: #79740e; }
 :root[data-theme="gruvbox-dia"][data-acento="azul"] { --a1: #e3e3bf; --a2: #99b9a7; --a3: #076678; --a4: #076678; }
-:root[data-theme="gruvbox-dia"][data-acento="ambar"] { --a1: #f4e5b5; --a2: #dfc07f; --a3: #8a5a0f; --a4: #b57614; }
+:root[data-theme="gruvbox-dia"][data-acento="ambar"] { --a1: #f4e5b5; --a2: #dfc07f; --a3: #88580f; --a4: #b57614; }
 :root[data-theme="gruvbox-dia"][data-acento="magenta"] { --a1: #f0dfbe; --a2: #d0aaa5; --a3: #8f3f71; --a4: #8f3f71; }
 :root[data-theme="nord-noche"] {
   --n0: #2e3440; --n1: #323946; --n2: #38404f; --n3: #4c566a;
   --n4: #a4acba; --n5: #d8dee9; --n6: #eceff4;
-  --a1: #484148; --a2: #7f5e58; --a3: #d89d8a; --a4: #e0b1a1;
+  --a1: #484148; --a2: #7f5e58; --a3: #dba391; --a4: #e2b5a7;
 }
-:root[data-theme="nord-noche"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a3be8c; --a4: #b5cba3; }
+:root[data-theme="nord-noche"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a4bf8d; --a4: #b6cca4; }
 :root[data-theme="nord-noche"][data-acento="azul"] { --a1: #3c4a57; --a2: #5b7a88; --a3: #88c0d0; --a4: #a0cdd9; }
 :root[data-theme="nord-noche"][data-acento="ambar"] { --a1: #4c4c4c; --a2: #8c8066; --a3: #ebcb8b; --a4: #efd5a2; }
-:root[data-theme="nord-noche"][data-acento="magenta"] { --a1: #434251; --a2: #716176; --a3: #c1a1bb; --a4: #cdb4c9; }
+:root[data-theme="nord-noche"][data-acento="magenta"] { --a1: #434251; --a2: #716176; --a3: #c4a7bf; --a4: #d0b9cc; }
 :root[data-theme="nord-dia"] {
-  --n0: #eceff4; --n1: #e5e9ef; --n2: #dce1e8; --n3: #bfc6d3;
+  --n0: #eceff4; --n1: #e4e8ee; --n2: #d9dee6; --n3: #b7becb;
   --n4: #4c566a; --n5: #3b4252; --n6: #2e3440;
-  --a1: #e9e5e7; --a2: #e1c5bf; --a3: #875849; --a4: #d08770;
+  --a1: #e9e5e7; --a2: #e1c5bf; --a3: #855648; --a4: #d08770;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
 }
-:root[data-theme="nord-dia"][data-acento="verde"] { --a1: #e5eaea; --a2: #cfdbca; --a3: #5a684d; --a4: #a3be8c; }
-:root[data-theme="nord-dia"][data-acento="azul"] { --a1: #dee4ed; --a2: #b3c3d7; --a3: #4a6688; --a4: #5e81ac; }
-:root[data-theme="nord-dia"][data-acento="ambar"] { --a1: #ecebea; --a2: #ece1ca; --a3: #716143; --a4: #ebcb8b; }
-:root[data-theme="nord-dia"][data-acento="magenta"] { --a1: #e6e5ed; --a2: #d6c8d8; --a3: #755c70; --a4: #b48ead; }
+:root[data-theme="nord-dia"][data-acento="verde"] { --a1: #e5eaea; --a2: #cfdbca; --a3: #56654a; --a4: #a3be8c; }
+:root[data-theme="nord-dia"][data-acento="azul"] { --a1: #dee4ed; --a2: #b3c3d7; --a3: #486384; --a4: #5e81ac; }
+:root[data-theme="nord-dia"][data-acento="ambar"] { --a1: #ecebea; --a2: #ece1ca; --a3: #6e5f41; --a4: #ebcb8b; }
+:root[data-theme="nord-dia"][data-acento="magenta"] { --a1: #e6e5ed; --a2: #d6c8d8; --a3: #71596d; --a4: #b48ead; }
 :root[data-theme="solarized-noche"] {
   --n0: #002b36; --n1: #08313c; --n2: #123a44; --n3: #33555e;
   --n4: #90a0a6; --n5: #b1bbbb; --n6: #eee8d5;
   --a1: #203031; --a2: #663b26; --a3: #dd8865; --a4: #e4a084;
 }
-:root[data-theme="solarized-noche"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #95a621; --a4: #aab84d; }
+:root[data-theme="solarized-noche"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #96a724; --a4: #abb950; }
 :root[data-theme="solarized-noche"][data-acento="azul"] { --a1: #063a4f; --a2: #135b84; --a3: #56a5dc; --a4: #78b7e3; }
 :root[data-theme="solarized-noche"][data-acento="ambar"] { --a1: #1d3a2d; --a2: #5a5a1b; --a3: #bf9821; --a4: #ccad4d; }
 :root[data-theme="solarized-noche"][data-acento="magenta"] { --a1: #222d42; --a2: #6a305c; --a3: #e27cae; --a4: #e896be; }

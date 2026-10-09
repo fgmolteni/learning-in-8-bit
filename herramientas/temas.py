@@ -78,14 +78,15 @@ def asegurar(c, fondos, minimo, hacia):
 
 def bloque(id_, claro, neutros, ansi):
     n0, n3, n4, n5, n6 = neutros.split()
-    n1, n2 = mezcla(n0, n3, 0.15), mezcla(n0, n3, 0.35)
     tope = "#000000" if claro else "#ffffff"
+    n3 = asegurar(n3, (n0,), 1.6, tope)  # bordes visibles contra el fondo
+    n1, n2 = mezcla(n0, n3, 0.15), mezcla(n0, n3, 0.35)
     n4 = asegurar(n4, (n0, n1, n2), 4.5, tope)
     n5 = asegurar(n5, (n0, n1), 7, tope)
     k1, k2 = (0.10, 0.40) if claro else (0.16, 0.50)
     tonos = {}
     for nombre, c in zip(ACENTOS, ansi.split()):
-        a3 = asegurar(c, (n0, n1, n2), 4.5, tope)
+        a3 = asegurar(c, (n0, n1, n2, mezcla(n0, c, k1)), 4.5, tope)  # también sobre su relleno a1
         a4 = c if claro else mezcla(a3, "#ffffff", 0.2)
         tonos[nombre] = f"--a1: {mezcla(n0, c, k1)}; --a2: {mezcla(n0, c, k2)}; --a3: {a3}; --a4: {a4};"
     sel = f':root[data-theme="{id_}"]'
