@@ -5,8 +5,15 @@ Guía para escribir y convertir los artículos del curso. Se aplica junto con la
 
 ## Enfoque del curso
 
-- El tema es el concepto general (procesador, memoria, bus, periférico).
-  El ESP32 y el ESP32-S3 son el ejemplo y la herramienta.
+- El propósito es aprender sobre procesadores y microcontroladores en general, no sobre el ESP32.
+  El tema es el concepto (procesador, ISA, memoria, bus, periférico).
+- Los chips de Espressif son la guía, porque son los componentes con los que se trabaja.
+  El ESP32 (Xtensa) es el hilo conductor. Primero se explica el concepto general y después cómo lo hace el ESP32.
+- Las comparaciones van entre arquitecturas, no solo entre chips de la misma familia:
+  ESP32 (Xtensa) frente a un RISC-V (por ejemplo, ESP32-C3) y un Arm Cortex-M (por ejemplo, el RP2350,
+  que trae núcleos Cortex-M33 y RISC-V Hazard3). Se pueden usar otros componentes y placas cuando aclaran un concepto.
+- Cuando existe un estándar, se nombra y se explica qué fija: especificación RISC-V, Arm Thumb-2,
+  IEEE 754, AMBA (AHB y APB), y los que correspondan a cada tema (UART, SPI, I2C, I2S, USB).
 - El recorrido va de afuera hacia adentro: chip, pines, buses, sistema, memoria y procesador.
 - El sitio no muestra código. La implementación en firmware irá en un bloque aparte, más adelante.
   Cada artículo deja este comentario antes de las fuentes:
@@ -24,7 +31,7 @@ Los cálculos apoyan la explicación; no la reemplazan.
 | 3 | Adentro: elementos y conexiones | Cada pieza, qué hace y con quién se comunica. Diagrama de bloques con las conexiones. |
 | 4 | Recorrido paso a paso | Una operación del ejemplo conductor sigue su camino por los elementos, en orden. Es la parte más larga. |
 | 5 | Cómo se encadenan | Repetición, solapamiento o paralelismo: cómo trabajan juntos los elementos en el tiempo. |
-| 6 | Implementación | Cómo lo construye el hardware del ESP32 y del ESP32-S3, y en qué se diferencian. Sin código. |
+| 6 | Implementaciones reales | Cómo lo construye el ESP32, comparado elemento por elemento con un RISC-V y un Arm Cortex-M. Estándares que aplican. Sin código. |
 | 7 | Relación con el resto del chip | Qué capas de afuera lo alimentan o lo interrumpen, con enlaces a esos niveles. |
 | 8 | Los números que importan | De 2 a 3 cálculos que ayudan a entender el mecanismo o a decidir. |
 | 9 | Límites | Lo que el modelo no cubre y los datos por confirmar. |
