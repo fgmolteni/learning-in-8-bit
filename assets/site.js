@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.12";
+const VERSION = "0.1.13";
 
 const CURSOS = {
   micro: {
@@ -34,6 +34,12 @@ const CURSOS = {
       { f: "03-i2s.html", t: "I2S", d: "Audio digital: relojes de bit y de palabra, TDM y micrófonos PDM." },
       { f: "04-dma.html", t: "DMA", d: "Descriptores enlazados, ráfagas y coherencia de caché: mover datos sin la CPU." },
       { f: "05-pie.html", t: "El acelerador vectorial PIE", d: "SIMD de 128 bits, acumuladores anchos y saturación: cómo multiplica de a 16." },
+    ],
+  },
+  procesador: {
+    titulo: "El procesador por dentro", seccion: "micro",
+    niveles: [
+      { f: "01-procesador.html", t: "El procesador", d: "Piloto de la estructura nueva: definición, piezas, pipeline y cómo lo construyen el ESP32 y el ESP32-S3." },
     ],
   },
   redes: {
