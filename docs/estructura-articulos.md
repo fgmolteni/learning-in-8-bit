@@ -52,11 +52,13 @@ El orden de la tabla se respeta, aunque no se vea en los títulos.
     <dt>CPI</dt><dd>1,46 ciclos por instrucción</dd>
     <dt>T</dt><dd>4,17 ns (240 MHz)</dd>
   </dl>
-  <p class="resultado">t = 276 · 1,46 · 4,17 ns ≈ 1,68 µs</p>
+  <p class="resultado">N · CPI = 276 · 1,464 ≈ 404 ciclos; t = 404 · 4,17 ns ≈ 1,68 µs</p>
   <p>Interpretación en una o dos oraciones.</p>
 </div>
 ```
 
-- Una caja por cálculo. Entre 3 y 6 cajas por artículo.
+- Una caja por cálculo. Entre 4 y 8 cajas por artículo.
 - Coma decimal y punto medio (·) para multiplicar. Unidades del SI.
+- Cada resultado lleva su unidad. No se mezclan ciclos y tiempo en una misma igualdad.
+- Las comparaciones usan la misma base: el lazo completo frente al lazo completo, no una parte frente al todo.
 - Cada número de un cálculo se puede rastrear: dato del sitio, dato de la hoja de datos o supuesto declarado.
