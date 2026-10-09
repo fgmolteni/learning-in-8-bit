@@ -11,11 +11,15 @@
   --azul1: #122030; --azul2: #2b5482; --azul3: #75aef0; --azul4: #81b9f8;
   --verde1: #12301f; --verde2: #2b824f; --verde3: #19e66f; --verde4: #81f8b3;
   --magenta1: #301225; --magenta2: #822b62; --magenta3: #f183c9; --magenta4: #f881cd;
-  /* acento (naranja por defecto) */
+  /* acento de la UI (naranja por defecto; lo elige el lector). Las figuras no lo usan: van con los 4 canales */
   --a1: var(--naranja1); --a2: var(--naranja2); --a3: var(--naranja3); --a4: var(--naranja4);
-  /* segundo color, solo para figuras: distingue una segunda cosa (señal B, CPU frente a DMA, canal derecho).
-     Contrasta con el acento: naranja y ámbar llevan azul; verde, magenta; azul, naranja; magenta, verde */
+  /* 4 canales fijos de las figuras, como las puntas de un osciloscopio (clases fa/fb/fc/fd, tokens a/b/c/d):
+     a naranja = dato, lo que se explica · b azul = reloj, tiempo, la contraparte · c verde = control,
+     selección, habilitación · d magenta = evento, interrupción, respuesta. Sin señales, van por orden a b c d */
   --b1: var(--azul1); --b2: var(--azul2); --b3: var(--azul3); --b4: var(--azul4);
+
+  /* escala de espacios en múltiplos de 8 px (la grilla de las figuras) */
+  --e1: .5rem; --e2: 1rem; --e3: 1.5rem; --e4: 2rem; --e5: 3rem; --e6: 4rem;
 
   /* alias para canvas y figuras viejas (hex de 6 dígitos, los lee diagramas.js) */
   --m0: var(--n0); --m1: var(--n1); --m2: var(--n2); --m3: var(--n3);
@@ -36,13 +40,15 @@
   --f-serif: "Instrument Serif", Georgia, serif;
   --f-cuerpo: "Geist", system-ui, sans-serif;
   --f-mono: "Geist Mono", ui-monospace, monospace;
-  --f-pixel: "Press Start 2P", monospace;
+  --f-pixel: "Jersey 10", var(--f-mono);
 
   /* esquina escalonada de 2px (16-bit); la variante -t deja libre el título incrustado arriba */
   --esc: polygon(0 2px, 2px 2px, 2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
   --esc-t: polygon(0 2px, 2px 2px, 2px -3em, calc(100% - 2px) -3em, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px));
 
-  --ancho-lectura: 68ch;
+  /* columna de lectura (~74 caracteres por línea); las figuras van centradas a su ancho lógico, 640 px, escala 1:1 */
+  --ancho-lectura: 760px;
+  --ancho-figura: 640px;
   --sb-w: 16rem;   /* ancho de la sidebar de niveles (ver más abajo) */
   color-scheme: dark;
 }
@@ -63,11 +69,6 @@
   --magenta1: #fde7f5; --magenta2: #f19dd2; --magenta3: #c51685; --magenta4: #e82ca3;
 }
 
-/* segundo color según el acento (naranja y ámbar usan el azul de :root); vale en todos los temas */
-:root[data-acento="verde"] { --b1: var(--magenta1); --b2: var(--magenta2); --b3: var(--magenta3); --b4: var(--magenta4); }
-:root[data-acento="azul"] { --b1: var(--naranja1); --b2: var(--naranja2); --b3: var(--naranja3); --b4: var(--naranja4); }
-:root[data-acento="magenta"] { --b1: var(--verde1); --b2: var(--verde2); --b3: var(--verde3); --b4: var(--verde4); }
-
 /* tema "apuntes": pizarra de noche (:root) y papel de día. site.js pone data-theme="<tema>-<dia|noche>" y
    data-acento en <html> según los ajustes. Acentos alternativos de apuntes: */
 :root[data-acento="verde"] { --a1: #12301f; --a2: #2b824f; --a3: #19e66f; --a4: #81f8b3; }
@@ -86,6 +87,10 @@
   --n0: #282a36; --n1: #2e303d; --n2: #353747; --n3: #4d5066;
   --n4: #96a1c2; --n5: #f8f8f2; --n6: #ffffff;
   --a1: #4a413f; --a2: #947151; --a3: #ffb86c; --a4: #ffc689;
+  --naranja1: #4a413f; --naranja2: #947151; --naranja3: #ffb86c; --naranja4: #ffc689;
+  --verde1: #2e4b41; --verde2: #3c9258; --verde3: #50fa7b; --verde4: #73fb95;
+  --azul1: #403b55; --azul2: #725e98; --azul3: #bf96f9; --azul4: #ccabfa;
+  --magenta1: #4a374d; --magenta2: #94527e; --magenta3: #ff79c6; --magenta4: #ff94d1;
 }
 :root[data-theme="dracula-noche"][data-acento="verde"] { --a1: #2e4b41; --a2: #3c9258; --a3: #50fa7b; --a4: #73fb95; }
 :root[data-theme="dracula-noche"][data-acento="azul"] { --a1: #403b55; --a2: #725e98; --a3: #bf96f9; --a4: #ccabfa; }
@@ -96,6 +101,10 @@
   --n4: #6c664b; --n5: #1f1f1f; --n6: #000000;
   --a1: #f6ead6; --a2: #dab595; --a3: #a34d14; --a4: #a34d14;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #f6ead6; --naranja2: #dab595; --naranja3: #a34d14; --naranja4: #a34d14;
+  --verde1: #e8edd4; --verde2: #a1c491; --verde3: #14710a; --verde4: #14710a;
+  --azul1: #f0e9e8; --azul2: #c1b4dd; --azul3: #644ac9; --azul4: #644ac9;
+  --magenta1: #f6e4db; --magenta2: #da9fac; --magenta3: #a3144d; --magenta4: #a3144d;
 }
 :root[data-theme="dracula-dia"][data-acento="verde"] { --a1: #e8edd4; --a2: #a1c491; --a3: #14710a; --a4: #14710a; }
 :root[data-theme="dracula-dia"][data-acento="azul"] { --a1: #f0e9e8; --a2: #c1b4dd; --a3: #644ac9; --a4: #644ac9; }
@@ -105,6 +114,10 @@
   --n0: #282828; --n1: #2e2d2c; --n2: #363432; --n3: #504945;
   --n4: #a99a85; --n5: #ebdbb2; --n6: #fbf1c7;
   --a1: #4a3626; --a2: #935420; --a3: #fe8019; --a4: #fe9947;
+  --naranja1: #4a3626; --naranja2: #935420; --naranja3: #fe8019; --naranja4: #fe9947;
+  --verde1: #3f4028; --verde2: #707227; --verde3: #b8bb26; --verde4: #c6c951;
+  --azul1: #373c3a; --azul2: #566660; --azul3: #8cab9f; --azul4: #a3bcb2;
+  --magenta1: #43373a; --magenta2: #7e5762; --magenta3: #d790a3; --magenta4: #dfa6b5;
 }
 :root[data-theme="gruvbox-noche"][data-acento="verde"] { --a1: #3f4028; --a2: #707227; --a3: #b8bb26; --a4: #c6c951; }
 :root[data-theme="gruvbox-noche"][data-acento="azul"] { --a1: #373c3a; --a2: #566660; --a3: #8cab9f; --a4: #a3bcb2; }
@@ -115,6 +128,10 @@
   --n4: #6c6157; --n5: #3c3836; --n6: #282828;
   --a1: #f3dfb3; --a2: #dda879; --a3: #af3a03; --a4: #af3a03;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #f3dfb3; --naranja2: #dda879; --naranja3: #af3a03; --naranja4: #af3a03;
+  --verde1: #eee4b4; --verde2: #c7bf7d; --verde3: #69650c; --verde4: #79740e;
+  --azul1: #e3e3bf; --azul2: #99b9a7; --azul3: #076678; --azul4: #076678;
+  --magenta1: #f0dfbe; --magenta2: #d0aaa5; --magenta3: #8f3f71; --magenta4: #8f3f71;
 }
 :root[data-theme="gruvbox-dia"][data-acento="verde"] { --a1: #eee4b4; --a2: #c7bf7d; --a3: #69650c; --a4: #79740e; }
 :root[data-theme="gruvbox-dia"][data-acento="azul"] { --a1: #e3e3bf; --a2: #99b9a7; --a3: #076678; --a4: #076678; }
@@ -124,6 +141,10 @@
   --n0: #2e3440; --n1: #323946; --n2: #38404f; --n3: #4c566a;
   --n4: #a4acba; --n5: #d8dee9; --n6: #eceff4;
   --a1: #484148; --a2: #7f5e58; --a3: #dba391; --a4: #e2b5a7;
+  --naranja1: #484148; --naranja2: #7f5e58; --naranja3: #dba391; --naranja4: #e2b5a7;
+  --verde1: #414a4c; --verde2: #687966; --verde3: #a4bf8d; --verde4: #b6cca4;
+  --azul1: #3c4a57; --azul2: #5b7a88; --azul3: #88c0d0; --azul4: #a0cdd9;
+  --magenta1: #434251; --magenta2: #716176; --magenta3: #c4a7bf; --magenta4: #d0b9cc;
 }
 :root[data-theme="nord-noche"][data-acento="verde"] { --a1: #414a4c; --a2: #687966; --a3: #a4bf8d; --a4: #b6cca4; }
 :root[data-theme="nord-noche"][data-acento="azul"] { --a1: #3c4a57; --a2: #5b7a88; --a3: #88c0d0; --a4: #a0cdd9; }
@@ -134,6 +155,10 @@
   --n4: #4c566a; --n5: #3b4252; --n6: #2e3440;
   --a1: #e9e5e7; --a2: #e1c5bf; --a3: #855648; --a4: #d08770;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #e9e5e7; --naranja2: #e1c5bf; --naranja3: #855648; --naranja4: #d08770;
+  --verde1: #e5eaea; --verde2: #cfdbca; --verde3: #56654a; --verde4: #a3be8c;
+  --azul1: #dee4ed; --azul2: #b3c3d7; --azul3: #486384; --azul4: #5e81ac;
+  --magenta1: #e6e5ed; --magenta2: #d6c8d8; --magenta3: #71596d; --magenta4: #b48ead;
 }
 :root[data-theme="nord-dia"][data-acento="verde"] { --a1: #e5eaea; --a2: #cfdbca; --a3: #56654a; --a4: #a3be8c; }
 :root[data-theme="nord-dia"][data-acento="azul"] { --a1: #dee4ed; --a2: #b3c3d7; --a3: #486384; --a4: #5e81ac; }
@@ -143,6 +168,10 @@
   --n0: #002b36; --n1: #08313c; --n2: #123a44; --n3: #33555e;
   --n4: #90a0a6; --n5: #b1bbbb; --n6: #eee8d5;
   --a1: #203031; --a2: #663b26; --a3: #dd8865; --a4: #e4a084;
+  --naranja1: #203031; --naranja2: #663b26; --naranja3: #dd8865; --naranja4: #e4a084;
+  --verde1: #153d2d; --verde2: #42621b; --verde3: #96a724; --verde4: #abb950;
+  --azul1: #063a4f; --azul2: #135b84; --azul3: #56a5dc; --azul4: #78b7e3;
+  --magenta1: #222d42; --magenta2: #6a305c; --magenta3: #e27cae; --magenta4: #e896be;
 }
 :root[data-theme="solarized-noche"][data-acento="verde"] { --a1: #153d2d; --a2: #42621b; --a3: #96a724; --a4: #abb950; }
 :root[data-theme="solarized-noche"][data-acento="azul"] { --a1: #063a4f; --a2: #135b84; --a3: #56a5dc; --a4: #78b7e3; }
@@ -153,6 +182,10 @@
   --n4: #55676e; --n5: #425258; --n6: #073642;
   --a1: #f8e5ce; --a2: #e9b291; --a3: #af4013; --a4: #cb4b16;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #f8e5ce; --naranja2: #e9b291; --naranja3: #af4013; --naranja4: #cb4b16;
+  --verde1: #f1edcc; --verde2: #cdd188; --verde3: #5d6b00; --verde4: #859900;
+  --azul1: #e8ebe1; --azul2: #a7cbdc; --azul3: #1d6aa0; --azul4: #268bd2;
+  --magenta1: #f9e3d9; --magenta2: #eca9bc; --magenta3: #b52e70; --magenta4: #d33682;
 }
 :root[data-theme="solarized-dia"][data-acento="verde"] { --a1: #f1edcc; --a2: #cdd188; --a3: #5d6b00; --a4: #859900; }
 :root[data-theme="solarized-dia"][data-acento="azul"] { --a1: #e8ebe1; --a2: #a7cbdc; --a3: #1d6aa0; --a4: #268bd2; }
@@ -162,6 +195,10 @@
   --n0: #1e1e2e; --n1: #242435; --n2: #2c2c3d; --n3: #45475a;
   --n4: #9399b2; --n5: #cdd6f4; --n6: #eef1fc;
   --a1: #41363c; --a2: #8c685a; --a3: #fab387; --a4: #fbc29f;
+  --naranja1: #41363c; --naranja2: #8c685a; --naranja3: #fab387; --naranja4: #fbc29f;
+  --verde1: #343e40; --verde2: #628068; --verde3: #a6e3a1; --verde4: #b8e9b4;
+  --azul1: #2f364f; --azul2: #546994; --azul3: #89b4fa; --azul4: #a1c3fb;
+  --magenta1: #3a344e; --magenta2: #746292; --magenta3: #cba6f7; --magenta4: #d5b8f9;
 }
 :root[data-theme="catppuccin-noche"][data-acento="verde"] { --a1: #343e40; --a2: #628068; --a3: #a6e3a1; --a4: #b8e9b4; }
 :root[data-theme="catppuccin-noche"][data-acento="azul"] { --a1: #2f364f; --a2: #546994; --a3: #89b4fa; --a4: #a1c3fb; }
@@ -172,6 +209,10 @@
   --n4: #5f6275; --n5: #484b64; --n6: #2a2c40;
   --a1: #f0e3de; --a2: #f5b997; --a3: #aa4307; --a4: #fe640b;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #f0e3de; --naranja2: #f5b997; --naranja3: #aa4307; --naranja4: #fe640b;
+  --verde1: #dee9e1; --verde2: #a9d1a4; --verde3: #2d701e; --verde4: #40a02b;
+  --azul1: #dae3f5; --azul2: #9bb9f5; --azul3: #1a5ad8; --azul4: #1e66f5;
+  --magenta1: #e5dff4; --magenta2: #c6a7f3; --magenta3: #7e35de; --magenta4: #8839ef;
 }
 :root[data-theme="catppuccin-dia"][data-acento="verde"] { --a1: #dee9e1; --a2: #a9d1a4; --a3: #2d701e; --a4: #40a02b; }
 :root[data-theme="catppuccin-dia"][data-acento="azul"] { --a1: #dae3f5; --a2: #9bb9f5; --a3: #1a5ad8; --a4: #1e66f5; }
@@ -181,6 +222,10 @@
   --n0: #1a1b26; --n1: #1f212f; --n2: #26293b; --n3: #3b4261;
   --n4: #898fb1; --n5: #c0caf5; --n6: #e4e9ff;
   --a1: #3f3030; --a2: #8c5c45; --a3: #ff9e64; --a4: #ffb183;
+  --naranja1: #3f3030; --naranja2: #8c5c45; --naranja3: #ff9e64; --naranja4: #ffb183;
+  --verde1: #2f3831; --verde2: #5c7448; --verde3: #9ece6a; --verde4: #b1d888;
+  --azul1: #293147; --azul2: #4a5e8e; --azul3: #7aa2f7; --azul4: #95b5f9;
+  --magenta1: #342f47; --magenta2: #6a5a8e; --magenta3: #bb9af7; --magenta4: #c9aef9;
 }
 :root[data-theme="tokyo-noche"][data-acento="verde"] { --a1: #2f3831; --a2: #5c7448; --a3: #9ece6a; --a4: #b1d888; }
 :root[data-theme="tokyo-noche"][data-acento="azul"] { --a1: #293147; --a2: #4a5e8e; --a3: #7aa2f7; --a4: #95b5f9; }
@@ -191,6 +236,10 @@
   --n4: #4a5786; --n5: #254080; --n6: #1f2a50;
   --a1: #dcd5d0; --a2: #ceac8b; --a3: #8a4800; --a4: #b15c00;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #dcd5d0; --naranja2: #ceac8b; --naranja3: #8a4800; --naranja4: #b15c00;
+  --verde1: #d3d7d6; --verde2: #aab6a1; --verde3: #49612f; --verde4: #587539;
+  --azul1: #cfd8e7; --azul2: #99bae8; --azul3: #2058a3; --azul4: #2e7de9;
+  --magenta1: #dad4e8; --magenta2: #c4a9eb; --magenta3: #703eb2; --magenta4: #9854f1;
 }
 :root[data-theme="tokyo-dia"][data-acento="verde"] { --a1: #d3d7d6; --a2: #aab6a1; --a3: #49612f; --a4: #587539; }
 :root[data-theme="tokyo-dia"][data-acento="azul"] { --a1: #cfd8e7; --a2: #99bae8; --a3: #2058a3; --a4: #2e7de9; }
@@ -200,6 +249,10 @@
   --n0: #000000; --n1: #080808; --n2: #121212; --n3: #333333;
   --n4: #9e9e9e; --n5: #e6e6e6; --n6: #ffffff;
   --a1: #291604; --a2: #80460d; --a3: #ff8c1a; --a4: #ffa348;
+  --naranja1: #291604; --naranja2: #80460d; --naranja3: #ff8c1a; --naranja4: #ffa348;
+  --verde1: #082910; --verde2: #1a8033; --verde3: #33ff66; --verde4: #5cff85;
+  --azul1: #0c1b29; --azul2: #265380; --azul3: #4da6ff; --azul4: #71b8ff;
+  --magenta1: #290c22; --magenta2: #802669; --magenta3: #ff4dd2; --magenta4: #ff71db;
 }
 :root[data-theme="puro-noche"][data-acento="verde"] { --a1: #082910; --a2: #1a8033; --a3: #33ff66; --a4: #5cff85; }
 :root[data-theme="puro-noche"][data-acento="azul"] { --a1: #0c1b29; --a2: #265380; --a3: #4da6ff; --a4: #71b8ff; }
@@ -210,6 +263,10 @@
   --n4: #595959; --n5: #1a1a1a; --n6: #000000;
   --a1: #fcefe6; --a2: #f5be99; --a3: #af4600; --a4: #e65c00;
   --brillo: none; --pantalla: var(--n6); color-scheme: light;
+  --naranja1: #fcefe6; --naranja2: #f5be99; --naranja3: #af4600; --naranja4: #e65c00;
+  --verde1: #e6f6ec; --verde2: #99dab1; --verde3: #00772c; --verde4: #00a33c;
+  --azul1: #e6f0ff; --azul2: #99c2ff; --azul3: #005de8; --azul4: #0066ff;
+  --magenta1: #fbe6f5; --magenta2: #ef99d9; --magenta3: #c30091; --magenta4: #d6009f;
 }
 :root[data-theme="puro-dia"][data-acento="verde"] { --a1: #e6f6ec; --a2: #99dab1; --a3: #00772c; --a4: #00a33c; }
 :root[data-theme="puro-dia"][data-acento="azul"] { --a1: #e6f0ff; --a2: #99c2ff; --a3: #005de8; --a4: #0066ff; }
@@ -217,10 +274,13 @@
 :root[data-theme="puro-dia"][data-acento="magenta"] { --a1: #fbe6f5; --a2: #ef99d9; --a3: #c30091; --a4: #d6009f; }
 /* temas:fin */
 
-/* monocromo (casilla del panel de ajustes): el acento pasa a la rampa neutra del tema, como una terminal sin color.
-   Va después de los temas para ganarles; los canvas leen el hex ya resuelto de var(--n*) */
+/* monocromo (casilla del panel de ajustes): el acento y los 4 canales pasan a la rampa neutra del tema, como una
+   terminal sin color. Va después de los temas para ganarles; los canvas leen el hex ya resuelto de var(--n*) */
 :root[data-mono][data-theme][data-acento] { --a1: var(--n2); --a2: var(--n3); --a3: var(--n5); --a4: var(--n6);
-  --b1: var(--n1); --b2: var(--n3); --b3: var(--n4); --b4: var(--n5); }
+  --naranja1: var(--n2); --naranja2: var(--n3); --naranja3: var(--n5); --naranja4: var(--n6);
+  --verde1: var(--n2); --verde2: var(--n3); --verde3: var(--n5); --verde4: var(--n6);
+  --azul1: var(--n1); --azul2: var(--n3); --azul3: var(--n4); --azul4: var(--n5);
+  --magenta1: var(--n1); --magenta2: var(--n3); --magenta3: var(--n4); --magenta4: var(--n5); }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -230,17 +290,17 @@ body {
   background: var(--fondo);
   color: var(--texto);
   font-family: var(--f-cuerpo);
-  font-size: 1.1rem;
-  line-height: 1.7;
+  font-size: 1.125rem;   /* 18 px sobre renglón de 28: múltiplos de 4 */
+  line-height: 1.5556;
   -webkit-font-smoothing: antialiased;
   display: flex; flex-direction: column; min-height: 100vh; /* la hoja llega hasta abajo */
-  /* grilla blueprint: líneas menores cada 20px, mayores cada 100px (muy sutil) */
+  /* papel milimetrado: líneas menores cada 16 px (la grilla de las figuras), mayores cada 80 px (muy sutil) */
   background-image:
     linear-gradient(color-mix(in srgb, var(--linea-fuerte) 40%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--linea-fuerte) 40%, transparent) 1px, transparent 1px),
     linear-gradient(color-mix(in srgb, var(--linea) 70%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--linea) 70%, transparent) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
   background-position: -1px -1px;
 }
 
@@ -295,7 +355,7 @@ a:hover { text-decoration-color: var(--a3); }
   border: 0; margin: 1.1rem 0 0; padding: 0; min-width: 0;
 }
 .ajustes fieldset[disabled] { opacity: .4; }
-.ajustes legend { padding: 0 0 .3rem; color: var(--a3); text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; }
+.ajustes legend { padding: 0 0 .3rem; color: var(--a3); font-size: .8125rem; }
 .ajustes label { display: flex; padding: .25rem .3rem; cursor: pointer; white-space: nowrap; }
 .ajustes label:hover { background: var(--n1); color: var(--tinta); }
 .ajustes fieldset[disabled] label { cursor: default; background: none; }
@@ -312,11 +372,11 @@ a:hover { text-decoration-color: var(--a3); }
 .sidebar {
   position: fixed; top: 34px; bottom: 0; left: 0; z-index: 15; width: var(--sb-w); overflow-y: auto;
   padding: 1.4rem 1rem 1.5rem; background: var(--fondo); border-right: 1px solid var(--linea-fuerte);
-  font-size: .88rem; line-height: 1.45;
+  font-size: .9375rem; line-height: 1.47;
 }
 .sidebar a { color: var(--texto); text-decoration: none; }
 .sidebar a:hover { color: var(--tinta); }
-.sb-eyebrow { margin: 0; font-family: var(--f-mono); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--a3); }
+.sb-eyebrow { margin: 0; font-family: var(--f-mono); font-size: .875rem; color: var(--a3); }
 .sidebar .sb-tomo { display: block; margin: .25rem 0 1rem; font-family: var(--f-serif); font-size: 1.35rem; line-height: 1.15; color: var(--tinta); }
 .sb-niveles, .sb-secciones { list-style: none; margin: 0; padding: 0; }
 .sb-niveles > li > a { display: flex; gap: .55rem; padding: .35rem .5rem; border-left: 2px solid transparent; }
@@ -324,7 +384,7 @@ a:hover { text-decoration-color: var(--a3); }
 .sb-niveles > li > a i { margin-left: auto; padding-left: .4rem; font-style: normal; font-family: var(--f-mono); color: var(--a3); }
 .sb-niveles > li.actual > a { border-left-color: var(--a3); background: var(--a1); color: var(--tinta); font-weight: 600; }
 .sb-secciones { margin: .25rem 0 .6rem 1.75rem; border-left: 1px solid var(--linea-fuerte); }
-.sidebar .sb-secciones a { display: block; margin-left: -1px; padding: .2rem .6rem; border-left: 2px solid transparent; font-size: .8rem; color: var(--texto-suave); }
+.sidebar .sb-secciones a { display: block; margin-left: -1px; padding: .2rem .6rem; border-left: 2px solid transparent; font-size: .875rem; color: var(--texto-suave); }
 .sidebar .sb-secciones a[aria-current] { border-left-color: var(--a3); color: var(--tinta); }
 .sb-tomos { display: flex; justify-content: space-between; margin: 1.2rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); font-family: var(--f-mono); font-size: .75rem; }
 .btn-sidebar {
@@ -381,11 +441,10 @@ a:hover { text-decoration-color: var(--a3); }
 }
 .contenedor, .leccion { flex: 1; }
 
-/* eyebrow: mono MAYÚSCULAS con tracking (como "PROYECTO FINAL · …" y "FALLA DE HARDWARE" de la lámina) */
+/* rótulos: mono en minúsculas, como una terminal de los 80/90 (el texto ya viene en minúsculas en el HTML) */
 .eyebrow, .leccion header .nivel-chip {
   display: flex; justify-content: space-between; gap: 1rem;
-  font-family: var(--f-mono); font-size: .85rem; font-weight: 400;
-  text-transform: uppercase; letter-spacing: .08em; line-height: 1.4;
+  font-family: var(--f-mono); font-size: .875rem; font-weight: 400; line-height: 1.43;
 }
 .eyebrow { color: var(--a3); }
 .leccion header .nivel-chip { color: var(--n4); }
@@ -422,8 +481,7 @@ a:hover { text-decoration-color: var(--a3); }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
 .seccion-titulo {
-  font-family: var(--f-mono); font-size: .8rem; color: var(--a3);
-  text-transform: uppercase; letter-spacing: .08em;
+  font-family: var(--f-mono); font-size: .875rem; color: var(--a3);
   display: flex; align-items: center; gap: .8rem; margin: 2rem 0 1rem;
 }
 .seccion-titulo::after { content: ""; flex: 1; border-top: 1px solid var(--linea-fuerte); }
@@ -447,7 +505,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .libro.bloqueado h3 { color: var(--texto-suave); }
 .etiqueta {
   align-self: flex-start;
-  font-family: var(--f-mono); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
+  font-family: var(--f-mono); font-size: .875rem;
   padding: .15rem .5rem; border: 1px solid var(--a3); color: var(--a3);
   clip-path: var(--esc);
 }
@@ -455,7 +513,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 /* avance del tomo en su tarjeta (site.js; solo con niveles completados) */
 .avance {
   margin-top: auto; display: flex; align-items: center; gap: .6rem;
-  font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-suave);
+  font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave);
 }
 .avance > span { display: flex; gap: 3px; }
 .avance i { width: 10px; height: 10px; border: 1px solid var(--linea-fuerte); }
@@ -479,63 +537,66 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .nivel.hecho .meta { color: var(--a3); }
 
 /* ---------- Lección ---------- */
-.leccion { max-width: calc(var(--ancho-lectura) + 4rem); margin: 0 auto; padding: 3rem 2rem 4rem; }
+/* escala tipográfica sobre renglones de 4 px: cuerpo 18/28, bajada 20/28, h3 20/28, h2 32/40, h1 48/52 */
+.leccion { max-width: calc(var(--ancho-lectura) + 4rem + 2px); margin: 0 auto; /* +2px: bordes de la hoja */ padding: var(--e5) 2rem var(--e6); }
 .leccion h1 {
   font-family: var(--f-serif); font-weight: 400; letter-spacing: -.01em;
-  font-size: clamp(2.5rem, 7vw, 3.2rem); line-height: 1.05; margin: .7rem 0 1rem; color: var(--tinta);
+  font-size: clamp(2.5rem, 7vw, 3rem); line-height: 1.0833; margin: var(--e2) 0; color: var(--tinta);
 }
-.leccion .bajada { font-size: 1.2rem; color: var(--n4); margin-top: 0; line-height: 1.6; }
+.leccion .bajada { font-size: 1.25rem; color: var(--n4); margin-top: 0; line-height: 1.4; }
+.leccion p { margin: 0 0 var(--e2); }
 .leccion h2 {
-  font-family: var(--f-serif); font-weight: 400; font-size: 2rem; line-height: 1.15; letter-spacing: 0;
-  margin: 3.5rem 0 1rem; color: var(--tinta);
+  font-family: var(--f-serif); font-weight: 400; font-size: 2rem; line-height: 1.25; letter-spacing: 0;
+  margin: var(--e6) 0 var(--e2); color: var(--tinta);
   display: flex; gap: .7rem; align-items: baseline;
 }
-.leccion h2::before { content: "##"; font-family: var(--f-mono); font-size: .8rem; letter-spacing: .04em; color: var(--a3); }
-.leccion h3, .leccion .rotulo {
-  font-family: var(--f-mono); font-weight: 500; font-size: .85rem; line-height: 1.4;
-  text-transform: uppercase; letter-spacing: .08em;
-  margin: 2.2rem 0 .4rem; color: var(--a3);
+.leccion h2::before { content: "##"; font-family: var(--f-mono); font-size: .875rem; color: var(--a3); }
+/* h3: subtítulo de hoja de datos, sans en negrita (antes era un rótulo mono y se perdía bajo el h2) */
+.leccion h3 {
+  font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.25rem; line-height: 1.4;
+  margin: var(--e4) 0 var(--e1); color: var(--tinta);
 }
 .leccion strong { color: var(--tinta); font-weight: 600; }
 .leccion ul, .leccion ol { padding-left: 1.6rem; }
 /* números de ol dentro de la columna (no sobresalen a la izquierda) */
 .leccion ol { list-style-position: outside; padding-left: 2.2rem; }
-.leccion li { margin-bottom: .45rem; }
+.leccion li { margin-bottom: var(--e1); }
 .leccion ul li::marker { content: "▪  "; color: var(--a3); }
 .leccion ol li::marker { font-family: var(--f-mono); color: var(--texto-suave); }
 
 /* cajas: título "incrustado" en el borde superior, esquinas escalonadas */
-.caja { margin: 2.2rem 0; padding: 1.3rem 1.3rem 1.1rem; clip-path: var(--esc-t); }
+.caja { margin: var(--e4) 0; padding: var(--e3) var(--e3) var(--e2); clip-path: var(--esc-t); }
 .caja > :last-child { margin-bottom: 0; }
 .caja h4, .objetivos h4 {
   position: absolute; top: -.72em; left: .9rem; margin: 0;
   padding: 0 .5rem; background: var(--fondo);
-  font-family: var(--f-mono); font-weight: 500; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--a3); line-height: 1.4;
+  font-family: var(--f-mono); font-weight: 500; font-size: .875rem;
+  color: var(--a3); line-height: 1.43;
 }
 .caja p:first-of-type { margin-top: 0; }
 .caja.analogia { border-style: dashed; border-color: var(--linea-fuerte); }
 .caja.dato { border-left: 4px solid var(--a3); }
 .caja.ojo { border: 2px dashed var(--a3); background: var(--a1); }
 .caja.clave { border-color: var(--a3); }
-.objetivos { margin: 2.5rem 0; }
+.objetivos { margin: var(--e4) 0; }
 .objetivos ul { margin: 0; }
 .leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde la sidebar */
 
-/* figuras */
-figure.diagrama { margin: 2.5rem -1rem; padding: 1.5rem 1.25rem 1.25rem; background: var(--n0); clip-path: var(--esc-t); }
+/* figuras: la caja ocupa la columna (el margen negativo compensa el relleno); el dibujo va centrado a 640 */
+figure.diagrama { margin: var(--e5) calc(-1rem - 1px); padding: var(--e3) 1rem 1rem; background: var(--n0); clip-path: var(--esc-t); }
 figure.diagrama::before {
   content: attr(data-titulo);
   position: absolute; top: -.72em; left: .9rem; padding: 0 .5rem;
-  font-family: var(--f-mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  font-family: var(--f-mono); font-size: .875rem;
   color: var(--n4); background: var(--fondo);
 }
-figure.diagrama svg, figure.diagrama canvas { display: block; width: 100%; height: auto; }
-figure.diagrama figcaption { font-size: .96rem; line-height: 1.6; color: var(--texto); margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--linea-fuerte); }
-figure.diagrama figcaption b { font-family: var(--f-mono); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); margin-right: .6rem; }
-.controles { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .9rem; color: var(--texto-suave); font-family: var(--f-mono); font-size: .8rem; }
+/* el dibujo no se estira: 640 px como máximo (1 px de figura = 1 px de pantalla, ×2 en retina), centrado en la caja */
+figure.diagrama svg, figure.diagrama canvas { display: block; width: 100%; max-width: var(--ancho-figura); height: auto; margin-inline: auto; }
+figure.diagrama figcaption { font-size: 1rem; line-height: 1.5; color: var(--texto); margin-top: var(--e2); padding-top: .75rem; border-top: 1px solid var(--linea-fuerte); }
+figure.diagrama figcaption b { font-family: var(--f-mono); font-weight: 500; font-size: .875rem; color: var(--a3); margin-right: .6rem; }
+.controles { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .9rem; color: var(--texto-suave); font-family: var(--f-mono); font-size: .875rem; }
 .controles button, .controles select {
-  font-family: var(--f-mono); font-size: .78rem; padding: .35rem .7rem; border-radius: 0;
+  font-family: var(--f-mono); font-size: .8125rem; padding: .35rem .7rem; border-radius: 0;
   background: var(--n1); color: var(--tinta); border: 1px solid var(--linea-fuerte); cursor: pointer;
   box-shadow: 2px 2px 0 var(--n2); /* cromo de UI */
 }
@@ -549,7 +610,7 @@ figure.diagrama figcaption b { font-family: var(--f-mono); font-weight: 500; fon
 /* tablas */
 /* sombra en el borde que tapa el scroll: avisa que la tabla sigue (cromo de UI, no figura) */
 .tabla-scroll {
-  overflow-x: auto; margin: 1.8rem 0;
+  overflow-x: auto; margin: var(--e4) 0;
   background:
     linear-gradient(90deg, var(--fondo) 30%, transparent) left / 2rem 100% no-repeat local,
     linear-gradient(270deg, var(--fondo) 30%, transparent) right / 2rem 100% no-repeat local,
@@ -558,9 +619,9 @@ figure.diagrama figcaption b { font-family: var(--f-mono); font-weight: 500; fon
 }
 .saltar { position: absolute; left: .5rem; top: -4rem; z-index: 100; padding: .5rem .8rem; background: var(--a3); color: var(--fondo); font-family: var(--f-mono); font-size: .8rem; }
 .saltar:focus { top: .5rem; }
-table { border-collapse: collapse; width: 100%; font-size: .98rem; line-height: 1.55; }
+table { border-collapse: collapse; width: 100%; font-size: 1rem; line-height: 1.5; }
 th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--linea); vertical-align: top; }
-th { font-family: var(--f-mono); font-weight: 500; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); white-space: nowrap; border-bottom: 1px solid var(--linea-fuerte); }
+th { font-family: var(--f-mono); font-weight: 500; font-size: .875rem; color: var(--a3); white-space: nowrap; border-bottom: 1px solid var(--linea-fuerte); }
 td b { color: var(--tinta); font-weight: 600; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: var(--n2); }
@@ -586,7 +647,7 @@ abbr[title], .termino { text-decoration: underline dotted var(--texto-suave); te
 .quiz .feedback { margin: .9rem 0 0; min-height: 1.5em; color: var(--texto); font-size: 1rem; }
 
 /* fuentes */
-.fuentes { margin-top: 4.5rem; padding-top: .5rem; border-top: 1px solid var(--linea-fuerte); font-size: .95rem; line-height: 1.6; color: var(--texto-suave); }
+.fuentes { margin-top: var(--e6); padding-top: .5rem; border-top: 1px solid var(--linea-fuerte); font-size: 1rem; line-height: 1.5; color: var(--texto-suave); }
 .fuentes h2 { margin-top: 1.5rem; }
 .fuentes h2::before { content: "[refs]"; }
 .fuentes ol { padding-left: 2.4rem; }
@@ -595,12 +656,12 @@ abbr[title], .termino { text-decoration: underline dotted var(--texto-suave); te
 .fuentes .nota { font-size: .85rem; font-style: italic; }
 
 /* navegación entre niveles */
-.completar { margin: 3.5rem 0 1rem; }
+.completar { margin: var(--e6) 0 var(--e2); }
 .nav-niveles { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--linea-fuerte); }
 .nav-niveles a { display: block; padding: 1rem 1.2rem; text-decoration: none; color: var(--texto); }
 .nav-niveles a:hover { background: var(--n2); }
 .nav-niveles a + a { border-left: 1px solid var(--linea-fuerte); text-align: right; }
-.nav-niveles small { display: block; font-family: var(--f-mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--a3); }
+.nav-niveles small { display: block; font-family: var(--f-mono); font-size: .875rem; color: var(--a3); }
 .nav-niveles span { font-family: var(--f-serif); font-size: 1.4rem; line-height: 1.25; color: var(--tinta); }
 
 footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--texto-suave); font-size: .8rem; font-family: var(--f-mono); letter-spacing: .04em; border-top: 1px solid var(--linea-fuerte); }
@@ -616,13 +677,13 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
 }
 
 @media (max-width: 640px) {
-  body { font-size: 1.03rem; }
+  body { font-size: 1.0625rem; }
   .leccion, .contenedor, footer.pie { padding-left: 1rem; padding-right: 1rem; }
   .hero { padding: 3rem 1rem 2rem; }
   .topbar .logo span { display: none; }
   .btn-ajustes { padding: 0 .7rem; }
   .btn-ajustes span { display: none; }
-  figure.diagrama { margin: 2.5rem 0; padding: 1.4rem .75rem .9rem; }
+  figure.diagrama { margin: var(--e5) 0; padding: 1.4rem .75rem .9rem; }
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
   .nav-niveles a + a { border-left: 0; border-top: 1px solid var(--linea-fuerte); text-align: left; }
@@ -642,21 +703,29 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
 .arbol-res { font-size: 1.05rem; margin: 1rem 0; }
 
 /* ---------- Clases para figuras SVG (ver GUIA.md) ----------
-   f0..f6 / s0..s6 = neutra (--n*); fa1..fa4 / sa1..sa4 = acento (--a*); fn = sin relleno.
+   f0..f6 / s0..s6 = neutra (--n*); fn = sin relleno. Los 4 canales (fijos, no siguen al acento de la UI):
+   fa/sa naranja (dato), fb/sb azul (reloj), fc/sc verde (control), fd/sd magenta (evento), pasos 1..4.
    stroke-dasharray va como atributo del elemento (ej. "4 4"); con crispEdges se ve nítido. */
 .f0 { fill: var(--n0); } .f1 { fill: var(--n1); } .f2 { fill: var(--n2); } .f3 { fill: var(--n3); }
 .f4 { fill: var(--n4); } .f5 { fill: var(--n5); } .f6 { fill: var(--n6); } .fn { fill: none; }
 .s0 { stroke: var(--n0); } .s1 { stroke: var(--n1); } .s2 { stroke: var(--n2); } .s3 { stroke: var(--n3); }
 .s4 { stroke: var(--n4); } .s5 { stroke: var(--n5); } .s6 { stroke: var(--n6); }
-.fa1 { fill: var(--a1); } .fa2 { fill: var(--a2); } .fa3 { fill: var(--a3); } .fa4 { fill: var(--a4); }
-.sa1 { stroke: var(--a1); } .sa2 { stroke: var(--a2); } .sa3 { stroke: var(--a3); } .sa4 { stroke: var(--a4); }
-.fb1 { fill: var(--b1); } .fb2 { fill: var(--b2); } .fb3 { fill: var(--b3); } .fb4 { fill: var(--b4); }
-.sb1 { stroke: var(--b1); } .sb2 { stroke: var(--b2); } .sb3 { stroke: var(--b3); } .sb4 { stroke: var(--b4); }
-/* texto de figuras: 8-bit, Jersey 10 (grilla de 10 px; 10–20 px), 1 color, sin suavizado */
-.sv-lbl, .sv-tit, .sv-tag { font-family: "Jersey 10", var(--f-pixel), monospace; font-size: 20px; font-weight: 400; letter-spacing: 0; text-rendering: optimizeSpeed; -webkit-font-smoothing: none; font-smooth: never; }
-.sv-tag { font-size: 20px; text-transform: uppercase; }
+.fa1 { fill: var(--naranja1); } .fa2 { fill: var(--naranja2); } .fa3 { fill: var(--naranja3); } .fa4 { fill: var(--naranja4); }
+.sa1 { stroke: var(--naranja1); } .sa2 { stroke: var(--naranja2); } .sa3 { stroke: var(--naranja3); } .sa4 { stroke: var(--naranja4); }
+.fb1 { fill: var(--azul1); } .fb2 { fill: var(--azul2); } .fb3 { fill: var(--azul3); } .fb4 { fill: var(--azul4); }
+.sb1 { stroke: var(--azul1); } .sb2 { stroke: var(--azul2); } .sb3 { stroke: var(--azul3); } .sb4 { stroke: var(--azul4); }
+.fc1 { fill: var(--verde1); } .fc2 { fill: var(--verde2); } .fc3 { fill: var(--verde3); } .fc4 { fill: var(--verde4); }
+.sc1 { stroke: var(--verde1); } .sc2 { stroke: var(--verde2); } .sc3 { stroke: var(--verde3); } .sc4 { stroke: var(--verde4); }
+.fd1 { fill: var(--magenta1); } .fd2 { fill: var(--magenta2); } .fd3 { fill: var(--magenta3); } .fd4 { fill: var(--magenta4); }
+.sd1 { stroke: var(--magenta1); } .sd2 { stroke: var(--magenta2); } .sd3 { stroke: var(--magenta3); } .sd4 { stroke: var(--magenta4); }
+/* texto de figuras: 8-bit, Jersey 10, 1 color. Dos tamaños: 20 (rótulo, por defecto) y 16 (secundario, con
+   el atributo font-size="16"). El tamaño va en el <svg> y no en la clase: una regla CSS en la clase le gana al
+   atributo de presentación y lo anula; heredado, el atributo del <text> o del <g> manda */
+svg:has(.sv-lbl, .sv-tit, .sv-tag) { font-size: 20px; }
+.sv-lbl, .sv-tit, .sv-tag { font-family: var(--f-pixel); font-weight: 400; letter-spacing: 0; text-rendering: optimizeSpeed; -webkit-font-smoothing: none; font-smooth: never; }
+.sv-tag { text-transform: uppercase; }
 /* "?" de los tomos bloqueados (portada) */
-.lomo .pend { font-family: var(--f-pixel); font-size: 1.6rem; color: var(--linea-fuerte); }
+.lomo .pend { font-family: var(--f-pixel); font-size: 3rem; line-height: 1; color: var(--linea-fuerte); }
 
 /* móvil: las figuras no se encogen por debajo de un ancho legible; se desplazan en horizontal */
 @media (max-width: 640px) {

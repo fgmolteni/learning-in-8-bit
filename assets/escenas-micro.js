@@ -74,7 +74,7 @@ PixelMotor.escena("micro-cache", {
     fondo(m);
     const ciclo = t % 4;
     const esHit = ciclo < 1.5;
-    en(m, 8, () => m.texto("CACHE: HIT VS MISS", 160, 6, "n6", { alin: "centro" }));
+    en(m, 8, () => m.texto("CACHÉ: HIT VS MISS", 160, 6, "n6", { alin: "centro" }));
 
     // Núcleo
     m.caja(18, 28, 80, 36, { titulo: "Nucleo 0", sub: "LX7", estilo: "normal" });
@@ -119,7 +119,7 @@ PixelMotor.escena("micro-cache", {
       PM.textoConFondo(m, "MISS", 185, 72, "a4", { alin: "centro", fondo: "n0", pad: 1, tam: 5 });
       PM.contadorCiclos(m, { x: 160, y: 122, ciclos: ciclosN, tok: "a4", alin: "centro" });
       en(m, 16, () => {
-        m.texto(fase < 0.7 ? "BUSCANDO EN PSRAM..." : "DATO TRAIDO A CACHE", 160, 136, fase < 0.7 ? "a4" : "a3", { alin: "centro", tam: 5 });
+        m.texto(fase < 0.7 ? "BUSCANDO EN PSRAM..." : "DATO TRAÍDO A CACHÉ", 160, 136, fase < 0.7 ? "a4" : "a3", { alin: "centro", tam: 5 });
       });
     }
 
@@ -202,7 +202,7 @@ PixelMotor.escena("micro-pinout", {
   descripcion: "Diagrama de conexión entre la cámara OV2640 y el ESP32-S3: bus de datos D0 a D7, señales de sincronismo PCLK, VSYNC, HREF y bus SCCB para configuración",
   dibujar(m, t) {
     fondo(m);
-    en(m, 8, () => m.texto("CONEXION OV2640 A ESP32-S3", 160, 6, "n6", { alin: "centro" }));
+    en(m, 8, () => m.texto("CONEXIÓN OV2640 A ESP32-S3", 160, 6, "n6", { alin: "centro" }));
 
     // OV2640 (chip izquierdo)
     const camPines = [
@@ -262,8 +262,8 @@ PixelMotor.escena("micro-pinout", {
 
     // Leyenda inferior limpia
     en(m, 16, () => {
-      m.texto("D0-D7: BUS PARALELO (LINEAS SOLIDAS ACENTO)", 160, 180, "a3", { alin: "centro", tam: 5 });
-      m.texto("SCCB: CONTROL SERIE (LINEAS PUNTEADAS)", 160, 190, "a4", { alin: "centro", tam: 5 });
+      m.texto("D0-D7: BUS PARALELO (LÍNEAS SÓLIDAS ACENTO)", 160, 180, "a3", { alin: "centro", tam: 5 });
+      m.texto("SCCB: CONTROL SERIE (LÍNEAS PUNTEADAS)", 160, 190, "a4", { alin: "centro", tam: 5 });
     });
   },
 });
@@ -277,7 +277,7 @@ PixelMotor.escena("micro-crono", {
   descripcion: "Cronograma de la interfaz de cámara: las señales PCLK, HREF, VSYNC y datos se ven como en un analizador lógico; PCLK marca el ritmo, HREF indica línea activa y VSYNC el inicio de cuadro",
   dibujar(m, t) {
     fondo(m);
-    en(m, 8, () => m.texto("INTERFAZ DE CAMARA", 160, 6, "n6", { alin: "centro" }));
+    en(m, 8, () => m.texto("INTERFAZ DE CÁMARA", 160, 6, "n6", { alin: "centro" }));
 
     const pclkF   = 10;
     const hrefCiclo = 0.6;
@@ -333,7 +333,7 @@ PixelMotor.escena("micro-crono", {
     // Leyenda en dos columnas bien espaciadas
     en(m, 16, () => {
       m.texto("VSYNC: INICIO DE CUADRO", 80, 142, "n5", { alin: "centro", tam: 5 });
-      m.texto("HREF:  LINEA ACTIVA",     80, 154, "a3", { alin: "centro", tam: 5 });
+      m.texto("HREF:  LÍNEA ACTIVA",     80, 154, "a3", { alin: "centro", tam: 5 });
       m.texto("PCLK:  RELOJ DE PIXEL",  230, 142, "a4", { alin: "centro", tam: 5 });
       m.texto("D0-D7: BUS DE 8 BITS",   230, 154, "a3", { alin: "centro", tam: 5 });
       m.texto("LCD_CAM CAPTURA EN FLANCO ASCENDENTE DE PCLK", 160, 174, "n4", { alin: "centro", tam: 5 });

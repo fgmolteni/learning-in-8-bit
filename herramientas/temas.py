@@ -84,11 +84,14 @@ def bloque(id_, claro, neutros, ansi):
     n4 = asegurar(n4, (n0, n1, n2), 4.5, tope)
     n5 = asegurar(n5, (n0, n1), 7, tope)
     k1, k2 = (0.10, 0.40) if claro else (0.16, 0.50)
-    tonos = {}
+    rampas = {}
     for nombre, c in zip(ACENTOS, ansi.split()):
         a3 = asegurar(c, (n0, n1, n2, mezcla(n0, c, k1)), 4.5, tope)  # también sobre su relleno a1
         a4 = c if claro else mezcla(a3, "#ffffff", 0.2)
-        tonos[nombre] = f"--a1: {mezcla(n0, c, k1)}; --a2: {mezcla(n0, c, k2)}; --a3: {a3}; --a4: {a4};"
+        rampas[nombre] = (mezcla(n0, c, k1), mezcla(n0, c, k2), a3, a4)
+    tonos = {a: " ".join(f"--a{i}: {v};" for i, v in enumerate(r, 1)) for a, r in rampas.items()}
+    # los 4 canales fijos de las figuras (ver style.css): mismas rampas, con el nombre del casillero
+    canales = ["  " + " ".join(f"--{a}{i}: {v};" for i, v in enumerate(rampas[a], 1)) for a in ("naranja", "verde", "azul", "magenta")]
     sel = f':root[data-theme="{id_}"]'
     extra = "\n  --brillo: none; --pantalla: var(--n6); color-scheme: light;" if claro else ""
     lineas = [
@@ -96,6 +99,7 @@ def bloque(id_, claro, neutros, ansi):
         f"  --n0: {n0}; --n1: {n1}; --n2: {n2}; --n3: {n3};",
         f"  --n4: {n4}; --n5: {n5}; --n6: {n6};",
         f"  {tonos['naranja']}{extra}",
+        *canales,
         "}",
     ]
     lineas += [f'{sel}[data-acento="{a}"] {{ {tonos[a]} }}' for a in ACENTOS[1:]]

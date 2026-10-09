@@ -79,24 +79,24 @@ PM.escena("mem-cache", {
       if (espera) m.tramado(12, 44, 44, 40, "n3");
       m.rect(12, 62, 44, 10, "n0");
       // caché: 4 líneas de 8 palabras
-      m.caja(92, 14, 104, 78, { estilo: "normal" });
+      m.caja(92, 14, 104, 78, { estilo: "segundo" });
       for (let i = 0; i < 4; i++) {
         const y = 32 + i * 14;
         for (let c = 0; c < 8; c++) {
           const x = 100 + c * 11, lleno = lineAt[i] >= 0 && !(miss && i === cur.slot && p >= 0.55 && c >= llenas && p < 0.9);
-          if (lleno) m.rect(x, y, 10, 11, cur && i === cur.slot && c === cur.w && (cur.hit ? p < 1 : p >= 0.9) ? "a3" : "n3");
+          if (lleno) m.rect(x, y, 10, 11, cur && i === cur.slot && c === cur.w && (cur.hit ? p < 1 : p >= 0.9) ? "a3" : "b3");
           else m.tramado(x, y, 10, 11, "n2");
         }
       }
       // flash: filas = líneas (ráfagas) del programa/pesos
-      m.caja(252, 14, 60, 78, { estilo: "normal" });
-      for (let r = 0; r < 6; r++) m.rect(258, 32 + r * 9, 48, 7, miss && p >= 0.45 && p < 0.6 && cur.linea % 6 === r ? "a4" : "n2");
+      m.caja(252, 14, 60, 78, { estilo: "tercero" });
+      for (let r = 0; r < 6; r++) m.rect(258, 32 + r * 9, 48, 7, miss && p >= 0.45 && p < 0.6 && cur.linea % 6 === r ? "a4" : "c2");
       // enlaces
       m.linea(60, 50, 92, 50, "n4"); m.linea(196, 47, 252, 47, "n4"); m.linea(196, 53, 252, 53, "n4");
     });
     txt(m, "CPU", 34, 20, "n6", { alin: "centro" });
-    txt(m, espera ? "STALL" : fin ? "LISTO" : "LEE", 34, 64, espera ? "n6" : "n6", { alin: "centro" });
-    txt(m, "CACHE L1 16KB", 144, 19, "n6", { alin: "centro" });
+    txt(m, espera ? "STALL" : fin ? "LISTO" : "LEE", 34, 64, espera ? "d4" : "n6", { alin: "centro" });
+    txt(m, "CACHÉ L1 16KB", 144, 19, "n6", { alin: "centro" });
     txt(m, "FLASH", 282, 19, "n6", { alin: "centro" });
     txt(m, "BUS SPI", 224, 33, "n5", { alin: "centro" }); txt(m, "LENTO", 224, 60, "n4", { alin: "centro" });
     // paquetes que viajan (detalle fino, capa 32)
@@ -118,9 +118,9 @@ PM.escena("mem-cache", {
     });
     txt(m, "REAL", 8, 117, "a3"); txt(m, "IDEAL", 8, 131, "b3");
     let msg, tok = "n6";
-    if (fin) { const R = ev[ev.length - 1].c0 + ev[ev.length - 1].c; msg = N_ACC + " ACCESOS: " + R + " CICLOS, " + (R / (HIT_C * N_ACC)).toFixed(1) + " VECES MAS LENTO"; }
-    else if (cur.hit) { msg = "HIT: ~1-2 CICLOS, LA LINEA YA ESTABA EN CACHE"; tok = "b3"; }
-    else msg = p < 0.9 ? "MISS: ~40 CICLOS, LA CPU ESPERA AL BUS SPI" : "LINEA CARGADA: LOS VECINOS SERAN HITS";
+    if (fin) { const R = ev[ev.length - 1].c0 + ev[ev.length - 1].c; msg = N_ACC + " ACCESOS: " + R + " CICLOS, " + (R / (HIT_C * N_ACC)).toFixed(1) + " VECES MÁS LENTO"; }
+    else if (cur.hit) { msg = "HIT: ~1-2 CICLOS, LA LÍNEA YA ESTABA EN CACHÉ"; tok = "b3"; }
+    else { msg = p < 0.9 ? "MISS: ~40 CICLOS, LA CPU ESPERA AL BUS SPI" : "LÍNEA CARGADA: LOS VECINOS SERÁN HITS"; tok = "d3"; }
     txt(m, msg, 8, 150, tok);
   },
 });
@@ -138,7 +138,7 @@ PM.escena("pipe-energia", {
     const Q = IC * TC + IW * TW, prom = (Q + IS * S) / P;
     const X = 8, Y = 18, W = 304, H = 96, IMAX = 320;
     const xt = (s) => X + (s / P) * W, yi = (i) => Y + H - (i / IMAX) * H;
-    const segs = [[0, TC, IC, "a3"], [TC, TC + TW, IW, "a4"], [TC + TW, P, IS, null]];
+    const segs = [[0, TC, IC, "a3"], [TC, TC + TW, IW, "d3"], [TC + TW, P, IS, null]];
     const ph = clamp(((t % 7.5) / 6), 0, 1), tp = ph * P;
     e16(m, () => m.osciloscopio({ x: X, y: Y, w: W, h: H, trazos: [], rotulos: false, rango: [0, IMAX] }));
     txt(m, "CORRIENTE EN UN DESPERTAR (mA)", 8, 5, "n5");
@@ -147,30 +147,30 @@ PM.escena("pipe-energia", {
         const b2 = Math.min(b, tp); if (!tok || b2 <= a) return;
         m.tramado(Math.round(xt(a)), Math.round(yi(I)), Math.max(1, Math.round(xt(b2) - xt(a))), Math.round(Y + H - yi(I)), tok);
       });
-      m.linea(xt(TC + TW), Y + H - 1, xt(Math.max(TC + TW, tp)), Y + H - 1, "n5");                 // reposo: ~0 a esta escala
+      m.linea(xt(TC + TW), Y + H - 1, xt(Math.max(TC + TW, tp)), Y + H - 1, "b3");                 // reposo: ~0 a esta escala
       const yp = yi(prom); m.linea(X + 1, yp, X + W - 1, yp, "n6", { punteo: 3 });    // rectángulo de igual área
       m.linea(xt(tp), Y + 1, xt(tp), Y + H - 1, "n4", { punteo: 2 });
     });
     e32(m, () => {
       const pts = [];
       segs.forEach(([a, b, I]) => { if (a < tp) { pts.push([xt(a), yi(I)]); pts.push([xt(Math.min(b, tp)), yi(I)]); } });
-      if (pts.length > 1) m.polilinea(pts, "a4", { grosor: 1 });
+      if (pts.length > 1) m.polilinea(pts, "n6", { grosor: 1 });   // contorno neutro: cada tramo ya lleva su color
     });
     txt(m, "PROMEDIO ~" + (prom < 10 ? prom.toFixed(1) : Math.round(prom)) + " mA", 308, clamp(yi(prom) - 10, Y + 3, Y + H - 12), "n6", { alin: "der" });
     // leyenda
     e16(m, () => {
-      m.rect(8, 123, 7, 7, "n5"); m.tramado(110, 123, 7, 7, "a3"); m.marco(110, 123, 7, 7, "a3"); m.tramado(206, 123, 7, 7, "a4"); m.marco(206, 123, 7, 7, "a4");
+      m.rect(8, 123, 7, 7, "b3"); m.tramado(110, 123, 7, 7, "a3"); m.marco(110, 123, 7, 7, "a3"); m.tramado(206, 123, 7, 7, "d3"); m.marco(206, 123, 7, 7, "d3");
     });
-    txt(m, "REPOSO ~10µA", 20, 123, "n5"); txt(m, "CPU ~100mA", 122, 123, "n5"); txt(m, "WIFI ~300mA", 218, 123, "n5");
+    txt(m, "REPOSO ~10µA", 20, 123, "b3"); txt(m, "CPU ~100mA", 122, 123, "a3"); txt(m, "WIFI ~300mA", 218, 123, "d3");
     // lectura
-    txt(m, "EL AREA ES LA ENERGIA: ~" + Math.round(Q) + " mA·s POR DESPERTAR", 8, 138, "a4");
+    txt(m, "EL ÁREA ES LA ENERGÍA: ~" + Math.round(Q) + " mA·s POR DESPERTAR", 8, 138, "a4");
     txt(m, "REPOSO " + S + " S, DESPIERTO " + (100 * (TC + TW) / P).toFixed(0) + "% DEL TIEMPO", 8, 152, "n6");
     txt(m, "VS ~100 mA SIEMPRE DESPIERTO: ~" + (IC / prom).toFixed(IC / prom < 10 ? 1 : 0) + " VECES MENOS", 8, 166, "n6");
     e16(m, () => {
       m.rect(68, 178, 244, 9, "n1"); m.rect(68, 178, Math.max(1, Math.round(244 * prom / 110)), 9, "a3"); m.marco(68, 178, 244, 9, "n3");
       m.rect(68, 192, 244, 9, "n1"); m.rect(68, 192, Math.round(244 * IC / 110), 9, "n4"); m.marco(68, 192, 244, 9, "n3");
     });
-    txt(m, "PROMEDIO", 8, 179, "n6"); txt(m, "DESPIERTO", 8, 193, "n4");
+    txt(m, "PROMEDIO", 8, 179, "a3"); txt(m, "DESPIERTO", 8, 193, "n4");
   },
 });
 
@@ -191,20 +191,20 @@ PM.escena("simd-stalls", {
         const x = X0 + i * PIT;
         e16(m, () => {
           if (tp === "M") m.rect(x, y0, 11, 63, "a3");
-          else if (tp === "C") m.rect(x, y0, 11, 63, "b2");
-          else m.tramado(x, y0, 11, 63, "n3");
+          else if (tp === "C") m.rect(x, y0, 11, 63, "b3");
+          else m.tramado(x, y0, 11, 63, "d3");
           if (tp !== "P") for (let l = 1; l < 16; l++) m.linea(x, y0 + l * 4 - 1, x + 10, y0 + l * 4 - 1, "n0");
         });
-        txt(m, tp, x + 3, y0 - 9, tp === "M" ? "a4" : tp === "C" ? "b3" : "n4");
+        txt(m, tp, x + 3, y0 - 9, tp === "M" ? "a4" : tp === "C" ? "b3" : "d3");
       });
       e16(m, () => m.marco(X0 - 1, y0 - 1, seq.length * PIT + 1, 64, "n3"));
       e32(m, () => m.linea(X0 + Math.min(c, seq.length) * PIT, y0 - 2, X0 + Math.min(c, seq.length) * PIT, y0 + 64, "n5"));
     };
     grilla(17, ideal); grilla(100, real);
-    txt(m, "IDEAL", 4, 34, "a4"); txt(m, "4 CICLOS", 4, 44, "n6"); txt(m, "UTIL 100%", 4, 54, "n5");
-    txt(m, "REAL", 4, 117, "n6"); txt(m, real.length + " CICLOS", 4, 127, "n6"); txt(m, "UTIL " + Math.round(400 / real.length) + "%", 4, 137, "n5");
+    txt(m, "IDEAL", 4, 34, "a4"); txt(m, "4 CICLOS", 4, 44, "n6"); txt(m, "ÚTIL 100%", 4, 54, "n5");
+    txt(m, "REAL", 4, 117, "n6"); txt(m, real.length + " CICLOS", 4, 127, "n6"); txt(m, "ÚTIL " + Math.round(400 / real.length) + "%", 4, 137, "n5");
     txt(m, "16 LANES", 4, 66, "n4");
-    e16(m, () => { m.rect(8, 172, 7, 7, "a3"); m.rect(110, 172, 7, 7, "b2"); m.tramado(222, 172, 7, 7, "n3"); m.marco(222, 172, 7, 7, "n3"); });
+    e16(m, () => { m.rect(8, 172, 7, 7, "a3"); m.rect(110, 172, 7, 7, "b3"); m.tramado(222, 172, 7, 7, "d3"); m.marco(222, 172, 7, 7, "d3"); });
     txt(m, "M 16 MAC", 20, 172, "n5"); txt(m, "C CARGA SRAM", 122, 172, "n5"); txt(m, "P PERDIDO", 234, 172, "n5");
   },
 });

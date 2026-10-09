@@ -31,11 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
 const MODOS = [
   { n: "ACTIVO TX", I: 340, v: "340 mA", on: [1, 1, 1, 1, 1], msg: "TODO ENCENDIDO. LA RADIO TRANSMITE: PICOS DE ~340 mA" },
   { n: "MODEM-SLEEP", I: 66.2, v: "66 mA A 240 MHz", on: [0, 1, 1, 1, 1], msg: "LA CPU SIGUE; SOLO DUERME LA RADIO ENTRE TURNOS" },
-  { n: "LIGHT-SLEEP", I: 0.24, v: "240 µA", on: [0, 0, 0, 1, 1], msg: "CPU EN PAUSA, CONTEXTO CONSERVADO: SIGUE DONDE QUEDO" },
+  { n: "LIGHT-SLEEP", I: 0.24, v: "240 µA", on: [0, 0, 0, 1, 1], msg: "CPU EN PAUSA, CONTEXTO CONSERVADO: SIGUE DONDE QUEDÓ" },
   { n: "DEEP-SLEEP", I: 0.008, v: "8 µA", on: [0, 0, 0, 0, 1], msg: "SOLO RTC Y SU MEMORIA: AL DESPERTAR ARRANCA DE NUEVO" },
   { n: "APAGADO", I: 0.001, v: "1 µA", on: [0, 0, 0, 0, 0], msg: "CHIP_PU EN BAJO: NO CORRE NADA" },
 ];
 const COLS = ["RF", "CPU", "PLL", "DIG", "RTC"];
+// 5 bloques y 4 canales: el dominio RTC (siempre vivo) queda neutro
+const CTOK = ["d", "a", "b", "c", "n"];
+const ctok = (i, paso) => (CTOK[i] === "n" ? (paso === "3" ? "n5" : "n4") : CTOK[i] + paso);
 const I0 = 0.0005, IMX = 340, BX = 198, BW = 114;
 const xl = (I) => BX + (Math.log10(I / I0) / Math.log10(IMX / I0)) * BW;
 const dosCifras = (x) => { const p = Math.pow(10, Math.floor(Math.log10(x)) - 1); return Math.round(x / p) * p; };
@@ -47,18 +50,18 @@ PM.escena("chip06-escalera", {
     fondo(m);
     const PASO = 2, ciclo = t % (MODOS.length * PASO + 1.5), cur = Math.min(MODOS.length - 1, Math.floor(ciclo / PASO));
     const pc = ciclo >= MODOS.length * PASO ? 1 : clamp((ciclo % PASO) / 0.8, 0, 1);
-    COLS.forEach((c, i) => txt(m, c, 82 + i * 22 + 10, 4, "n5", { alin: "centro" }));
+    COLS.forEach((c, i) => txt(m, c, 82 + i * 22 + 10, 4, ctok(i, "3"), { alin: "centro" }));
     // eje logarítmico: una línea por década
     e16(m, () => { for (let d = -3; d <= 2; d++) { const x = Math.round(xl(Math.pow(10, d))); m.linea(x, 15, x, 146, "n2", { punteo: 2 }); } });
     [[0.001, "1µA"], [1, "1mA"], [100, "100mA"]].forEach(([I, s]) => txt(m, s, xl(I), 4, "n5", { alin: "centro" }));
     MODOS.forEach((md, i) => {
       const y = 16 + i * 26, act = i === cur, vis = i <= cur;
       if (act) e16(m, () => { m.rect(4, y, 312, 24, "a1"); m.marco(4, y, 312, 24, "a3"); });
-      txt(m, md.n, 8, y + 8, act ? "n6" : vis ? "n5" : "n3");
+      txt(m, md.n, 8, y + 8, act ? "n6" : vis ? "n5" : "n4");
       e16(m, () => md.on.forEach((on, c) => {
         const bx = 82 + c * 22;
         if (!vis) { m.tramado(bx, y + 4, 20, 14, "n2"); return; }
-        if (on) m.rect(bx, y + 4, 20, 14, act ? "a3" : "n4");
+        if (on) m.rect(bx, y + 4, 20, 14, ctok(c, act ? "3" : "2"));
         else { m.rect(bx, y + 4, 20, 14, "n1"); m.marco(bx, y + 4, 20, 14, "n2"); }
       }));
       if (vis) {
@@ -69,7 +72,7 @@ PM.escena("chip06-escalera", {
     });
     const md = MODOS[cur], r = IMX / md.I;
     txt(m, md.msg, 8, 152, "a4");
-    txt(m, cur === 0 ? "ESCALA LOG: CADA LINEA = x10" : "~" + Math.round(dosCifras(r)) + " VECES MENOS QUE TRANSMITIENDO", 8, 166, "n6");
+    txt(m, cur === 0 ? "ESCALA LOG: CADA LÍNEA = x10" : "~" + Math.round(dosCifras(r)) + " VECES MENOS QUE TRANSMITIENDO", 8, 166, "n6");
   },
 });
 
@@ -99,7 +102,7 @@ PM.escena("chip06-ciclo", {
       // corte del eje
       m.linea(xb + 6, base - 6, xb + 10, base + 6, "n5"); m.linea(xb + 12, base - 6, xb + 16, base + 6, "n5");
       m.linea(xs, base - 1, Math.max(xs, xp), base - 1, "b3");        // 8 µA: casi pegado al eje
-      m.linea(xp, Y + 1, xp, base - 1, "n4", { punteo: 2 });
+      m.linea(xp, Y + 1, xp, base - 1, "d4", { punteo: 2 });
     });
     e32(m, () => { if (xp > X0) m.polilinea([[X0, base - hA], [Math.min(xp, xb), base - hA]], "a4", { grosor: 1 }); });
     txt(m, "66 mA", X0 + 2, base - hA - 9, "n6");
@@ -117,7 +120,7 @@ PM.escena("chip06-ciclo", {
     txt(m, fmt(Qa, 0) + " mA·s", 234, 133, "n6"); txt(m, fmt(Qs, 1) + " mA·s", 234, 147, "b3");
     txt(m, "DORMIDO: " + fmt(100 * ts / T_C, 1) + "% DEL TIEMPO, " + fmt(100 * Qs / (Qa + Qs), 1) + "% DE LA CARGA", 8, 164, "a4");
     txt(m, "PROMEDIO ~" + fmt(prom, 2) + " mA", 8, 178, "n6");
-    txt(m, "CON 1000 mAh: ~" + Math.round(1000 / prom / 24) + " DIAS (SIN PERDIDAS)", 8, 190, "n6");
+    txt(m, "CON 1000 mAh: ~" + Math.round(1000 / prom / 24) + " DÍAS (SIN PÉRDIDAS)", 8, 190, "n6");
   },
 });
 
@@ -126,10 +129,10 @@ PM.escena("chip06-ciclo", {
 // =====================================================================================
 const PASO_O = 2.4, PASOS = 5;
 const OTA_MSG = [
-  ["CORRE LA VERSION A. LA RANURA B ESTA LIBRE.", "OTADATA APUNTA A A."],
-  ["LA IMAGEN NUEVA SE BAJA A B.", "LA VERSION QUE CORRE (A) NUNCA SE PISA."],
+  ["CORRE LA VERSIÓN A. LA RANURA B ESTÁ LIBRE.", "OTADATA APUNTA A A."],
+  ["LA IMAGEN NUEVA SE BAJA A B.", "LA VERSIÓN QUE CORRE (A) NUNCA SE PISA."],
   ["B QUEDA MARCADA COMO NUEVA Y OTADATA", "PASA A APUNTAR A B. REINICIO."],
-  ["ARRANCA B A PRUEBA: TIENE UNA SOLA CHANCE", "DE CONFIRMARSE COMO VALIDA."],
+  ["ARRANCA B A PRUEBA: TIENE UNA SOLA CHANCE", "DE CONFIRMARSE COMO VÁLIDA."],
 ];
 PM.escena("chip06-ota", {
   alto: 172, tFijo: 10.5,
@@ -146,17 +149,17 @@ PM.escena("chip06-ota", {
     e16(m, () => B.forEach(([n, x, w]) => { m.caja(x, y, w, h, { estilo: "apagado" }); }));
     B.forEach(([n, x, w]) => txt(m, n, x + w / 2, y + 18, "n5", { alin: "centro" }));
     // estado de cada ranura
-    const estA = s < 4 ? "VALIDA" : ok ? "ANTERIOR" : "VALIDA";
-    const estB = s === 0 ? "LIBRE" : s === 1 ? "BAJANDO" : s === 2 ? "NUEVA" : s === 3 ? "A PRUEBA" : ok ? "VALIDA" : "ABORTADA";
+    const estA = s < 4 ? "VÁLIDA" : ok ? "ANTERIOR" : "VÁLIDA";
+    const estB = s === 0 ? "LIBRE" : s === 1 ? "BAJANDO" : s === 2 ? "NUEVA" : s === 3 ? "A PRUEBA" : ok ? "VÁLIDA" : "ABORTADA";
     const corre = s === 0 || s === 1 ? "A" : s === 2 ? (p < 0.5 ? "A" : "B") : s === 3 ? "B" : ok ? "B" : "A";
-    const dibujaSlot = (S, nom, est, corriendo) => {
-      e16(m, () => m.caja(S.x, y, S.w, h, { estilo: corriendo ? "activo" : "normal" }));
-      if (nom === "OTA_1" && s === 1) e16(m, () => m.tramado(S.x + 2, y + 2, Math.round((S.w - 4) * clamp(p / 0.85, 0, 1)), h - 4, "a3"));
+    const dibujaSlot = (S, nom, est, corriendo, estilo) => {
+      e16(m, () => m.caja(S.x, y, S.w, h, { estilo: corriendo ? estilo : "normal" }));
+      if (S === B_ && s === 1) e16(m, () => m.tramado(S.x + 2, y + 2, Math.round((S.w - 4) * clamp(p / 0.85, 0, 1)), h - 4, "b3"));
       txt(m, nom, S.x + S.w / 2, y + 10, "n6", { alin: "centro" });
       txt(m, est, S.x + S.w / 2, y + 26, est === "ABORTADA" ? "n4" : corriendo ? "n6" : "n5", { alin: "centro" });
     };
-    dibujaSlot(A_, "OTA_0 (A)", estA, corre === "A");
-    dibujaSlot(B_, "OTA_1 (B)", estB, corre === "B");
+    dibujaSlot(A_, "OTA_0 (A)", estA, corre === "A", "activo");
+    dibujaSlot(B_, "OTA_1 (B)", estB, corre === "B", "segundo");
     // puntero de otadata hacia la ranura que arranca
     const dest = s < 2 || (s === 2 && p < 0.5) ? A_ : s === 4 && !ok ? A_ : B_;
     const xd = dest.x + dest.w / 2;
@@ -166,15 +169,15 @@ PM.escena("chip06-ota", {
     txt(m, "ARRANCA", xd, y + h + 18, "a4", { alin: "centro" });
     // máquina de estados de la imagen nueva
     const hi = s === 2 ? 0 : s === 3 ? 1 : s === 4 ? (ok ? 2 : 3) : -1;
-    const E = [["NUEVA", 8, 108, 52], ["A PRUEBA", 76, 108, 66], ["VALIDA", 176, 98, 56], ["ABORTADA", 176, 120, 66]];
+    const E = [["NUEVA", 8, 108, 52], ["A PRUEBA", 76, 108, 66], ["VÁLIDA", 176, 98, 56], ["ABORTADA", 176, 120, 66]];
     e16(m, () => {
-      E.forEach(([n, x, yy, w], i) => { m.caja(x, yy, w, 16, { estilo: hi === i ? "activo" : "normal" }); });
+      E.forEach(([n, x, yy, w], i) => { m.caja(x, yy, w, 16, { estilo: hi === i ? ["activo", "segundo", "tercero", "cuarto"][i] : "normal" }); });
       m.flecha(60, 116, 75, 116, "n4"); m.flecha(142, 114, 175, 106, "n4"); m.flecha(142, 118, 175, 128, "n4");
     });
     E.forEach(([n, x, yy, w], i) => txt(m, n, x + w / 2, yy + 5, hi === i ? "n6" : "n5", { alin: "centro" }));
     txt(m, "CONFIRMA", 238, 102, "n4"); txt(m, "NO CONFIRMA", 248, 125, "n4");
     // mensaje del paso
-    const msg = s < 4 ? OTA_MSG[s] : ok ? ["LA APP SE MARCA VALIDA A SI MISMA:", "LA ACTUALIZACION QUEDA. B ES LA NUEVA A."] : ["EL CHIP SE REINICIA SIN CONFIRMAR: ROLLBACK.", "B QUEDA ABORTADA Y VUELVE A ARRANCAR A."];
+    const msg = s < 4 ? OTA_MSG[s] : ok ? ["LA APP SE MARCA VÁLIDA A SÍ MISMA:", "LA ACTUALIZACIÓN QUEDA. B ES LA NUEVA A."] : ["EL MICRO SE REINICIA SIN CONFIRMAR: ROLLBACK.", "B QUEDA ABORTADA Y VUELVE A ARRANCAR A."];
     txt(m, msg[0], 8, 148, "n6"); txt(m, msg[1], 8, 160, "n5");
   },
 });

@@ -11,15 +11,18 @@
   const FPS = { 8: 10, 16: 20, 32: 60 };
   const CAPA_K = { 8: 0.5, 16: 1, 32: 2 };   // unidades → px de cada capa (factores enteros ×4 ×2 ×1)
   const CAPA_W = { 8: 160, 16: 320, 32: 640 };
-  // 8-bit: cada token cae en uno de 5 colores (neutros n0, n3, n6 más a3 y b3)
-  const A_8BIT = { n0: "n0", n1: "n0", n2: "n3", n3: "n3", n4: "n3", n5: "n6", n6: "n6", a1: "n0", a2: "a3", a3: "a3", a4: "a3", b1: "n0", b2: "b3", b3: "b3", b4: "b3" };
+  // 8-bit: cada token cae en uno de 7 colores (neutros n0, n3, n6 más el paso 3 de cada canal)
+  const A_8BIT = { n0: "n0", n1: "n0", n2: "n3", n3: "n3", n4: "n3", n5: "n6", n6: "n6" };
+  for (const c of "abcd") Object.assign(A_8BIT, { [c + 1]: "n0", [c + 2]: c + 3, [c + 3]: c + 3, [c + 4]: c + 3 });
 
+  // tokens de los 4 canales fijos de las figuras (no siguen al acento de la UI)
+  const CANAL = { a: "naranja", b: "azul", c: "verde", d: "magenta" };
   const COL = {};
   function leerColores() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ["n0", "n1", "n2", "n3", "n4", "n5", "n6", "a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4"]) {
-      const alias = k[0] === "n" ? "--m" + k[1] : "--" + k;
-      COL[k] = (cs.getPropertyValue("--" + k) || cs.getPropertyValue(alias)).trim() || "#888888";
+    for (const k of Object.keys(A_8BIT)) {
+      const v = k[0] === "n" ? "--m" + k[1] : `--${CANAL[k[0]]}${k[1]}`;
+      COL[k] = cs.getPropertyValue(v).trim() || "#888888";
     }
   }
   const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -56,10 +59,15 @@
     "×": "00000 10001 01010 00100 01010 10001 00000", "~": "00000 00000 01000 10101 00010 00000 00000",
     "_": "00000 00000 00000 00000 00000 00000 11111", "*": "00000 00100 10101 01110 10101 00100 00000",
     "·": "00000 00000 00000 01100 01100 00000 00000", "→": "00000 00100 00010 11111 00010 00100 00000",
+    "¿": "00100 00000 00100 01000 10000 10001 01110", "¡": "00100 00000 00100 00100 00100 00100 00100",
   };
   const FUENTE = {};
   for (const [c, s] of Object.entries(GLIFOS)) FUENTE[c] = s.split(" ").map((f) => parseInt(f, 2));
-  // minúsculas → mayúsculas, sin tildes (µ y Ω se conservan)
+  // mayúsculas con tilde, Ñ y Ü: la letra entera y la marca en 2 filas por encima de la línea (texto() las sube)
+  for (const [c, [base, marca]] of Object.entries({ "Á": ["A", "00010 00100"], "É": ["E", "00010 00100"], "Í": ["I", "00010 00100"],
+    "Ó": ["O", "00010 00100"], "Ú": ["U", "00010 00100"], "Ü": ["U", "01010 00000"], "Ñ": ["N", "01101 10010"] }))
+    FUENTE[c] = marca.split(" ").map((f) => parseInt(f, 2)).concat(FUENTE[base]);
+  // minúsculas → mayúsculas con tilde (Á É Í Ó Ú Ñ Ü tienen glifo; otras marcas se quitan; µ y Ω se conservan)
   // minúsculas solo para unidades (mA, ms, kHz, Hz, pF, ns): el resto del texto va en mayúsculas
   Object.assign(FUENTE, Object.fromEntries(Object.entries({
     m: "00000 00000 11010 10101 10101 10001 10001", s: "00000 00000 01110 10000 01110 00001 11110",
@@ -72,7 +80,7 @@
     const m = pal.match(/^([(~≈<>+-]?[\d.,]*)(.*?)([),.:]?)$/);
     const conserva = m && m[2] && UNIDAD.test(m[2]);
     return [...pal].map((c) => (c === "µ" || c === "Ω" || c === "·" || c === "°" || c === "×" || c === "→") ? c
-      : conserva && FUENTE[c] ? c : c.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()).join("");
+      : conserva && FUENTE[c] ? c : FUENTE[c.toUpperCase()] ? c.toUpperCase() : c.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()).join("");
   }).join("");
 
   // bandas de resistor (código EIA) desde un valor como "1k", "330", "4.7k"
@@ -172,7 +180,8 @@
     // caja de la lámina: relleno plano, borde, esquinas escalonadas (sin sombra: estética plana)
     caja(x, y, w, h, { estilo = "normal", titulo, sub } = {}) {
       this._def(16, () => {
-        const [rel, bor, tt] = estilo === "activo" ? ["a1", "a3", "n6"] : estilo === "apagado" ? ["n1", "n2", "n4"] : estilo === "segundo" ? ["b1", "b3", "n6"] : ["n1", "n3", "n6"];
+        const [rel, bor, tt] = { activo: ["a1", "a3", "n6"], apagado: ["n1", "n2", "n4"], segundo: ["b1", "b3", "n6"],
+          tercero: ["c1", "c3", "n6"], cuarto: ["d1", "d3", "n6"] }[estilo] || ["n1", "n3", "n6"];
         this.rect(x, y, w, h, rel);
         this.marco(x, y, w, h, bor);
         if (this._pass !== 32) { this.punto(x, y, "n0"); this.punto(x + w, y, "n0"); this.punto(x, y + h, "n0"); this.punto(x + w, y + h, "n0"); }
@@ -202,7 +211,8 @@
       g.fillStyle = this.c(tok);
       for (const ch of txt) {
         const gl = FUENTE[ch];
-        if (gl) gl.forEach((fila, j) => { for (let i = 0; i < 5; i++) if (fila & (16 >> i)) g.fillRect(X + i * esc, Y + j * esc, esc, esc); });
+        const sube = gl ? gl.length - 7 : 0;   // filas de tilde por encima de la línea
+        if (gl) gl.forEach((fila, j) => { for (let i = 0; i < 5; i++) if (fila & (16 >> i)) g.fillRect(X + i * esc, Y + (j - sube) * esc, esc, esc); });
         X += 6 * esc;
       }
     }

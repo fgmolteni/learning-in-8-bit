@@ -12,7 +12,7 @@
 <link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../assets/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 <script src="../../assets/diagramas.js" defer></script>
@@ -42,24 +42,24 @@
 
 <figure class="diagrama" data-titulo="fig-2.1">
   <svg viewBox="0 0 640 184" role="img" aria-label="Cadena de visión: captura por DMA, preproceso, inferencia y decisión">
-    <text x="400" y="24" class="sv-tag fa3" text-anchor="middle">AQUÍ SE VA EL TIEMPO</text>
-    <path d="M332,30H468V32H470V118H468V120H332V118H330V32H332Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
-    <path d="M18,40H142V42H144V110H142V112H18V110H16V42H18Z" class="f1 s3" stroke-width="2"/>
-    <text x="80" y="64" class="sv-tit f6" text-anchor="middle">1. Captura</text><text x="80" y="86" class="sv-lbl f4" text-anchor="middle">cámara -> DMA</text><text x="80" y="102" class="sv-lbl f4" text-anchor="middle">CPU: 0 %</text>
+    <text x="400" y="24" class="sv-tag fc3" text-anchor="middle">AQUÍ SE VA EL TIEMPO</text>
+    <path d="M332,30H468V32H470V118H468V120H332V118H330V32H332Z" class="fc1 sc3" stroke-width="2" stroke-dasharray="4 4"/>
+    <path d="M18,40H142V42H144V110H142V112H18V110H16V42H18Z" class="f1 sa3" stroke-width="2"/>
+    <text x="80" y="64" class="sv-tit f6" text-anchor="middle">1. Captura</text><text x="80" y="86" class="sv-lbl fa3" text-anchor="middle">cámara -> DMA</text><text x="80" y="102" class="sv-lbl fa3" text-anchor="middle">CPU: 0 %</text>
     <line x1="144" y1="76" x2="170" y2="76" class="s4" stroke-width="2"/><polygon points="170,72 176,76 170,80" class="f4"/>
-    <path d="M178,40H302V42H304V110H302V112H178V110H176V42H178Z" class="f1 s3" stroke-width="2"/>
-    <text x="240" y="64" class="sv-tit f6" text-anchor="middle">2. Preparar</text><text x="240" y="86" class="sv-lbl f4" text-anchor="middle">recorte, grises</text><text x="240" y="102" class="sv-lbl f4" text-anchor="middle">escala a int8</text>
+    <path d="M178,40H302V42H304V110H302V112H178V110H176V42H178Z" class="f1 sb3" stroke-width="2"/>
+    <text x="240" y="64" class="sv-tit f6" text-anchor="middle">2. Preparar</text><text x="240" y="86" class="sv-lbl fb3" text-anchor="middle">recorte, grises</text><text x="240" y="102" class="sv-lbl fb3" text-anchor="middle">escala a int8</text>
     <line x1="304" y1="76" x2="330" y2="76" class="s4" stroke-width="2"/><polygon points="330,72 336,76 330,80" class="f4"/>
-    <path d="M338,40H462V42H464V110H462V112H338V110H336V42H338Z" class="fa1 sa3" stroke-width="2"/>
-    <text x="400" y="64" class="sv-tit f6" text-anchor="middle">3. Inferir</text><text x="400" y="86" class="sv-lbl f4" text-anchor="middle">la CNN corre</text><text x="400" y="102" class="sv-lbl f4" text-anchor="middle">en un núcleo</text>
+    <path d="M338,40H462V42H464V110H462V112H338V110H336V42H338Z" class="fc1 sc3" stroke-width="2"/>
+    <text x="400" y="64" class="sv-tit f6" text-anchor="middle">3. Inferir</text><text x="400" y="86" class="sv-lbl fc3" text-anchor="middle">la CNN corre</text><text x="400" y="102" class="sv-lbl fc3" text-anchor="middle">en un núcleo</text>
     <line x1="464" y1="76" x2="490" y2="76" class="s4" stroke-width="2"/><polygon points="490,72 496,76 490,80" class="f4"/>
-    <path d="M498,40H622V42H624V110H622V112H498V110H496V42H498Z" class="f1 s3" stroke-width="2"/>
-    <text x="560" y="64" class="sv-tit f6" text-anchor="middle">4. Decidir</text><text x="560" y="86" class="sv-lbl f4" text-anchor="middle">umbral -> GPIO</text><text x="560" y="102" class="sv-lbl f4" text-anchor="middle">o mensaje Wi-Fi</text>
+    <path d="M498,40H622V42H624V110H622V112H498V110H496V42H498Z" class="f1 sd3" stroke-width="2"/>
+    <text x="560" y="64" class="sv-tit f6" text-anchor="middle">4. Decidir</text><text x="560" y="86" class="sv-lbl fd3" text-anchor="middle">umbral -> GPIO</text><text x="560" y="102" class="sv-lbl fd3" text-anchor="middle">o mensaje Wi-Fi</text>
     <rect width="24" height="24" class="fa4" x="68" y="120"><animate attributeName="x" values="68;232;392;556" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="120;124;124;128" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="width" values="24;16;16;8" dur="4s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="height" values="24;16;16;8" dur="4s" calcMode="discrete" repeatCount="indefinite"/></rect>
-    <text x="80" y="168" class="sv-lbl f4" text-anchor="middle">QVGA color</text>
-    <text x="240" y="168" class="sv-lbl f4" text-anchor="middle">96×96 grises</text>
-    <text x="400" y="168" class="sv-lbl f4" text-anchor="middle">probabilidades</text>
-    <text x="560" y="168" class="sv-lbl f4" text-anchor="middle">1 acción</text>
+    <text x="80" y="168" class="sv-lbl fa3" text-anchor="middle">QVGA color</text>
+    <text x="240" y="168" class="sv-lbl fb3" text-anchor="middle">96×96 grises</text>
+    <text x="400" y="168" class="sv-lbl fc3" text-anchor="middle">probabilidades</text>
+    <text x="560" y="168" class="sv-lbl fd3" text-anchor="middle">1 acción</text>
   </svg>
   <figcaption><b>fig 2.1</b>Las cuatro etapas. El cuadrito de abajo es el dato: una imagen grande que termina siendo una sola decisión.</figcaption>
 </figure>

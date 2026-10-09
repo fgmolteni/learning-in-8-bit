@@ -12,7 +12,7 @@
 <link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../assets/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 <script src="../../assets/diagramas.js" defer></script>
@@ -40,24 +40,24 @@
 
 <figure class="diagrama" data-titulo="fig-1.1">
   <svg viewBox="0 0 640 240" role="img" aria-label="Cadena de herramientas: entrenar, exportar, cuantizar, empaquetar, compilar y grabar en el micro">
-    <path d="M18,16H622V18H624V110H622V112H18V110H16V18H18Z" class="fn s2" stroke-width="2"/><path d="M18,128H622V130H624V222H622V224H18V222H16V130H18Z" class="fn sb3" stroke-width="2"/>
-    <text x="28" y="34" class="sv-tag f4" text-anchor="start">EN LA PC</text><text x="28" y="146" class="sv-tag fb3" text-anchor="start">HACIA EL MICRO</text>
+    <path d="M18,16H622V18H624V110H622V112H18V110H16V18H18Z" class="fn s2" stroke-width="2"/><path d="M18,128H622V130H624V222H622V224H18V222H16V130H18Z" class="fn sd3" stroke-width="2"/>
+    <text x="28" y="34" class="sv-tag f4" text-anchor="start">EN LA PC</text><text x="28" y="146" class="sv-tag fd3" text-anchor="start">HACIA EL MICRO</text>
     <path d="M322,40H462V42H464V106H462V108H322V106H320V42H322Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="392" y="34" class="sv-tag fa3" text-anchor="middle">PIERDE PRECISIÓN</text>
-    <path d="M34,44H158V46H160V98H158V100H34V98H32V46H34Z" class="f1 s3" stroke-width="2"/>
-    <text x="42" y="58" class="sv-tag f4" text-anchor="start">1</text><text x="96" y="76" class="sv-tit f6" text-anchor="middle">Entrenar</text><text x="96" y="92" class="sv-lbl f4" text-anchor="middle">float32</text>
+    <path d="M34,44H158V46H160V98H158V100H34V98H32V46H34Z" class="f1 sb3" stroke-width="2"/>
+    <text x="42" y="58" class="sv-tag fb3" text-anchor="start">1</text><text x="96" y="76" class="sv-tit f6" text-anchor="middle">Entrenar</text><text x="96" y="92" class="sv-lbl fb3" text-anchor="middle">float32</text>
     <line x1="160" y1="72" x2="174" y2="72" class="s4" stroke-width="2"/><polygon points="174,68 180,72 174,76" class="f4"/>
-    <path d="M182,44H306V46H308V98H306V100H182V98H180V46H182Z" class="f1 s3" stroke-width="2"/>
-    <text x="190" y="58" class="sv-tag f4" text-anchor="start">2</text><text x="244" y="76" class="sv-tit f6" text-anchor="middle">Exportar</text><text x="244" y="92" class="sv-lbl f4" text-anchor="middle">grafo fijo</text>
+    <path d="M182,44H306V46H308V98H306V100H182V98H180V46H182Z" class="f1 sb3" stroke-width="2"/>
+    <text x="190" y="58" class="sv-tag fb3" text-anchor="start">2</text><text x="244" y="76" class="sv-tit f6" text-anchor="middle">Exportar</text><text x="244" y="92" class="sv-lbl fb3" text-anchor="middle">grafo fijo</text>
     <line x1="308" y1="72" x2="322" y2="72" class="s4" stroke-width="2"/><polygon points="322,68 328,72 322,76" class="f4"/>
-    <path d="M330,44H454V46H456V98H454V100H330V98H328V46H330Z" class="f1 s3" stroke-width="2"/>
-    <text x="338" y="58" class="sv-tag f4" text-anchor="start">3</text><text x="392" y="76" class="sv-tit f6" text-anchor="middle">Cuantizar</text><text x="392" y="92" class="sv-lbl f4" text-anchor="middle">int8 + calibrar</text>
+    <path d="M330,44H454V46H456V98H454V100H330V98H328V46H330Z" class="fa1 sa3" stroke-width="2"/>
+    <text x="338" y="58" class="sv-tag fa3" text-anchor="start">3</text><text x="392" y="76" class="sv-tit f6" text-anchor="middle">Cuantizar</text><text x="392" y="92" class="sv-lbl fa3" text-anchor="middle">int8 + calibrar</text>
     <line x1="456" y1="72" x2="470" y2="72" class="s4" stroke-width="2"/><polygon points="470,68 476,72 470,76" class="f4"/>
-    <path d="M478,44H602V46H604V98H602V100H478V98H476V46H478Z" class="f1 s3" stroke-width="2"/>
-    <text x="486" y="58" class="sv-tag f4" text-anchor="start">4</text><text x="540" y="76" class="sv-tit f6" text-anchor="middle">Empaquetar</text><text x="540" y="92" class="sv-lbl f4" text-anchor="middle">archivo modelo</text>
-    <path d="M478,156H602V158H604V210H602V212H478V210H476V158H478Z" class="fb1 sb3" stroke-width="2"/>
-    <text x="486" y="170" class="sv-tag f4" text-anchor="start">5</text><text x="540" y="188" class="sv-tit f6" text-anchor="middle">Compilar</text><text x="540" y="204" class="sv-lbl f4" text-anchor="middle">firmware</text>
-    <path d="M330,156H454V158H456V210H454V212H330V210H328V158H330Z" class="fb1 sb3" stroke-width="2"/>
-    <text x="338" y="170" class="sv-tag f4" text-anchor="start">6</text><text x="392" y="188" class="sv-tit f6" text-anchor="middle">Grabar</text><text x="392" y="204" class="sv-lbl f4" text-anchor="middle">y ejecutar</text>
+    <path d="M478,44H602V46H604V98H602V100H478V98H476V46H478Z" class="f1 sa3" stroke-width="2"/>
+    <text x="486" y="58" class="sv-tag fa3" text-anchor="start">4</text><text x="540" y="76" class="sv-tit f6" text-anchor="middle">Empaquetar</text><text x="540" y="92" class="sv-lbl fa3" text-anchor="middle">archivo modelo</text>
+    <path d="M478,156H602V158H604V210H602V212H478V210H476V158H478Z" class="f1 sd3" stroke-width="2"/>
+    <text x="486" y="170" class="sv-tag fd3" text-anchor="start">5</text><text x="540" y="188" class="sv-tit f6" text-anchor="middle">Compilar</text><text x="540" y="204" class="sv-lbl fd3" text-anchor="middle">firmware</text>
+    <path d="M330,156H454V158H456V210H454V212H330V210H328V158H330Z" class="f1 sd3" stroke-width="2"/>
+    <text x="338" y="170" class="sv-tag fd3" text-anchor="start">6</text><text x="392" y="188" class="sv-tit f6" text-anchor="middle">Grabar</text><text x="392" y="204" class="sv-lbl fd3" text-anchor="middle">y ejecutar</text>
     <line x1="540" y1="102" x2="540" y2="146" class="s4" stroke-width="2"/><polygon points="536,146 540,152 544,146" class="f4"/><line x1="474" y1="184" x2="464" y2="184" class="s4" stroke-width="2"/><polygon points="464,180 458,184 464,188" class="f4"/>
     <rect width="8" height="8" class="fa4" x="92" y="104"><animate attributeName="x" values="92;240;388;536;536;388" dur="6s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="104;104;104;104;216;216" dur="6s" calcMode="discrete" repeatCount="indefinite"/></rect>
   </svg>
@@ -88,13 +88,13 @@
 
 <figure class="diagrama" data-titulo="fig-1.2">
   <svg viewBox="0 0 640 296" role="img" aria-label="Pila de software: aplicación arriba, motores TFLite Micro y ESP-DL, debajo la biblioteca ESP-NN, luego ESP-IDF y FreeRTOS, y al fondo el silicio con PIE">
-    <path d="M18,16H590V18H592V46H590V48H18V46H16V18H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="37" class="sv-tit f6" text-anchor="middle">Tu app, ESP-WHO, ESP-SR</text>
-    <path d="M18,60H296V62H298V106H296V108H18V106H16V62H18Z" class="f1 s3" stroke-width="2"/><text x="157" y="80" class="sv-tit f6" text-anchor="middle">TFLite Micro</text><text x="157" y="98" class="sv-lbl f4" text-anchor="middle">intérprete .tflite</text>
-    <path d="M312,60H590V62H592V106H590V108H312V106H310V62H312Z" class="f1 s3" stroke-width="2"/><text x="451" y="80" class="sv-tit f6" text-anchor="middle">ESP-DL</text><text x="451" y="98" class="sv-lbl f4" text-anchor="middle">motor Espressif</text>
+    <path d="M18,16H590V18H592V46H590V48H18V46H16V18H18Z" class="f1 sd3" stroke-width="2"/><text x="304" y="37" class="sv-tit f6" text-anchor="middle">Tu app, ESP-WHO, ESP-SR</text>
+    <path d="M18,60H296V62H298V106H296V108H18V106H16V62H18Z" class="f1 sb3" stroke-width="2"/><text x="157" y="80" class="sv-tit f6" text-anchor="middle">TFLite Micro</text><text x="157" y="98" class="sv-lbl fb3" text-anchor="middle">intérprete .tflite</text>
+    <path d="M312,60H590V62H592V106H590V108H312V106H310V62H312Z" class="f1 sb3" stroke-width="2"/><text x="451" y="80" class="sv-tit f6" text-anchor="middle">ESP-DL</text><text x="451" y="98" class="sv-lbl fb3" text-anchor="middle">motor Espressif</text>
     <text x="16" y="124" class="sv-tag fa3" text-anchor="start">DONDE SE GANA EL TIEMPO</text>
     <path d="M10,130H598V132H600V196H598V198H10V196H8V132H10Z" class="fa1 sa3" stroke-width="2" stroke-dasharray="4 4"/>
-    <path d="M22,138H586V140H588V188H586V190H22V188H20V140H22Z" class="f1 s3" stroke-width="2"/><text x="304" y="160" class="sv-tit f6" text-anchor="middle">ESP-NN</text><text x="304" y="178" class="sv-lbl f4" text-anchor="middle">rutinas a mano para PIE</text>
-    <path d="M18,210H590V212H592V240H590V242H18V240H16V212H18Z" class="f1 s3" stroke-width="2"/><text x="304" y="231" class="sv-tit f6" text-anchor="middle">ESP-IDF, FreeRTOS, drivers</text>
+    <path d="M22,138H586V140H588V188H586V190H22V188H20V140H22Z" class="fa1 sa3" stroke-width="2"/><text x="304" y="160" class="sv-tit f6" text-anchor="middle">ESP-NN</text><text x="304" y="178" class="sv-lbl fa3" text-anchor="middle">rutinas a mano para PIE</text>
+    <path d="M18,210H590V212H592V240H590V242H18V240H16V212H18Z" class="f1 sd3" stroke-width="2"/><text x="304" y="231" class="sv-tit f6" text-anchor="middle">ESP-IDF, FreeRTOS, drivers</text>
     <path d="M18,254H590V256H592V284H590V286H18V284H16V256H18Z" class="f1 s2" stroke-width="2"/><text x="304" y="275" class="sv-lbl f4" text-anchor="middle">SILICIO: LX7 + PIE + SRAM</text>
     
     <line x1="608" y1="16" x2="608" y2="286" class="s4" stroke-width="2"/>

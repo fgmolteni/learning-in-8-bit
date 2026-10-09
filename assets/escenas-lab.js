@@ -103,7 +103,7 @@ PixelMotor.escena("lab-campo", {
       zona(m, Z, 32, () => { m.rect(Z.x, Z.y, Z.w, Z.h, "n0"); m.campo({ ...A, cargas, paso: 10 }); });
       marcoZona(m, Z);
     });
-    txt(m, "DIPOLO ELECTRICO", 160, 4, "n5", { alin: "centro", grande: true });
+    txt(m, "DIPOLO ELÉCTRICO", 160, 4, "n5", { alin: "centro", grande: true });
     txt(m, L(m, "16 LEJOS, 32 CERCA", "8 BIT"), 160, 170, "n4", { alin: "centro" });
   },
 });
@@ -141,7 +141,7 @@ PixelMotor.escena("lab-epocas", {
     zona(m, Z, 32, () => { m.rect(Z.x, Z.y, Z.w, Z.h, "n0"); led(); });
     marcoZona(m, Z);
     e16(m, () => m.corriente("ep", [[36, 50], [284, 50], [284, 130], [36, 130], [36, 50]], I, { escala: 1200, ref: 0.02 }));
-    txt(m, "TRES EPOCAS", 160, 6, "n5", { alin: "centro", grande: true });
+    txt(m, "TRES ÉPOCAS", 160, 6, "n5", { alin: "centro", grande: true });
     txt(m, "9V", 50, 86, "n5"); txt(m, L(m, "R 330", "R"), 153, 112, "n5", { alin: "centro" }); txt(m, "LED", 240, 70, "n5", { alin: "der" });
     // rótulos con flecha hacia lo que dibuja cada época
     const cajas = [[8, "8 BIT", "TEXTO", 56, 138], [112, "16 BIT", "CABLES Y PIEZAS", 160, 142], [216, "32 BIT", "DETALLE EN ZONA", 264, 124]];

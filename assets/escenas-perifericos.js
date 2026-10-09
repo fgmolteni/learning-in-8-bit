@@ -39,6 +39,7 @@ const SENALES = ["UART TX", "I2C SDA", "SPI MOSI", "LEDC PWM"];
 const PINES = ["IO4", "IO5", "IO12", "IO18"];
 const COLX = [88, 120, 152, 184], FILAY = [28, 52, 76, 100];
 const RUTAS = [[0, 1], [1, 3], [2, 0], [3, 2], [1, 0], [0, 3]], T_RUTA = 3.2;
+const TK_SENAL = ["a", "b", "c", "d"];
 
 PM.escena("per-matriz", {
   alto: 176, tFijo: 1.6,
@@ -49,24 +50,24 @@ PM.escena("per-matriz", {
     const ry = FILAY[fi], cx = COLX[co];
     txt(m, "MATRIZ DE GPIO", 132, 6, "n6", { alin: "centro" });
     // señales de periférico (filas)
-    SENALES.forEach((s, i) => m.caja(6, FILAY[i] - 9, 62, 18, { estilo: i === fi ? "activo" : "normal", titulo: s }));
+    SENALES.forEach((s, i) => m.caja(6, FILAY[i] - 9, 62, 18, { estilo: ["activo", "segundo", "tercero", "cuarto"][i], titulo: s }));
     // cables de la matriz: todos apagados, luego la ruta activa
     FILAY.forEach((y) => MI.cable(m, { de: [68, y], a: [196, y], tok: "n3" }));
     COLX.forEach((x) => MI.cable(m, { de: [x, 20], a: [x, 122], tok: "n3" }));
-    MI.cable(m, { de: [[68, ry], [cx, ry], [cx, 122]], tok: "a3" });
+    MI.cable(m, { de: [[68, ry], [cx, ry], [cx, 122]], tok: TK_SENAL[fi] + "3" });
     // cruces: puntos de conexión posibles y el cerrado
     m.en(16, () => {
       FILAY.forEach((y) => COLX.forEach((x) => m.rect(x - 2, y - 2, 4, 4, "n4")));
-      m.rect(cx - 4, ry - 4, 8, 8, "a3");
+      m.rect(cx - 4, ry - 4, 8, 8, TK_SENAL[fi] + "3");
     });
     // pines del chip
     MI.chip(m, { x: 56, y: 130, w: 160, h: 38, nombre: "ESP32-S3", pinSep: 32,
-      pines: PINES.map((n, i) => ({ num: n, lado: "arr", pos: i, color: i === co ? "a3" : "n5" })) });
-    MI.paquete(m, { camino: [[68, ry], [cx, ry], [cx, 122]], t, periodo: T_RUTA, tok: "a4", tam: 6 });
+      pines: PINES.map((n, i) => ({ num: n, lado: "arr", pos: i, color: i === co ? TK_SENAL[fi] + "3" : "n5" })) });
+    MI.paquete(m, { camino: [[68, ry], [cx, ry], [cx, 122]], t, periodo: T_RUTA, tok: TK_SENAL[fi] + "4", tam: 6 });
     // panel de lectura
     txt(m, "RUTA ACTUAL", 222, 16, "n4");
-    txt(m, SENALES[fi], 222, 30, "a3");
-    txt(m, "→ " + PINES[co], 222, 42, "a3");
+    txt(m, SENALES[fi], 222, 30, TK_SENAL[fi] + "3");
+    txt(m, "→ " + PINES[co], 222, 42, TK_SENAL[fi] + "3");
     txt(m, "COSTO:", 222, 62, "n4");
     txt(m, "1-2 CICLOS", 222, 74, "n6");
     txt(m, "DE RELOJ APB", 222, 86, "n6");
@@ -93,16 +94,16 @@ PM.escena("per-pwm", {
     const paso = 100 / L, pasoTxt = (paso >= 1 ? paso.toFixed(paso >= 10 ? 0 : 1) : paso.toFixed(paso >= 0.1 ? 2 : 3)).replace(".", ",") + "%";
     const real = ((N / L) * 100), realTxt = (Number.isInteger(real) ? String(real) : real.toFixed(real < 1 ? 2 : 1)).replace(".", ",") + "%";
 
-    txt(m, "CONTADOR", X0, 4, "b3"); txt(m, "Y UMBRAL", X0 + 6 * "CONTADOR ".length, 4, "a3");   // 6 u por carácter
-    txt(m, "SALIDA", X0, 80, "n6");
+    txt(m, "CONTADOR", X0, 4, "b3"); txt(m, "Y UMBRAL", X0 + 6 * "CONTADOR ".length, 4, "c3");   // 6 u por carácter
+    txt(m, "SALIDA", X0, 80, "a3");
     m.en(16, () => {
       m.marco(X0, yA0, W, hA, "n3"); m.marco(X0, yB0, W, hB, "n3");
       const yt = yA0 + hA - 3 - (N / L) * (hA - 8);
-      m.linea(X0, yt, X0 + W, yt, "a3", { punteo: 3 });
+      m.linea(X0, yt, X0 + W, yt, "c3", { punteo: 3 });
       // referencia de un período
       m.linea(X0 + PER, yB0 + hB + 4, X0 + PER, yB0 + hB + 10, "n4"); m.linea(X0, yB0 + hB + 7, X0 + PER, yB0 + hB + 7, "n4");
     });
-    txt(m, "1 PERIODO", X0 + PER / 2, yB0 + hB + 12, "n4", { alin: "centro" });
+    txt(m, "1 PERÍODO", X0 + PER / 2, yB0 + hB + 12, "n4", { alin: "centro" });
     // trazas finas (32-bit): escalera del contador y forma de onda
     m.en(32, () => {
       let py = null;
@@ -129,8 +130,8 @@ PM.escena("per-pwm", {
     txt(m, "BITS", X1, 16, "n4"); txt(m, String(bits), X1, 26, "n6");
     txt(m, "NIVELES", X1, 42, "n4"); txt(m, String(L), X1, 52, "n6");
     txt(m, "PASO", X1, 68, "n4"); txt(m, pasoTxt, X1, 78, "n6");
-    txt(m, "FRECUENCIA", X1, 94, "n4"); txt(m, fTxt, X1, 104, "a3");
-    txt(m, "CICLO REAL", X1, 120, "n4"); txt(m, realTxt, X1, 130, "a3");
+    txt(m, "FRECUENCIA", X1, 94, "n4"); txt(m, fTxt, X1, 104, "b3");
+    txt(m, "CICLO REAL", X1, 120, "n4"); txt(m, realTxt, X1, 130, "c3");
     txt(m, "RELOJ 80 MHz, SIN DIVISOR", 8, 158, "n4");
   },
 });
@@ -158,34 +159,34 @@ PM.escena("per-sar", {
       for (let j = 0; j < Math.min(k + (cur ? 1 : 0), N_BITS); j++) {
         const p = pasos[j], es = j === k;
         const h = Math.max(1, Math.round((p.prueba / 4095) * H));
-        if (es) m.rect(X0 + j * CW + 1, Y1 - h, CW - 2, h, "a4");
+        if (es) m.rect(X0 + j * CW + 1, Y1 - h, CW - 2, h, "c4");
         else if (p.keep) m.rect(X0 + j * CW + 1, Y1 - h, CW - 2, h, "a2");
         else m.tramado(X0 + j * CW + 1, Y1 - h, CW - 2, h, "n3");
       }
-      m.linea(X0 - 2, yv(code), X0 + CW * N_BITS + 2, yv(code), "b3", { grosor: 2 });
+      m.linea(X0 - 2, yv(code), X0 + CW * N_BITS + 2, yv(code), "a3", { grosor: 2 });
     });
-    txt(m, "VIN", X0 + CW * N_BITS - 16, yv(code) < 32 ? yv(code) + 5 : yv(code) - 10, "b3");
+    txt(m, "VIN", X0 + CW * N_BITS - 16, yv(code) < 32 ? yv(code) + 5 : yv(code) - 10, "a3");
     txt(m, "MSB", X0 + 7, 134, "n4", { alin: "centro" }); txt(m, "LSB", X0 + CW * (N_BITS - 1) + 7, 134, "n4", { alin: "centro" });
     // registro de resultado
     txt(m, "REG", 4, 154, "n4");
     m.en(16, () => pasos.forEach((p, j) => {
       const x = X0 + j * CW, hecho = j < k || fin, activo = j === k && !fin;
       m.rect(x + 1, 148, CW - 2, 16, hecho ? (p.keep ? "a1" : "n1") : "n0");
-      m.marco(x + 1, 148, CW - 2, 16, activo ? "a3" : hecho ? "n4" : "n2");
+      m.marco(x + 1, 148, CW - 2, 16, activo ? "c3" : hecho ? "n4" : "n2");
       if (!hecho && !activo) m.tramado(x + 2, 149, CW - 4, 14, "n2");
     }));
     pasos.forEach((p, j) => {
       const x = X0 + j * CW + CW / 2, hecho = j < k || fin;
       if (hecho) txt(m, p.keep ? "1" : "0", x, 153, p.keep ? "a3" : "n4", { alin: "centro" });
-      else if (j === k) txt(m, "?", x, 153, "a3", { alin: "centro" });
+      else if (j === k) txt(m, "?", x, 153, "c3", { alin: "centro" });
     });
     // lectura
     const X1 = 220;
     txt(m, fin ? "LISTO" : "PASO " + (k + 1) + "/" + N_BITS, X1, 16, fin ? "a3" : "n6");
-    txt(m, "VIN", X1, 32, "n4"); txt(m, String(code), X1, 42, "b3");
+    txt(m, "VIN", X1, 32, "n4"); txt(m, String(code), X1, 42, "a3");
     if (cur) {
-      txt(m, "DAC PRUEBA", X1, 58, "n4"); txt(m, String(cur.prueba), X1, 68, "a3");
-      txt(m, "VIN>=DAC?", X1, 84, "n4"); txt(m, cur.keep ? "SI: BIT=1" : "NO: BIT=0", X1, 94, "n6");
+      txt(m, "DAC PRUEBA", X1, 58, "n4"); txt(m, String(cur.prueba), X1, 68, "c3");
+      txt(m, "VIN>=DAC?", X1, 84, "n4"); txt(m, cur.keep ? "SÍ: BIT=1" : "NO: BIT=0", X1, 94, "d3");
     } else {
       txt(m, "RESULTADO", X1, 58, "n4"); txt(m, String(pasos[N_BITS - 1].acc), X1, 68, "a3");
       txt(m, "12 PASOS,", X1, 84, "n4"); txt(m, "1 POR BIT", X1, 94, "n4");
@@ -226,19 +227,19 @@ PM.escena("per-buses", {
     // UART
     txt(m, "UART: DOS HILOS, SIN RELOJ", 8, 4, "n6"); txt(m, "hasta 5 MBAUD", 312, 4, "n4", { alin: "der" });
     MI.cronograma(m, { x: X, y: 14, w: W, h: 20, ventana: 1, t: u, desde: 0, señales: [{ nombre: "TX", tok: "a3", f: uartTX }] });
-    an("START", 12, 1.5, 37); an("8 DATOS, LSB PRIMERO", 12, 6, 37); an("STOP", 12, 10.5, 37);
+    an("START", 12, 1.5, 37, "d3"); an("8 DATOS, LSB PRIMERO", 12, 6, 37, "a3"); an("STOP", 12, 10.5, 37, "d3");
     // I2C
     txt(m, "I2C: DOS HILOS, RELOJ COMPARTIDO", 8, 52, "n6"); txt(m, "100-400 kHz", 312, 52, "n4", { alin: "der" });
     MI.cronograma(m, { x: X, y: 62, w: W, h: 36, ventana: 1, t: u, desde: 0, señales: [
       { nombre: "SCL", tok: "b3", f: (v) => i2c(v)[0] }, { nombre: "SDA", tok: "a3", f: (v) => i2c(v)[1] }] });
-    an("S", 22, 1.5, 101); an("DIR 7 BITS+W", 22, 6, 101); an("A", 22, 10.5, 101); an("DATO 8 BITS", 22, 15, 101); an("A", 22, 19.5, 101); an("P", 22, 20.5, 101);
+    an("S", 22, 1.5, 101, "d3"); an("DIR 7 BITS+W", 22, 6, 101, "a3"); an("A", 22, 10.5, 101, "c3"); an("DATO 8 BITS", 22, 15, 101, "a3"); an("A", 22, 19.5, 101, "c3"); an("P", 22, 20.5, 101, "d3");
     // SPI
     txt(m, "SPI: RELOJ, 2 DATOS Y CS", 8, 114, "n6"); txt(m, "hasta 80 MHz", 312, 114, "n4", { alin: "der" });
     MI.cronograma(m, { x: X, y: 124, w: W, h: 60, ventana: 1, t: u, desde: 0, señales: [
-      { nombre: "CS", tok: "n6", f: (v) => spi(v).cs }, { nombre: "SCK", tok: "b3", f: (v) => spi(v).sck },
-      { nombre: "MOSI", tok: "a3", f: (v) => spi(v).mosi }, { nombre: "MISO", tok: "n5", f: (v) => spi(v).miso }] });
-    an("CS BAJA", 10, 1, 187); an("8 CICLOS DE SCK", 10, 5, 187); an("CS SUBE", 10, 9, 187);
-    txt(m, "BYTE DE DATOS: 10100101", 8, 199, "n4");
+      { nombre: "CS", tok: "c3", f: (v) => spi(v).cs }, { nombre: "SCK", tok: "b3", f: (v) => spi(v).sck },
+      { nombre: "MOSI", tok: "a3", f: (v) => spi(v).mosi }, { nombre: "MISO", tok: "d3", f: (v) => spi(v).miso }] });
+    an("CS BAJA", 10, 1, 187, "c3"); an("8 CICLOS DE SCK", 10, 5, 187, "b3"); an("CS SUBE", 10, 9, 187, "c3");
+    txt(m, "BYTE DE DATOS: 10100101", 8, 199, "a3");
   },
 });
 
@@ -268,17 +269,17 @@ PM.escena("per-tactil", {
   dibujar(m, t) {
     fondo(m);
     const dedo = tcDedo(t);
-    txt(m, "OSCILADOR DE RELAJACION", 8, 4, "n6");
-    txt(m, dedo ? "CON DEDO" : "SIN DEDO", 312, 4, dedo ? "a3" : "n4", { alin: "der" });
+    txt(m, "OSCILADOR DE RELAJACIÓN", 8, 4, "n6");
+    txt(m, dedo ? "CON DEDO" : "SIN DEDO", 312, 4, dedo ? "d3" : "n4", { alin: "der" });
     // dedo, cubierta y pad
     m.en(16, () => {
       const yd = dedo ? 26 : 16;                            // al tocar, la yema llega a la cubierta
       m.rect(28, 14, 20, yd + 4, "n4"); m.rect(30, yd + 18, 16, 2, "n4"); m.rect(32, yd + 20, 12, 2, "n4");
       m.linea(12, 50, 64, 50, "n3", { grosor: 2 });
-      m.rect(18, 54, 40, 6, dedo ? "a3" : "n4");
+      m.rect(18, 54, 40, 6, dedo ? "d3" : "n4");
     });
     txt(m, "PAD", 38, 64, "n4", { alin: "centro" });
-    txt(m, dedo ? "14 pF" : "10 pF", 38, 74, dedo ? "a3" : "n6", { alin: "centro" });
+    txt(m, dedo ? "14 pF" : "10 pF", 38, 74, dedo ? "d3" : "n6", { alin: "centro" });
     // tensión del pad entre los dos umbrales; tramado donde está el dedo
     const X = 92, Y = 16, W = 220, H = 72, VEN = 1.5, lo = -0.15, hi = 1.15;
     const yv = (v) => Y + H - ((v - lo) / (hi - lo)) * H, xt = (tt) => X + ((tt - (t - VEN)) / VEN) * W;
@@ -294,29 +295,29 @@ PM.escena("per-tactil", {
     // ESP32: oscilaciones completas dentro de una ventana fija
     const t0 = Math.floor(t / TC.VENT) * TC.VENT, f0 = Math.floor(tcFase(t0));
     const cuenta = Math.floor(tcFase(t)) - f0, ultima = f0 - Math.floor(tcFase(t0 - TC.VENT));
-    txt(m, "ESP32: VENTANA FIJA", 8, 100, "n6");
+    txt(m, "ESP32: VENTANA FIJA", 8, 100, "b3");
     m.en(16, () => {
       m.marco(8, 112, 148, 10, "n3");
       m.rect(9, 113, Math.max(1, Math.round(((t - t0) / TC.VENT) * 146)), 8, "n2");
-      for (let j = f0 + 1; j <= f0 + cuenta; j++) m.rect(8 + ((tcTiempo(j) - t0) / TC.VENT) * 148 - 1, 112, 2, 10, "a3");
+      for (let j = f0 + 1; j <= f0 + cuenta; j++) m.rect(8 + ((tcTiempo(j) - t0) / TC.VENT) * 148 - 1, 112, 2, 10, "b3");
     });
     txt(m, "CUENTA " + cuenta, 8, 128, "n6");
-    txt(m, "ULTIMA LECTURA " + ultima, 8, 140, "a3");
+    txt(m, "ÚLTIMA LECTURA " + ultima, 8, 140, "b3");
     txt(m, "AL TOCAR, BAJA", 8, 152, "n4");
     // ESP32-S3: tiempo que tardan 4 oscilaciones (en centésimas)
     const fa = tcFase(t), j0 = Math.floor(fa / TC.N) * TC.N, ts = tcTiempo(j0), hechas = Math.floor(fa) - j0;
-    txt(m, "ESP32-S3: 4 CICLOS FIJOS", 164, 100, "n6");
+    txt(m, "ESP32-S3: 4 CICLOS FIJOS", 164, 100, "a3");
     m.en(16, () => {
       for (let i = 0; i < TC.N; i++) {
         const x = 164 + i * 37, lleno = i < hechas ? 1 : i === hechas ? fa - j0 - hechas : 0;
         m.marco(x, 112, 35, 10, "n3");
-        if (lleno > 0) m.rect(x + 1, 113, Math.max(1, Math.round(lleno * 33)), 8, i < hechas ? "b3" : "n2");
+        if (lleno > 0) m.rect(x + 1, 113, Math.max(1, Math.round(lleno * 33)), 8, i < hechas ? "a3" : "n2");
       }
     });
     txt(m, "TIEMPO " + Math.round((t - ts) * 100), 164, 128, "n6");
-    txt(m, "ULTIMA LECTURA " + Math.round((ts - tcTiempo(j0 - TC.N)) * 100), 164, 140, "b3");
+    txt(m, "ÚLTIMA LECTURA " + Math.round((ts - tcTiempo(j0 - TC.N)) * 100), 164, 140, "a3");
     txt(m, "AL TOCAR, SUBE", 164, 152, "n4");
-    txt(m, "10 pF + 4 pF DEL DEDO: CADA RAMPA TARDA 40 % MAS", 8, 170, "n4");
+    txt(m, "10 pF + 4 pF DEL DEDO: CADA RAMPA TARDA 40 % MÁS", 8, 170, "n4");
   },
 });
 
@@ -351,16 +352,16 @@ PM.escena("per-encoder", {
       const xl = Math.round(CX + Math.sin(phi) * (R + 10)), yl = Math.round(CY - Math.cos(phi) * (R + 10));
       txt(m, nombre, xl, yl - 3, v ? tok : "n5", { alin: "centro" });
     };
-    sensor(0, enA(t), "A", "b3"); sensor(2.75 * PASO, enB(t), "B", "a3");
+    sensor(0, enA(t), "A", "a3"); sensor(2.75 * PASO, enB(t), "B", "b3");
     txt(m, suma ? "GIRA ANTIHORARIO" : "GIRA HORARIO", CX, 146, "n6", { alin: "centro" });
     txt(m, "12 RANURAS", CX, 156, "n4", { alin: "centro" });
     // señales y cuenta
     MI.cronograma(m, { x: 150, y: 16, w: 162, h: 36, ventana: 3, t, señales: [
-      { nombre: "A", tok: "b3", f: enA }, { nombre: "B", tok: "a3", f: enB }] });
-    m.osciloscopio({ x: 150, y: 60, w: 162, h: 56, t, ventana: 3, rango: [-2, 26], divs: [6, 4], ejes: false, rotulos: false, trazos: [{ f: enCuenta, tok: "a3" }] });
+      { nombre: "A", tok: "a3", f: enA }, { nombre: "B", tok: "b3", f: enB }] });
+    m.osciloscopio({ x: 150, y: 60, w: 162, h: 56, t, ventana: 3, rango: [-2, 26], divs: [6, 4], ejes: false, rotulos: false, trazos: [{ f: enCuenta, tok: "d3" }] });
     txt(m, "CUENTA", 146, 62, "n4", { alin: "der" });
-    txt(m, "CUENTA", 150, 124, "n4"); txt(m, String(enCuenta(t)), 150, 134, "n6", { tam: 14 });
-    txt(m, "SENTIDO", 220, 124, "n4"); txt(m, suma ? "SUMA +1" : "RESTA -1", 220, 134, "a3");
+    txt(m, "CUENTA", 150, 124, "n4"); txt(m, String(enCuenta(t)), 150, 134, "d3", { tam: 14 });
+    txt(m, "SENTIDO", 220, 124, "n4"); txt(m, suma ? "SUMA +1" : "RESTA -1", 220, 134, "c3");
     txt(m, suma ? "A SUBE CON B=0" : "A SUBE CON B=1", 220, 146, "n5");
     txt(m, "4 CUENTAS POR RANURA, SIN INSTRUCCIONES DE LA CPU", 8, 170, "n4");
   },
@@ -388,38 +389,38 @@ PM.escena("per-uart-error", {
       UA_TX.forEach((b, i) => { pts.push([xs(i), yv(prev)], [xs(i), yv(b)]); prev = b; });
       pts.push([xs(10) + 14, yv(1)]);
       for (let i = 0; i < 10; i++) { m.marco(xs(i), Y, CW, H, "n3"); m.linea(xs(i + 0.5), Y + H, xs(i + 0.5), Y + H + 4, "n4"); }
-      m.polilinea(pts, "n6");
+      m.polilinea(pts, "a3");
       mu.forEach((s) => {
         const x = xs(s.p), x0 = xs(s.k + 0.5);
         if (x > xc) return;
-        m.linea(x, Y - 2, x, Y + H + 10, s.ok ? "b2" : "a3", { punteo: 2 });
-        if (x - x0 >= 1) m.linea(x0, Y + H + 6, x, Y + H + 6, "a3", { grosor: 2 });   // corrimiento acumulado
-        m.rect(x - 2, Y + H + 10, 4, 4, s.ok ? "b3" : "a3");
+        m.linea(x, Y - 2, x, Y + H + 10, s.ok ? "b2" : "d3", { punteo: 2 });
+        if (x - x0 >= 1) m.linea(x0, Y + H + 6, x, Y + H + 6, "d3", { grosor: 2 });   // corrimiento acumulado
+        m.rect(x - 2, Y + H + 10, 4, 4, s.ok ? "b3" : "d3");
       });
-      if (!fin) m.linea(xc, Y - 4, xc, Y + H + 14, "a4");
+      if (!fin) m.linea(xc, Y - 4, xc, Y + H + 14, "b4");
     });
-    mu.forEach((s) => { if (xs(s.p) <= xc) txt(m, String(s.bit), xs(s.p), Y + H + 17, s.ok ? "b3" : "a3", { alin: "centro" }); });
+    mu.forEach((s) => { if (xs(s.p) <= xc) txt(m, String(s.bit), xs(s.p), Y + H + 17, s.ok ? "b3" : "d3", { alin: "centro" }); });
     // corrimiento en el bit de parada, contra el límite práctico (0,4 bit) y el borde de la celda (0,5 bit)
     const d9 = Math.round(9.5 * ST.uart.e) / 100, BX = 16, BW = 288, BY = 104;
     const malos = mu.filter((s) => !s.ok && s.k >= 1 && s.k <= 8).length, leido = mu.slice(1, 9).reduce((v, s, i) => v | (s.bit << i), 0);
     txt(m, "CORRIMIENTO EN EL BIT DE PARADA", BX, 82, "n4");
-    txt(m, "9,5 × " + ST.uart.e + " % = " + d9.toFixed(2).replace(".", ",") + " BIT", BX, 92, d9 >= 0.4 ? "a3" : "n6");
+    txt(m, "9,5 × " + ST.uart.e + " % = " + d9.toFixed(2).replace(".", ",") + " BIT", BX, 92, d9 >= 0.4 ? "d3" : "n6");
     m.en(16, () => {
       m.marco(BX, BY, BW, 8, "n3");
-      if (d9 > 0) m.rect(BX + 1, BY + 1, Math.min(BW - 2, d9 * BW), 6, d9 < 0.4 ? "a2" : "a3");
+      if (d9 > 0) m.rect(BX + 1, BY + 1, Math.min(BW - 2, d9 * BW), 6, d9 < 0.4 ? "d2" : "d3");
       m.linea(BX + 0.4 * BW, BY - 3, BX + 0.4 * BW, BY + 11, "n6");
       m.linea(BX + 0.5 * BW, BY - 3, BX + 0.5 * BW, BY + 11, "n6", { punteo: 2 });
     });
-    txt(m, "0", BX, BY + 13, "n4"); txt(m, "LIMITE 0,4", BX + 0.4 * BW - 2, BY + 13, "n5", { alin: "der" });
+    txt(m, "0", BX, BY + 13, "n4"); txt(m, "LÍMITE 0,4", BX + 0.4 * BW - 2, BY + 13, "n5", { alin: "der" });
     txt(m, "BORDE 0,5", BX + 0.5 * BW + 3, BY + 13, "n5"); txt(m, "1 BIT", BX + BW, BY + 13, "n4", { alin: "der" });
     const bin = (v) => v.toString(2).padStart(8, "0"), env = bin(0x48);
-    txt(m, "ENVIADO", BX, 132, "n4"); txt(m, env, 76, 132, "n6");
-    txt(m, "LEIDO", BX, 144, "n4");
-    if (fin) [...bin(leido)].forEach((c, i) => txt(m, c, 76 + i * 6, 144, c === env[i] ? "n6" : "a3"));
+    txt(m, "ENVIADO", BX, 132, "n4"); txt(m, env, 76, 132, "a3");
+    txt(m, "LEÍDO", BX, 144, "n4");
+    if (fin) [...bin(leido)].forEach((c, i) => txt(m, c, 76 + i * 6, 144, c === env[i] ? "n6" : "d3"));
     else txt(m, "--------", 76, 144, "n3");
-    txt(m, "BIT DE PARADA", 180, 132, "n4"); txt(m, fin ? (mu[9].bit ? "LEIDO 1: OK" : "LEIDO 0: ERROR") : "--", 180, 144, "n6");
+    txt(m, "BIT DE PARADA", 180, 132, "n4"); txt(m, fin ? (mu[9].bit ? "LEÍDO 1: OK" : "LEÍDO 0: ERROR") : "--", 180, 144, "n6");
     txt(m, !fin ? "MUESTREANDO..." : malos ? "LEE BITS EQUIVOCADOS Y NADIE AVISA" : d9 >= 0.4 ? "AL BORDE: SIN MARGEN PARA EL RUIDO" : "DENTRO DEL MARGEN",
-      BX, 160, fin && (malos || d9 >= 0.4) ? "a3" : "n6");
+      BX, 160, fin && (malos || d9 >= 0.4) ? "d3" : "n6");
   },
 });
 
@@ -439,10 +440,10 @@ PM.escena("per-i2s", {
     const ws = (s) => (s >= 16 && s < 32 ? 1 : 0);
     const ranura = (v) => Math.min(IS.N - 1, Math.floor(Math.min(v, 0.99999) * IS.N));
     const u = Math.min(1, (frac(t / IS.T) * IS.T) / IS.BARRIDO), fin = u >= 1, cur = ranura(u);
-    txt(m, "I2S: TRAMA ESTEREO DE 16 BITS", 8, 4, "n6");
+    txt(m, "I2S: TRAMA ESTÉREO DE 16 BITS", 8, 4, "n6");
     const fila = (nombre, bs, y, s0, valor) => {
       const est = (i) => { const s = s0 + i; return !fin && s === cur ? "act" : fin || s < cur ? "hecho" : "falta"; };
-      const [c1, c3] = s0 === 1 ? ["a1", "a3"] : ["b1", "b3"];
+      const [c1, c3] = s0 === 1 ? ["a1", "a3"] : ["d1", "d3"];
       txt(m, nombre, 8, y + 2, c3);
       m.en(16, () => bs.forEach((_, i) => {
         const x = 32 + i * 9, e = est(i);
@@ -452,21 +453,21 @@ PM.escena("per-i2s", {
       txt(m, (valor > 0 ? "+" : "") + valor, 182, y + 2, "n6");
     };
     fila("IZQ", bl, 16, 1, l); fila("DER", br, 30, 17, r);
-    txt(m, "BCLK A 48 kHz", 228, 14, "n4"); txt(m, "32 × 48 kHz", 228, 24, "n6"); txt(m, "= 1,536 MHz", 228, 34, "a3");
+    txt(m, "BCLK A 48 kHz", 228, 14, "b3"); txt(m, "32 × 48 kHz", 228, 24, "n6"); txt(m, "= 1,536 MHz", 228, 34, "b3");
     // cronograma de una trama: 33 ranuras (la última de la trama anterior + 16 + 16)
     const X = 40, W = IS.N * 8;
     MI.cronograma(m, { x: X, y: 50, w: W, h: 60, ventana: 1, t: u, desde: 0, señales: [
-      { nombre: "BCLK", tok: "n5", f: (v) => (frac(v * IS.N) >= 0.5 ? 1 : 0) },
-      { nombre: "WS", tok: "n6", f: (v) => ws(ranura(v)) },
+      { nombre: "BCLK", tok: "b3", f: (v) => (frac(v * IS.N) >= 0.5 ? 1 : 0) },
+      { nombre: "WS", tok: "c3", f: (v) => ws(ranura(v)) },
       { nombre: "SD", tok: "a3", f: (v) => sd(ranura(v)) }] });
     m.en(16, () => [1, 17].forEach((s) => m.linea(X + s * 8, 48, X + s * 8, 112, "n4", { punteo: 2 })));
-    txt(m, "IZQUIERDO, WS=0", X + 9 * 8, 115, "a3", { alin: "centro" }); txt(m, "DERECHO, WS=1", X + 25 * 8, 115, "b3", { alin: "centro" });
+    txt(m, "IZQUIERDO, WS=0", X + 9 * 8, 115, "a3", { alin: "centro" }); txt(m, "DERECHO, WS=1", X + 25 * 8, 115, "d3", { alin: "centro" });
     txt(m, "MSB", X + 8 + 1, 125, "a3"); txt(m, "LSB", X + 17 * 8 - 3, 125, "a3", { alin: "der" });
-    txt(m, "MSB", X + 17 * 8 + 3, 125, "b3"); txt(m, "LSB", X + W, 125, "b3", { alin: "der" });
-    txt(m, "WS CAMBIA 1 CICLO ANTES DEL MSB", X, 137, "n4");
+    txt(m, "MSB", X + 17 * 8 + 3, 125, "d3"); txt(m, "LSB", X + W, 125, "d3", { alin: "der" });
+    txt(m, "WS CAMBIA 1 CICLO ANTES DEL MSB", X, 137, "c3");
     const k = (cur - 1) % 16;
-    txt(m, fin ? "TRAMA COMPLETA: 32 BITS" : cur === 0 ? "SALE EL ULTIMO BIT DE LA TRAMA ANTERIOR"
-      : "SALE " + (cur <= 16 ? "IZQ" : "DER") + " BIT " + (15 - k) + (k === 0 ? " (MSB)" : k === 15 ? " (LSB)" : ""), X, 149, cur > 16 && !fin ? "b3" : "a3");
+    txt(m, fin ? "TRAMA COMPLETA: 32 BITS" : cur === 0 ? "SALE EL ÚLTIMO BIT DE LA TRAMA ANTERIOR"
+      : "SALE " + (cur <= 16 ? "IZQ" : "DER") + " BIT " + (15 - k) + (k === 0 ? " (MSB)" : k === 15 ? " (LSB)" : ""), X, 149, cur > 16 && !fin ? "d3" : "a3");
   },
 });
 
@@ -484,7 +485,7 @@ PM.escena("per-dma", {
     const jp = (jc + DM.ND - 1) % DM.ND, enCpu = b >= 1 && tb < DM.TPROC;   // la CPU lee el búfer que se acaba de llenar
     const CX = [8, 112, 216], CY = 58, CW = 96, CH = 60;
     txt(m, "GDMA: DESCRIPTORES EN ANILLO", 8, 4, "n6");
-    m.caja(8, 16, 68, 24, { titulo: "I2S RX", sub: "FIFO" });
+    m.caja(8, 16, 68, 24, { estilo: "tercero", titulo: "I2S RX", sub: "FIFO" });
     m.caja(124, 16, 72, 24, { estilo: "activo", titulo: "GDMA", sub: "CANAL RX" });
     m.flecha(76, 28, 124, 28, "n4");
     m.en(16, () => {
@@ -515,10 +516,10 @@ PM.escena("per-dma", {
       for (let k = Math.max(1, Math.floor((t - VEN) / DM_TB)); k * DM_TB <= t; k++) {
         const a = Math.max(t - VEN, k * DM_TB), z = Math.min(t, k * DM_TB + DM.TPROC);
         if (z > a) m.rect(xt(a), 153, Math.max(1, xt(z) - xt(a)), 8, "b3");
-        if (k * DM_TB >= t - VEN) m.linea(xt(k * DM_TB), 149, xt(k * DM_TB), 164, "b4");
+        if (k * DM_TB >= t - VEN) m.linea(xt(k * DM_TB), 149, xt(k * DM_TB), 164, "d4");
       }
     });
-    txt(m, "LA CPU SOLO TRABAJA DESPUES DE CADA INTERRUPCION", 8, 172, "n4");
+    txt(m, "LA CPU SOLO TRABAJA DESPUÉS DE CADA INTERRUPCIÓN", 8, 172, "n4");
   },
 });
 })();
