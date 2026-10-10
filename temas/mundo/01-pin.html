@@ -109,7 +109,9 @@
 </figure>
 
 <h3>El precio de la flexibilidad</h3>
-<p>Una señal que entra por la matriz es asíncrona respecto del reloj interno (APB, 80 MHz), así que pasa por un <strong>sincronizador</strong> de dos flip-flops para evitar la metaestabilidad, y opcionalmente por un <strong>filtro</strong> que descarta pulsos de menos de dos ciclos (unos 25 ns). Eso agrega unos pocos ciclos de APB de latencia.</p>
+<p>Una señal que entra por la matriz es asíncrona respecto del reloj interno (APB, 80 MHz), así que pasa por un <strong>sincronizador</strong> de dos flip-flops para evitar la metaestabilidad, y opcionalmente por un <strong>filtro</strong> que descarta pulsos de menos de dos ciclos (unos 25 ns). Eso agrega unos pocos ciclos de APB de latencia. El manual del S3 aclara que esa sincronización con el reloj APB vale para toda señal que entra por la matriz y no se aplica por el IO MUX. El S3 no da una cifra del retardo.</p>
+
+<p>En el ESP32, el manual de referencia mide el efecto en el SPI de propósito general (GP-SPI) como esclavo: las entradas que pasan por la matriz llegan dos ciclos de APB tarde y las salidas no se demoran. En el esclavo eso alcanza al reloj que recibe, así que su dato sale a 5,5 ciclos de APB por la matriz contra 3,5 por el IO MUX, y por eso el esclavo tolera como máximo fAPB/12 por la matriz contra fAPB/8 por el IO MUX. Para ver cómo llegan al bus los registros que configuran la matriz y el IO MUX, mirá <a href="../buses/02-mmio.html">Tomo 5, nivel 2</a>.</p>
 
 <p>Para un botón da igual. Para un SPI rápido, no: el reloj sale por un pin, el dato vuelve por otro y el retardo de ida y vuelta se come parte del período. Por eso las interfaces más rápidas (la flash, el SPI a 80 MHz) usan los pines directos del IO MUX, y por la matriz el límite práctico es bastante menor; la cifra exacta para tu caso está en el datasheet.</p>
 
@@ -225,7 +227,7 @@
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: GPIO (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/gpio.html">docs.espressif.com/…/gpio.html</a></li>
     <li>Texas Instruments. <em>Understanding Schmitt Triggers (SCEA046)</em>. <a href="https://www.ti.com/lit/an/scea046/scea046.pdf">ti.com/lit/an/scea046/scea046.pdf</a></li>
   </ol>
-  <p class="nota">La corriente que tolera un diodo de protección, la inductancia del encapsulado y el retardo exacto de la matriz no figuran como valores garantizados en los datasheets; van como órdenes de magnitud.</p>
+  <p class="nota">La corriente que tolera un diodo de protección, la inductancia del encapsulado y el retardo exacto de la matriz en el S3 no figuran como valores garantizados en los datasheets; van como órdenes de magnitud. Para el ESP32, el manual de referencia (v5.8, §20.4.2) sí da los tiempos y el límite del GP-SPI esclavo que se citan arriba.</p>
 </section>
 
 <div data-nav-niveles></div>

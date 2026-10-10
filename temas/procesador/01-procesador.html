@@ -40,7 +40,7 @@
 
 <p>Un <a href="../mundo/03-adc.html">ADC</a> de 12 bits entrega 20 000 muestras por segundo (20 kS/s). Cada una debe pasar por un filtro FIR de 64 coeficientes antes de la siguiente. En un núcleo de ESP32 a 240 MHz, el filtro dispone de 50 µs por muestra.</p>
 
-<p>Seguiremos una sola instrucción del filtro, la multiplicación-acumulación (MAC) de un coeficiente, para ver qué ocurre dentro del procesador. La respuesta corta: la MAC cruza cinco pasos con elementos distintos, que el <em>pipeline</em> superpone. El filtro completo ocupa unos 404 de los 12 000 ciclos disponibles.</p>
+<p>Seguiremos una sola instrucción del filtro, la multiplicación-acumulación (MAC) de un coeficiente, para ver qué ocurre dentro del procesador. La respuesta corta: la MAC cruza cinco pasos con elementos distintos, que el <em>pipeline</em> superpone. El filtro completo ocupa unos 404 de los 12 000 ciclos disponibles (el <a href="02-pipeline.html">nivel 2</a> lo afina).</p>
 
 <h2>El procesador visto desde afuera</h2>
 
@@ -120,13 +120,13 @@
 
 <p>Con la línea llena sale una instrucción por ciclo: 1000 instrucciones pasan de 5000 ciclos sin <em>pipeline</em> a 1004 con él.</p>
 
-<p>El solapamiento tiene dos costos, y ambos dependen de los elementos compartidos. Si una carga aún tiene su dato en la etapa de memoria cuando la MAC lo necesita en el banco, la unidad de control retiene la MAC un ciclo. Aparece una <strong>burbuja</strong>, una etapa sin trabajo útil.</p>
+<p>El solapamiento tiene dos costos, y ambos dependen de los elementos compartidos. Si una carga aún tiene su dato en la etapa de memoria, la MAC no puede leerlo del banco todavía. La unidad de control retiene la MAC un ciclo y aparece una <strong>burbuja</strong>, una etapa sin trabajo útil.</p>
 
 <p>Un salto tomado carga el PC tarde, cuando ya se buscaron las instrucciones siguientes. Esas instrucciones se descartan y dejan más burbujas; como el filtro salta una vez por coeficiente, este efecto domina.</p>
 
 <div class="caja ojo">
-  <h4>ojo: profundidad del pipeline</h4>
-  <p>Algunas fuentes citan 7 etapas para el LX6 y 5 para el LX7, pero no está confirmado en el manual (por confirmar).</p>
+  <h4>ojo: profundidad y burbujas del pipeline</h4>
+  <p>Los datasheets de Espressif dan 7 etapas para el LX6 (ESP32) y 5 para el LX7 (ESP32-S3). Cuántas burbujas deja cada riesgo en cada núcleo no figura en ellos (por confirmar); el <a href="02-pipeline.html">nivel 2</a> lo trata con supuestos declarados.</p>
 </div>
 
 <h2>Implementaciones reales: Xtensa, RISC-V y Arm</h2>
@@ -163,11 +163,13 @@
 
 <p>El ESP32 tiene dos núcleos Xtensa: el <strong>PRO_CPU</strong> (núcleo 0), que arranca el sistema, y el <strong>APP_CPU</strong> (núcleo 1). Cada uno tiene su PC, IR, control, registros y ALU, y ambos comparten la memoria por los buses. Así el filtro corre en uno y el Wi-Fi en el otro.</p>
 
-<p>En Xtensa, la <strong>ventana de registros</strong> relaciona el banco con las llamadas a subrutina: de 64 registros físicos, el programa ve 16. CALL4, CALL8 o CALL12 rotan la ventana 4, 8 o 12 registros, y los solapados pasan los parámetros sin copiarlos. Si las llamadas agotan el banco, una excepción vuelca los más viejos a la pila. En el LX7 la ventana está por confirmar.</p>
+<p>En Xtensa, la <strong>ventana de registros</strong> relaciona el banco con las llamadas a subrutina: de 64 registros físicos, el programa ve 16. CALL4, CALL8 o CALL12 anotan cuánto girar, y la instrucción de entrada de la subrutina rota la ventana 4, 8 o 12 registros. Los registros solapados pasan los parámetros sin copiarlos.</p>
+
+<p>Si las llamadas agotan el banco, una excepción vuelca los más viejos a la pila. El ESP32-S3, con núcleos LX7, también tiene 64 registros físicos con ventana, según su datasheet y la configuración del núcleo que publica ESP-IDF. El <a href="03-lazos-ventanas.html">nivel 3</a> lo sigue paso a paso.</p>
 
 <figure class="diagrama" data-titulo="fig-1.4">
-  <svg viewBox="0 0 640 320" role="img" aria-label="Tira de 64 registros físicos. La ventana A muestra los registros 0 a 15. Después de un CALL8, la ventana B muestra los registros 8 a 23. Los registros 8 a 15 quedan compartidos y pasan los parámetros sin copiarlos."><defs><pattern id="rg" width="8" height="32" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="6" height="32" class="f2"/></pattern></defs><text x="320" y="28" class="sv-tit f6" text-anchor="middle">64 registros físicos</text><rect x="64" y="44" width="128" height="24" class="fa1 sa3" stroke-width="2"/><rect x="63" y="43" width="2" height="2" class="f0"/><rect x="191" y="43" width="2" height="2" class="f0"/><rect x="63" y="67" width="2" height="2" class="f0"/><rect x="191" y="67" width="2" height="2" class="f0"/><text x="128" y="61" class="sv-lbl fa3" text-anchor="middle" font-size="16">ventana A</text><line x1="64" y1="80" x2="192" y2="80" class="sa3" stroke-width="2"/><line x1="65" y1="80" x2="65" y2="92" class="sa3" stroke-width="2"/><line x1="191" y1="80" x2="191" y2="92" class="sa3" stroke-width="2"/><rect x="64" y="96" width="512" height="32" fill="url(#rg)"/><rect x="128" y="96" width="64" height="32" class="fc3" fill-opacity="0.5"/><rect x="64" y="96" width="512" height="32" class="fn s3" stroke-width="2"/><rect y="92" width="128" height="40" class="fn sa4" stroke-width="4"><animate attributeName="x" values="64;128" dur="3.2s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><line x1="128" y1="144" x2="256" y2="144" class="sb3" stroke-width="2"/><line x1="129" y1="132" x2="129" y2="144" class="sb3" stroke-width="2"/><line x1="255" y1="132" x2="255" y2="144" class="sb3" stroke-width="2"/><rect x="128" y="156" width="128" height="24" class="fb1 sb3" stroke-width="2"/><rect x="127" y="155" width="2" height="2" class="f0"/><rect x="255" y="155" width="2" height="2" class="f0"/><rect x="127" y="179" width="2" height="2" class="f0"/><rect x="255" y="179" width="2" height="2" class="f0"/><text x="192" y="173" class="sv-lbl fb3" text-anchor="middle" font-size="16">ventana B</text><text x="64" y="208" class="sv-lbl f4" font-size="16" text-anchor="start">0</text><text x="576" y="208" class="sv-lbl f4" font-size="16" text-anchor="end">63, y después vuelve al 0</text><text x="64" y="236" class="sv-lbl fc3" font-size="16" text-anchor="start">verde: 8 registros compartidos entre A y B</text><line x1="64" y1="264" x2="120" y2="264" class="sa3" stroke-width="2"/><rect x="120" y="260" width="2" height="8" class="fa3"/><rect x="122" y="261" width="2" height="6" class="fa3"/><rect x="124" y="262" width="2" height="4" class="fa3"/><rect x="126" y="263" width="2" height="2" class="fa3"/><text x="144" y="270" class="sv-lbl f6" font-size="16" text-anchor="start">CALL8 rota la ventana 8 registros</text><text x="64" y="302" class="sv-lbl f4" font-size="16" text-anchor="start">CALL4 rota 4 y CALL12 rota 12; cada ventana ve 16</text></svg>
-  <figcaption><b>fig 1.4</b>Tras un CALL8, la ventana B (registros 8 a 23) reemplaza a la A (0 a 15). El marco naranja muestra el salto; en verde, los 8 registros compartidos.</figcaption>
+  <svg viewBox="0 0 640 320" role="img" aria-label="Tira de 64 registros físicos. La ventana A muestra los registros 0 a 15. Después de CALL8 y la instrucción de entrada, la ventana B muestra los registros 8 a 23. Los registros 8 a 15 quedan compartidos y pasan los parámetros sin copiarlos."><defs><pattern id="rg" width="8" height="32" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="6" height="32" class="f2"/></pattern></defs><text x="320" y="28" class="sv-tit f6" text-anchor="middle">64 registros físicos</text><rect x="64" y="44" width="128" height="24" class="fa1 sa3" stroke-width="2"/><rect x="63" y="43" width="2" height="2" class="f0"/><rect x="191" y="43" width="2" height="2" class="f0"/><rect x="63" y="67" width="2" height="2" class="f0"/><rect x="191" y="67" width="2" height="2" class="f0"/><text x="128" y="61" class="sv-lbl fa3" text-anchor="middle" font-size="16">ventana A</text><line x1="64" y1="80" x2="192" y2="80" class="sa3" stroke-width="2"/><line x1="65" y1="80" x2="65" y2="92" class="sa3" stroke-width="2"/><line x1="191" y1="80" x2="191" y2="92" class="sa3" stroke-width="2"/><rect x="64" y="96" width="512" height="32" fill="url(#rg)"/><rect x="128" y="96" width="64" height="32" class="fc3" fill-opacity="0.5"/><rect x="64" y="96" width="512" height="32" class="fn s3" stroke-width="2"/><rect y="92" width="128" height="40" class="fn sa4" stroke-width="4"><animate attributeName="x" values="64;128" dur="3.2s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><line x1="128" y1="144" x2="256" y2="144" class="sb3" stroke-width="2"/><line x1="129" y1="132" x2="129" y2="144" class="sb3" stroke-width="2"/><line x1="255" y1="132" x2="255" y2="144" class="sb3" stroke-width="2"/><rect x="128" y="156" width="128" height="24" class="fb1 sb3" stroke-width="2"/><rect x="127" y="155" width="2" height="2" class="f0"/><rect x="255" y="155" width="2" height="2" class="f0"/><rect x="127" y="179" width="2" height="2" class="f0"/><rect x="255" y="179" width="2" height="2" class="f0"/><text x="192" y="173" class="sv-lbl fb3" text-anchor="middle" font-size="16">ventana B</text><text x="64" y="208" class="sv-lbl f4" font-size="16" text-anchor="start">0</text><text x="576" y="208" class="sv-lbl f4" font-size="16" text-anchor="end">63, y después vuelve al 0</text><text x="64" y="236" class="sv-lbl fc3" font-size="16" text-anchor="start">verde: 8 registros compartidos entre A y B</text><line x1="64" y1="264" x2="120" y2="264" class="sa3" stroke-width="2"/><rect x="120" y="260" width="2" height="8" class="fa3"/><rect x="122" y="261" width="2" height="6" class="fa3"/><rect x="124" y="262" width="2" height="4" class="fa3"/><rect x="126" y="263" width="2" height="2" class="fa3"/><text x="144" y="270" class="sv-lbl f6" font-size="16" text-anchor="start">tras CALL8 y la entrada, la ventana gira 8</text><text x="64" y="302" class="sv-lbl f4" font-size="16" text-anchor="start">con CALL4 gira 4 y con CALL12, 12; cada ventana ve 16</text></svg>
+  <figcaption><b>fig 1.4</b>Tras CALL8 y la instrucción de entrada, la ventana B (registros 8 a 23) reemplaza a la A (0 a 15). El marco naranja muestra el salto; en verde, los 8 registros compartidos.</figcaption>
 </figure>
 
 <p>Junto a la ALU, la <strong>FPU</strong> opera en hardware un float de 32 bits, y el double de 64 bits se emula por software con decenas de ciclos. El LX6 añade una unidad MAC con acumuladores de 40 bits.</p>
@@ -176,7 +178,7 @@
 
 <h2>Relación con el resto del micro</h2>
 
-<p>El procesador solo ve direcciones y datos, y todo lo demás se le presenta como memoria. La <a href="../micro/04-memoria.html"><strong>memoria</strong></a> responde por los buses. En el ESP32 la SRAM interna tarda 1 o 2 ciclos, y la flash y la PSRAM pasan por una caché. Los <strong>periféricos</strong> son registros en direcciones de memoria: el procesador lee el <a href="../mundo/03-adc.html">ADC</a> o mueve un <a href="../mundo/01-pin.html">pin</a> con una carga o un guardado.</p>
+<p>El procesador solo ve direcciones y datos, y todo lo demás se le presenta como memoria. La <a href="../micro/04-memoria.html"><strong>memoria</strong></a> responde por los buses. En el ESP32-S3 la SRAM interna responde en general en un ciclo de CPU (TRM del S3, sección 4.3.2). La flash y la PSRAM pasan por una caché. Los <strong>periféricos</strong> son registros en direcciones de memoria: el procesador lee el <a href="../mundo/03-adc.html">ADC</a> o mueve un <a href="../mundo/01-pin.html">pin</a> con una carga o un guardado.</p>
 
 <p>Las <a href="../micro/05-tiempo-real.html"><strong>interrupciones</strong></a> invierten la iniciativa: un periférico activa una línea y la unidad de control termina la instrucción en curso. Luego guarda el PC y lo reemplaza por la dirección de una rutina de servicio. En el ESP32 el reloj nace de un PLL de 480 MHz dividido en 80, 160 o 240 MHz.</p>
 
@@ -225,13 +227,11 @@
 
 <h2>Límites del modelo</h2>
 
-<p>El modelo es el clásico, no la microarquitectura exacta de un núcleo real. Supone un <em>pipeline</em> ideal, un CPI constante y una memoria sin contención, así que los 404 ciclos son una estimación y quedan por confirmar estos puntos:</p>
+<p>El modelo es el clásico, no la microarquitectura exacta de un núcleo real. Supone un <em>pipeline</em> ideal, un CPI constante y una memoria sin contención, así que los 404 ciclos son una estimación. El lazo sin sobrecarga (<em>zero-overhead loop</em>) sí está confirmado: la configuración del núcleo que publica ESP-IDF lo activa en el LX6 y en el LX7 (<a href="03-lazos-ventanas.html">nivel 3</a>). Quedan por confirmar estos puntos:</p>
 
 <ul>
-  <li>la profundidad del pipeline (7 etapas en el LX6 y 5 en el LX7, citadas);</li>
-  <li>el lazo sin sobrecarga (<em>zero-overhead loop</em>) de cada variante;</li>
-  <li>la ventana de registros del LX7;</li>
-  <li>los puertos del banco de registros del núcleo real;</li>
+  <li>las burbujas por carga y por salto de cada núcleo (las profundidades, 7 y 5 etapas, sí figuran en los datasheets; ver el <a href="02-pipeline.html">nivel 2</a>);</li>
+    <li>los puertos del banco de registros del núcleo real;</li>
   <li>el tamaño de las cachés;</li>
   <li>los datos de RISC-V y Arm que no figuran en la tabla.</li>
 </ul>
@@ -257,6 +257,8 @@
   <p class="feedback" aria-live="polite"></p>
 </div>
 
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
@@ -265,6 +267,7 @@
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP32-C3 Series Datasheet</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf">espressif.com/…/esp32-c3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, configuración del núcleo Xtensa del ESP32 y del ESP32-S3 (core-isa.h): lazos sin sobrecarga, registros con ventana y 64 registros físicos. <a href="https://github.com/espressif/esp-idf/tree/master/components/xtensa">github.com/espressif/esp-idf/…/components/xtensa</a></li>
     <li>Cadence. <em>Tensilica Xtensa LX Processors</em>. <a href="https://www.cadence.com/en_US/home/tools/ip/tensilica-ip/xtensa-lx-processors.html">cadence.com/…/xtensa-lx-processors.html</a></li>
     <li>RISC-V International. <em>The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA</em>. <a href="https://riscv.org/technical/specifications/">riscv.org/technical/specifications</a></li>
     <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>. <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>

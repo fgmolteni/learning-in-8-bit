@@ -41,7 +41,7 @@ Los títulos `h2` son descriptivos. No llevan el nombre de la parte («Definici�
 
 ## Redacción
 
-- Español neutro técnico. Sin voseo. Se usa «tú» solo cuando hace falta dirigirse al lector.
+- Español rioplatense técnico, con voseo («vos», «podés»), como el resto del sitio.
 - Un solo ejemplo conductor recorre todo el artículo y vuelve en cada parte.
 - Patrón de párrafo: qué hace el elemento, de quién recibe, a quién entrega y qué cambia después.
 - Cada elemento nuevo se presenta por su relación con los que ya se explicaron.

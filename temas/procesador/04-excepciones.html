@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 4: Excepciones e interrupciones en el núcleo</title>
+<meta name="description" content="Qué hace el procesador cuando algo lo interrumpe: niveles, registros de estado, vectores y retorno. Seguimos el fin de bloque del DMA del ADC que despierta al filtro, y comparamos Xtensa, RISC-V y Arm.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 4: Excepciones e interrupciones en el núcleo">
+<meta property="og:description" content="Qué hace el procesador cuando algo lo interrumpe: niveles, registros de estado, vectores y retorno. Seguimos el fin de bloque del DMA del ADC que despierta al filtro, y comparamos Xtensa, RISC-V y Arm.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="procesador" data-nivel="4">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="04">nivel 04, 16 min de lectura</span>
+  <h1>Excepciones e interrupciones en el núcleo</h1>
+  <p class="bajada">Qué hace el procesador cuando algo lo interrumpe: niveles, registros de estado, vectores y retorno. Seguimos el fin de bloque del DMA del ADC que despierta al filtro, y comparamos Xtensa, RISC-V y Arm.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel podrás…</h4>
+  <ul>
+    <li>Distinguir una excepción de una interrupción.</li>
+    <li>Seguir el aviso de un periférico hasta el vector y de vuelta, con PS, INTENABLE, EPC, EPS y VECBASE.</li>
+    <li>Explicar por qué un nivel alto interrumpe a uno bajo y no al revés.</li>
+    <li>Comparar Xtensa con RISC-V y el NVIC de Arm.</li>
+  </ul>
+</div>
+
+<h2>El problema: ¿cómo se entera el filtro de que hay datos?</h2>
+
+<p>Retomamos el ejemplo del <a href="01-procesador.html">nivel 1</a>: un <a href="../mundo/03-adc.html">ADC</a> entrega 20 000 muestras por segundo (20 kS/s) y un filtro FIR las procesa. Con el <a href="../datos/04-dma.html">DMA</a> (acceso directo a memoria; Tomo 3, nivel 4), que en el S3 es el GDMA, las muestras llegan solas a un búfer de la RAM.</p>
+
+<p>La respuesta corta: el DMA levanta una línea al terminar el bloque, y el núcleo interrumpe lo que hacía, guarda dónde iba y salta a una rutina. Unos pocos registros gobiernan ese salto. Un corte de emergencia no pasa por este camino: lo hace el hardware del MCPWM, sin CPU.</p>
+
+<figure class="diagrama" data-titulo="fig-4.1">
+  <svg viewBox="0 0 640 336" role="img" aria-label="Ejemplo conductor. Arriba, el ADC entrega muestras al GDMA, que las escribe en un búfer de la RAM; al terminar el bloque, el GDMA avisa a la matriz de interrupciones, esta lleva una línea al núcleo y el núcleo despierta a la tarea del filtro, que lee el búfer. Abajo, sin CPU, un pin de falla activa el manejador de fallas del MCPWM, que lleva las salidas PWM a un estado seguro."><text x="16" y="20" class="sv-lbl fd3" text-anchor="start" font-size="16">con CPU: el fin de bloque despierta al filtro</text><rect x="16" y="40" width="112" height="48" class="f1 sa3" stroke-width="2"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="127" y="39" width="2" height="2" class="f0"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="127" y="87" width="2" height="2" class="f0"/><text x="72" y="69" class="sv-tit f6" text-anchor="middle" font-size="16">ADC</text><rect x="176" y="40" width="112" height="48" class="f1 sa3" stroke-width="2"/><rect x="175" y="39" width="2" height="2" class="f0"/><rect x="287" y="39" width="2" height="2" class="f0"/><rect x="175" y="87" width="2" height="2" class="f0"/><rect x="287" y="87" width="2" height="2" class="f0"/><text x="232" y="69" class="sv-tit f6" text-anchor="middle" font-size="16">GDMA</text><rect x="336" y="40" width="128" height="48" class="f1 sa3" stroke-width="2"/><rect x="335" y="39" width="2" height="2" class="f0"/><rect x="463" y="39" width="2" height="2" class="f0"/><rect x="335" y="87" width="2" height="2" class="f0"/><rect x="463" y="87" width="2" height="2" class="f0"/><text x="400" y="62" class="sv-tit f6" text-anchor="middle" font-size="16">RAM</text><text x="400" y="80" class="sv-lbl f4" text-anchor="middle" font-size="16">búfer de 256</text><line x1="128" y1="64" x2="170" y2="64" class="sa3" stroke-width="2"/><rect x="170" y="60" width="2" height="8" class="fa3"/><rect x="172" y="61" width="2" height="6" class="fa3"/><rect x="174" y="62" width="2" height="4" class="fa3"/><rect x="176" y="63" width="2" height="2" class="fa3"/><line x1="288" y1="64" x2="330" y2="64" class="sa3" stroke-width="2"/><rect x="330" y="60" width="2" height="8" class="fa3"/><rect x="332" y="61" width="2" height="6" class="fa3"/><rect x="334" y="62" width="2" height="4" class="fa3"/><rect x="336" y="63" width="2" height="2" class="fa3"/><rect x="176" y="144" width="112" height="48" class="f1 sd3" stroke-width="2"/><rect x="175" y="143" width="2" height="2" class="f0"/><rect x="287" y="143" width="2" height="2" class="f0"/><rect x="175" y="191" width="2" height="2" class="f0"/><rect x="287" y="191" width="2" height="2" class="f0"/><text x="232" y="163" class="sv-tit f6" text-anchor="middle" font-size="16">matriz</text><text x="232" y="181" class="sv-lbl f4" text-anchor="middle" font-size="16">de interrup.</text><rect x="336" y="144" width="128" height="48" class="fd1 sd3" stroke-width="2"/><rect x="335" y="143" width="2" height="2" class="f0"/><rect x="463" y="143" width="2" height="2" class="f0"/><rect x="335" y="191" width="2" height="2" class="f0"/><rect x="463" y="191" width="2" height="2" class="f0"/><text x="400" y="163" class="sv-tit f6" text-anchor="middle" font-size="16">núcleo</text><text x="400" y="181" class="sv-lbl f4" text-anchor="middle" font-size="16">EPC, PS, vector</text><rect x="496" y="144" width="128" height="48" class="f1 sa3" stroke-width="2"/><rect x="495" y="143" width="2" height="2" class="f0"/><rect x="623" y="143" width="2" height="2" class="f0"/><rect x="495" y="191" width="2" height="2" class="f0"/><rect x="623" y="191" width="2" height="2" class="f0"/><text x="560" y="163" class="sv-tit f6" text-anchor="middle" font-size="16">tarea</text><text x="560" y="181" class="sv-lbl f4" text-anchor="middle" font-size="16">filtro FIR</text><line x1="232" y1="88" x2="232" y2="136" class="sd3" stroke-width="2"/><rect x="228" y="136" width="8" height="2" class="fd3"/><rect x="229" y="138" width="6" height="2" class="fd3"/><rect x="230" y="140" width="4" height="2" class="fd3"/><rect x="231" y="142" width="2" height="2" class="fd3"/><text x="240" y="118" class="sv-lbl fd3" text-anchor="start" font-size="16">fin de bloque</text><line x1="288" y1="168" x2="328" y2="168" class="sd3" stroke-width="2"/><rect x="328" y="164" width="2" height="8" class="fd3"/><rect x="330" y="165" width="2" height="6" class="fd3"/><rect x="332" y="166" width="2" height="4" class="fd3"/><rect x="334" y="167" width="2" height="2" class="fd3"/><text x="308" y="140" class="sv-lbl fd3" text-anchor="middle" font-size="16">línea</text><line x1="464" y1="168" x2="488" y2="168" class="sd3" stroke-width="2"/><rect x="488" y="164" width="2" height="8" class="fd3"/><rect x="490" y="165" width="2" height="6" class="fd3"/><rect x="492" y="166" width="2" height="4" class="fd3"/><rect x="494" y="167" width="2" height="2" class="fd3"/><line x1="464" y1="64" x2="560" y2="64" class="sa3" stroke-width="2"/><line x1="560" y1="64" x2="560" y2="136" class="sa3" stroke-width="2"/><rect x="556" y="136" width="8" height="2" class="fa3"/><rect x="557" y="138" width="6" height="2" class="fa3"/><rect x="558" y="140" width="4" height="2" class="fa3"/><rect x="559" y="142" width="2" height="2" class="fa3"/><text x="552" y="112" class="sv-lbl fa3" text-anchor="end" font-size="16">256 muestras</text><line x1="16" y1="216" x2="624" y2="216" class="s2" stroke-width="2" stroke-dasharray="4 4"/><text x="16" y="244" class="sv-lbl fc3" text-anchor="start" font-size="16">sin CPU: el corte de emergencia lo hace el hardware</text><rect x="16" y="264" width="128" height="48" class="f1 sc3" stroke-width="2"/><rect x="15" y="263" width="2" height="2" class="f0"/><rect x="143" y="263" width="2" height="2" class="f0"/><rect x="15" y="311" width="2" height="2" class="f0"/><rect x="143" y="311" width="2" height="2" class="f0"/><text x="80" y="283" class="sv-tit f6" text-anchor="middle" font-size="16">pin de</text><text x="80" y="301" class="sv-tit f6" text-anchor="middle" font-size="16">falla</text><rect x="208" y="264" width="160" height="48" class="fc1 sc3" stroke-width="2"/><rect x="207" y="263" width="2" height="2" class="f0"/><rect x="367" y="263" width="2" height="2" class="f0"/><rect x="207" y="311" width="2" height="2" class="f0"/><rect x="367" y="311" width="2" height="2" class="f0"/><text x="288" y="283" class="sv-tit f6" text-anchor="middle" font-size="16">MCPWM</text><text x="288" y="301" class="sv-lbl f4" text-anchor="middle" font-size="16">manejador de fallas</text><rect x="432" y="264" width="192" height="48" class="f1 sc3" stroke-width="2"/><rect x="431" y="263" width="2" height="2" class="f0"/><rect x="623" y="263" width="2" height="2" class="f0"/><rect x="431" y="311" width="2" height="2" class="f0"/><rect x="623" y="311" width="2" height="2" class="f0"/><text x="528" y="283" class="sv-tit f6" text-anchor="middle" font-size="16">salidas PWM</text><text x="528" y="301" class="sv-lbl f4" text-anchor="middle" font-size="16">a estado seguro</text><line x1="144" y1="288" x2="200" y2="288" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="200" y="284" width="2" height="8" class="fc3"/><rect x="202" y="285" width="2" height="6" class="fc3"/><rect x="204" y="286" width="2" height="4" class="fc3"/><rect x="206" y="287" width="2" height="2" class="fc3"/><line x1="368" y1="288" x2="424" y2="288" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="424" y="284" width="2" height="8" class="fc3"/><rect x="426" y="285" width="2" height="6" class="fc3"/><rect x="428" y="286" width="2" height="4" class="fc3"/><rect x="430" y="287" width="2" height="2" class="fc3"/></svg>
+  <figcaption><b>fig 4.1</b>Dos caminos del mismo micro. Arriba, el fin de bloque (magenta) despierta al filtro por la matriz y el núcleo; los datos (naranja) viajan por la RAM. Abajo, el corte de emergencia (verde) no toca la CPU.</figcaption>
+</figure>
+
+<h2>Excepción e interrupción vistas desde afuera</h2>
+
+<p>Ambas cambian el contador de programa a una dirección fija, el <strong>vector</strong>, y guardan el PC de retorno. Difieren en quién las origina. Una <strong>excepción</strong> nace dentro de una instrucción que no puede completarse: una instrucción ilegal, una división por cero, un acceso a memoria no permitido. Una <strong>interrupción</strong> viene de afuera, de una línea que un periférico levanta cuando quiere.</p>
+
+<p>La excepción es síncrona: siempre ocurre en la misma instrucción. La interrupción es asíncrona: llega entre dos instrucciones, y el procesador decide si la atiende o la deja esperando.</p>
+
+<div class="caja dato">
+  <h4>dato: causas de excepción de Xtensa</h4>
+  <p>El registro EXCCAUSE dice por qué se entró al vector. Son códigos de las definiciones de ESP-IDF:</p>
+  <ul>
+    <li><strong>0</strong>: instrucción ilegal. <strong>2</strong>: error al buscar una instrucción. <strong>3</strong>: error en una carga o un guardado.</li>
+    <li><strong>4</strong>: interrupción de nivel 1. <strong>6</strong>: división entera por cero. <strong>9</strong>: acceso no alineado.</li>
+    <li><strong>28</strong> y <strong>29</strong>: carga y guardado en una región que no los permite.</li>
+  </ul>
+  <p>Las interrupciones de nivel 1 comparten el vector de las excepciones y se distinguen por el código 4.</p>
+</div>
+
+<h2>Adentro: los registros que deciden</h2>
+
+<p>El núcleo no tiene un vector por periférico. Tiene 32 interrupciones propias, cada una con un nivel fijo, y una matriz las conecta con las fuentes (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>). Lo que ocurre dentro del núcleo se reparte entre cinco registros.</p>
+
+<ul>
+  <li><strong>INTERRUPT</strong> marca qué interrupciones están pendientes, una por bit.</li>
+  <li><strong>INTENABLE</strong> dice cuáles pueden atenderse. Es una máscara individual.</li>
+  <li><strong>PS</strong> es el estado del procesador. Guarda INTLEVEL, el nivel actual, y EXCM, que indica una excepción en curso.</li>
+  <li><strong>EPCn y EPSn</strong> guardan el PC y el PS interrumpidos. Hay un par por cada nivel alto (n de 2 en adelante); el nivel 1 y las excepciones comparten EPC1.</li>
+  <li><strong>VECBASE</strong> es la base de la tabla de vectores. Se puede reubicar.</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-4.2">
+  <svg viewBox="0 0 640 312" role="img" aria-label="Registros del núcleo ante una interrupción. La línea llega a INTERRUPT e INTENABLE, el comparador la acepta si su nivel supera a PS.INTLEVEL, el PC y el PS viejos pasan a EPCn y EPSn, PS sube su INTLEVEL y el PC carga VECBASE más un desplazamiento. Cinco marcadores numeran los pasos."><rect x="16" y="48" width="144" height="64" class="f1 sd3" stroke-width="2"/><rect x="15" y="47" width="2" height="2" class="f0"/><rect x="159" y="47" width="2" height="2" class="f0"/><rect x="15" y="111" width="2" height="2" class="f0"/><rect x="159" y="111" width="2" height="2" class="f0"/><text x="88" y="76" class="sv-tit f6" text-anchor="middle" font-size="16">INTERRUPT</text><text x="88" y="98" class="sv-tit f6" text-anchor="middle" font-size="16">INTENABLE</text><rect x="224" y="48" width="160" height="64" class="f1 sc3" stroke-width="2"/><rect x="223" y="47" width="2" height="2" class="f0"/><rect x="383" y="47" width="2" height="2" class="f0"/><rect x="223" y="111" width="2" height="2" class="f0"/><rect x="383" y="111" width="2" height="2" class="f0"/><text x="304" y="76" class="sv-tit f6" text-anchor="middle" font-size="16">comparador</text><text x="304" y="98" class="sv-lbl fc3" text-anchor="middle" font-size="16">nivel &gt; INTLEVEL</text><rect x="448" y="48" width="176" height="64" class="fa1 sa3" stroke-width="2"/><rect x="447" y="47" width="2" height="2" class="f0"/><rect x="623" y="47" width="2" height="2" class="f0"/><rect x="447" y="111" width="2" height="2" class="f0"/><rect x="623" y="111" width="2" height="2" class="f0"/><text x="536" y="76" class="sv-tit f6" text-anchor="middle" font-size="16">PC</text><text x="536" y="98" class="sv-lbl fa3" text-anchor="middle" font-size="16">VECBASE + offset</text><rect x="224" y="176" width="160" height="64" class="f1 s3" stroke-width="2"/><rect x="223" y="175" width="2" height="2" class="f0"/><rect x="383" y="175" width="2" height="2" class="f0"/><rect x="223" y="239" width="2" height="2" class="f0"/><rect x="383" y="239" width="2" height="2" class="f0"/><text x="304" y="204" class="sv-tit f6" text-anchor="middle" font-size="16">PS</text><text x="304" y="226" class="sv-lbl f6" text-anchor="middle" font-size="16">INTLEVEL, EXCM</text><rect x="448" y="176" width="176" height="64" class="f1 sa3" stroke-width="2"/><rect x="447" y="175" width="2" height="2" class="f0"/><rect x="623" y="175" width="2" height="2" class="f0"/><rect x="447" y="239" width="2" height="2" class="f0"/><rect x="623" y="239" width="2" height="2" class="f0"/><text x="536" y="204" class="sv-tit f6" text-anchor="middle" font-size="16">EPCn / EPSn</text><text x="536" y="226" class="sv-lbl fa3" text-anchor="middle" font-size="16">PC y PS guardados</text><line x1="160" y1="80" x2="216" y2="80" class="sd3" stroke-width="2"/><rect x="216" y="76" width="2" height="8" class="fd3"/><rect x="218" y="77" width="2" height="6" class="fd3"/><rect x="220" y="78" width="2" height="4" class="fd3"/><rect x="222" y="79" width="2" height="2" class="fd3"/><text x="188" y="68" class="sv-lbl fd3" text-anchor="middle" font-size="16">línea</text><line x1="384" y1="80" x2="440" y2="80" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="440" y="76" width="2" height="8" class="fc3"/><rect x="442" y="77" width="2" height="6" class="fc3"/><rect x="444" y="78" width="2" height="4" class="fc3"/><rect x="446" y="79" width="2" height="2" class="fc3"/><text x="412" y="68" class="sv-lbl fc3" text-anchor="middle" font-size="16">salta</text><line x1="304" y1="176" x2="304" y2="120" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="300" y="120" width="8" height="2" class="fc3"/><rect x="301" y="118" width="6" height="2" class="fc3"/><rect x="302" y="116" width="4" height="2" class="fc3"/><rect x="303" y="114" width="2" height="2" class="fc3"/><text x="312" y="150" class="sv-lbl fc3" text-anchor="start" font-size="16">nivel actual</text><line x1="536" y1="112" x2="536" y2="168" class="sa3" stroke-width="2"/><rect x="532" y="168" width="8" height="2" class="fa3"/><rect x="533" y="170" width="6" height="2" class="fa3"/><rect x="534" y="172" width="4" height="2" class="fa3"/><rect x="535" y="174" width="2" height="2" class="fa3"/><text x="528" y="150" class="sv-lbl fa3" text-anchor="end" font-size="16">PC viejo</text><line x1="384" y1="208" x2="440" y2="208" class="sa3" stroke-width="2"/><rect x="440" y="204" width="2" height="8" class="fa3"/><rect x="442" y="205" width="2" height="6" class="fa3"/><rect x="444" y="206" width="2" height="4" class="fa3"/><rect x="446" y="207" width="2" height="2" class="fa3"/><text x="412" y="196" class="sv-lbl fa3" text-anchor="middle" font-size="16">PS viejo</text><text x="16" y="272" class="sv-lbl fc3" text-anchor="start" font-size="16">RFI nivel: devuelve EPCn al PC y EPSn al PS</text><text x="16" y="296" class="sv-lbl f4" text-anchor="start" font-size="16">verde discontinuo: control. naranja: dato guardado.</text><rect x="128" y="20" width="24" height="24" class="f6 s6" stroke-width="2"/><rect x="127" y="19" width="2" height="2" class="f0"/><rect x="151" y="19" width="2" height="2" class="f0"/><rect x="127" y="43" width="2" height="2" class="f0"/><rect x="151" y="43" width="2" height="2" class="f0"/><text x="140" y="37" class="sv-tit f0" text-anchor="middle" font-size="16">1</text><rect x="356" y="20" width="24" height="24" class="f6 s6" stroke-width="2"/><rect x="355" y="19" width="2" height="2" class="f0"/><rect x="379" y="19" width="2" height="2" class="f0"/><rect x="355" y="43" width="2" height="2" class="f0"/><rect x="379" y="43" width="2" height="2" class="f0"/><text x="368" y="37" class="sv-tit f0" text-anchor="middle" font-size="16">2</text><rect x="264" y="140" width="24" height="24" class="f6 s6" stroke-width="2"/><rect x="263" y="139" width="2" height="2" class="f0"/><rect x="287" y="139" width="2" height="2" class="f0"/><rect x="263" y="163" width="2" height="2" class="f0"/><rect x="287" y="163" width="2" height="2" class="f0"/><text x="276" y="157" class="sv-tit f0" text-anchor="middle" font-size="16">4</text><rect x="552" y="140" width="24" height="24" class="f6 s6" stroke-width="2"/><rect x="551" y="139" width="2" height="2" class="f0"/><rect x="575" y="139" width="2" height="2" class="f0"/><rect x="551" y="163" width="2" height="2" class="f0"/><rect x="575" y="163" width="2" height="2" class="f0"/><text x="564" y="157" class="sv-tit f0" text-anchor="middle" font-size="16">3</text><rect x="596" y="20" width="24" height="24" class="f6 s6" stroke-width="2"/><rect x="595" y="19" width="2" height="2" class="f0"/><rect x="619" y="19" width="2" height="2" class="f0"/><rect x="595" y="43" width="2" height="2" class="f0"/><rect x="619" y="43" width="2" height="2" class="f0"/><text x="608" y="37" class="sv-tit f0" text-anchor="middle" font-size="16">5</text><rect x="12" y="44" width="152" height="72" class="fn sa4" stroke-width="4"><animate attributeName="x" values="12;220;444;220;444" dur="8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="y" values="44;44;172;172;44" dur="8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="width" values="152;168;184;168;184" dur="8s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect></svg>
+  <figcaption><b>fig 4.2</b>Camino de una interrupción por los registros del núcleo. Los números 1 a 5 son los pasos; el marco naranja los recorre. Verde discontinuo: control. Naranja: estado guardado.</figcaption>
+</figure>
+
+<p>La regla de aceptación es una comparación. El núcleo atiende una interrupción si su bit está en INTENABLE y su nivel es mayor que PS.INTLEVEL. Cuando entra, sube INTLEVEL a ese nivel, y por eso solo otra de nivel mayor puede interrumpirla.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el triage de una guardia</h4>
+  <p>INTLEVEL es el caso que el médico atiende. Un paciente nuevo pasa primero solo si es más grave; el otro espera en la sala y nadie lo olvida.</p>
+</div>
+
+<h2>Recorrido paso a paso: el fin de bloque despierta al filtro</h2>
+
+<p>El filtro corre en una tarea, con INTLEVEL en 0. El GDMA termina de llenar el búfer de 256 muestras (supuesto). Los números son los de la figura 4.2.</p>
+
+<ol>
+  <li><strong>El periférico levanta el aviso.</strong> El GDMA activa su bit de interrupción cruda al recibir la última muestra del bloque. Si su bit de habilitación está en 1, el aviso pasa a la señal de interrupción. La matriz la lleva a una interrupción del núcleo, y la línea queda alta hasta que alguien limpie el bit en el periférico.</li>
+  <li><strong>El núcleo compara.</strong> El bit aparece en INTERRUPT. El comparador ve que el nivel es 3 y que INTLEVEL vale 0. La atiende al terminar la instrucción en curso.</li>
+  <li><strong>Guarda dónde iba.</strong> El PC pasa a EPC3 y el PS a EPS3. Ningún registro general se toca todavía.</li>
+  <li><strong>Sube el nivel.</strong> INTLEVEL pasa a 3, así que las interrupciones de nivel 3 o menor quedan en espera.</li>
+  <li><strong>Salta al vector.</strong> El PC recibe VECBASE más el desplazamiento del nivel 3. Solo salta al despachador común de software.</li>
+</ol>
+
+<p>Desde acá el trabajo es de software. El despachador guarda los registros que va a ensuciar, identifica la fuente y llama a la rutina. La rutina limpia el bit del periférico, marca el búfer como listo y avisa a la tarea del filtro (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>).</p>
+
+<p>Al final, el despachador restaura los registros y ejecuta la instrucción de retorno de interrupción (RFI) del nivel 3. Copia EPC3 al PC y EPS3 al PS en un solo paso: INTLEVEL regresa a 0 y el filtro sigue donde lo interrumpieron.</p>
+
+<div class="caja ojo">
+  <h4>ojo: limpiar la fuente</h4>
+  <p>Las interrupciones por nivel mantienen la línea alta hasta que la rutina limpia la fuente; si no lo hace, el núcleo vuelve a entrar apenas termina. En las de flanco, el bit queda pendiente en el núcleo hasta que el software escribe INTCLEAR (manual de la ISA, tabla 4-73). El detalle de ambas está en el <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>.</p>
+</div>
+
+<h2>Tabla de vectores: cada nivel tiene su dirección</h2>
+
+<p>Los vectores están a distancias fijas de VECBASE. El valor de VECBASE al arrancar es 0x40000000 en el ESP32 y en el ESP32-S3; el firmware puede reubicarlo.</p>
+
+<figure class="diagrama" data-titulo="fig-4.3">
+  <svg viewBox="0 0 640 400" role="img" aria-label="Tabla de vectores a partir de VECBASE: ventanas en 0x000, interrupciones de nivel 2 a 5 en 0x180, 0x1C0, 0x200 y 0x240, depuración en 0x280, NMI en 0x2C0, excepciones de kernel y usuario en 0x300 y 0x340 y doble excepción en 0x3C0. La mayoría de las entradas ocupa 0x40 bytes; la excepción de usuario tiene 0x80."><text x="16" y="22" class="sv-lbl f4" text-anchor="start" font-size="16">VECBASE +</text><text x="16" y="56" class="sv-lbl f6" text-anchor="start" font-size="16">0x000</text><rect x="120" y="36" width="224" height="28" class="f1 s3" stroke-width="2"/><rect x="119" y="35" width="2" height="2" class="f0"/><rect x="343" y="35" width="2" height="2" class="f0"/><rect x="119" y="63" width="2" height="2" class="f0"/><rect x="343" y="63" width="2" height="2" class="f0"/><text x="232" y="56" class="sv-lbl f6" text-anchor="middle" font-size="16">ventanas de registros</text><text x="360" y="56" class="sv-lbl f4" text-anchor="start" font-size="16">6 vectores de 0x40</text><text x="16" y="92" class="sv-lbl f6" text-anchor="start" font-size="16">0x180</text><rect x="120" y="72" width="224" height="28" class="fc1 sc3" stroke-width="2"/><rect x="119" y="71" width="2" height="2" class="f0"/><rect x="343" y="71" width="2" height="2" class="f0"/><rect x="119" y="99" width="2" height="2" class="f0"/><rect x="343" y="99" width="2" height="2" class="f0"/><text x="232" y="92" class="sv-lbl f6" text-anchor="middle" font-size="16">interrupción nivel 2</text><text x="360" y="92" class="sv-lbl f4" text-anchor="start" font-size="16">despachador de software</text><text x="16" y="128" class="sv-lbl f6" text-anchor="start" font-size="16">0x1C0</text><rect x="120" y="108" width="224" height="28" class="fc1 sc3" stroke-width="2"/><rect x="119" y="107" width="2" height="2" class="f0"/><rect x="343" y="107" width="2" height="2" class="f0"/><rect x="119" y="135" width="2" height="2" class="f0"/><rect x="343" y="135" width="2" height="2" class="f0"/><text x="232" y="128" class="sv-lbl f6" text-anchor="middle" font-size="16">interrupción nivel 3</text><text x="360" y="128" class="sv-lbl f4" text-anchor="start" font-size="16">despachador de software</text><text x="16" y="164" class="sv-lbl f6" text-anchor="start" font-size="16">0x200</text><rect x="120" y="144" width="224" height="28" class="fd1 sd3" stroke-width="2"/><rect x="119" y="143" width="2" height="2" class="f0"/><rect x="343" y="143" width="2" height="2" class="f0"/><rect x="119" y="171" width="2" height="2" class="f0"/><rect x="343" y="171" width="2" height="2" class="f0"/><text x="232" y="164" class="sv-lbl f6" text-anchor="middle" font-size="16">interrupción nivel 4</text><text x="360" y="164" class="sv-lbl f4" text-anchor="start" font-size="16">alta prioridad, directa</text><text x="16" y="200" class="sv-lbl f6" text-anchor="start" font-size="16">0x240</text><rect x="120" y="180" width="224" height="28" class="fd1 sd3" stroke-width="2"/><rect x="119" y="179" width="2" height="2" class="f0"/><rect x="343" y="179" width="2" height="2" class="f0"/><rect x="119" y="207" width="2" height="2" class="f0"/><rect x="343" y="207" width="2" height="2" class="f0"/><text x="232" y="200" class="sv-lbl f6" text-anchor="middle" font-size="16">interrupción nivel 5</text><text x="360" y="200" class="sv-lbl f4" text-anchor="start" font-size="16">alta prioridad, directa</text><text x="16" y="236" class="sv-lbl f6" text-anchor="start" font-size="16">0x280</text><rect x="120" y="216" width="224" height="28" class="f1 s3" stroke-width="2"/><rect x="119" y="215" width="2" height="2" class="f0"/><rect x="343" y="215" width="2" height="2" class="f0"/><rect x="119" y="243" width="2" height="2" class="f0"/><rect x="343" y="243" width="2" height="2" class="f0"/><text x="232" y="236" class="sv-lbl f6" text-anchor="middle" font-size="16">nivel 6, depuración</text><text x="360" y="236" class="sv-lbl f4" text-anchor="start" font-size="16">depurador</text><text x="16" y="272" class="sv-lbl f6" text-anchor="start" font-size="16">0x2C0</text><rect x="120" y="252" width="224" height="28" class="fd1 sd3" stroke-width="2"/><rect x="119" y="251" width="2" height="2" class="f0"/><rect x="343" y="251" width="2" height="2" class="f0"/><rect x="119" y="279" width="2" height="2" class="f0"/><rect x="343" y="279" width="2" height="2" class="f0"/><text x="232" y="272" class="sv-lbl f6" text-anchor="middle" font-size="16">NMI</text><text x="360" y="272" class="sv-lbl f4" text-anchor="start" font-size="16">no enmascarable</text><text x="16" y="308" class="sv-lbl f6" text-anchor="start" font-size="16">0x300</text><rect x="120" y="288" width="224" height="28" class="fa1 sa3" stroke-width="2"/><rect x="119" y="287" width="2" height="2" class="f0"/><rect x="343" y="287" width="2" height="2" class="f0"/><rect x="119" y="315" width="2" height="2" class="f0"/><rect x="343" y="315" width="2" height="2" class="f0"/><text x="232" y="308" class="sv-lbl f6" text-anchor="middle" font-size="16">excepción de kernel</text><text x="360" y="308" class="sv-lbl f4" text-anchor="start" font-size="16">EPC1, EXCCAUSE</text><text x="16" y="344" class="sv-lbl f6" text-anchor="start" font-size="16">0x340</text><rect x="120" y="324" width="224" height="28" class="fa1 sa3" stroke-width="2"/><rect x="119" y="323" width="2" height="2" class="f0"/><rect x="343" y="323" width="2" height="2" class="f0"/><rect x="119" y="351" width="2" height="2" class="f0"/><rect x="343" y="351" width="2" height="2" class="f0"/><text x="232" y="344" class="sv-lbl f6" text-anchor="middle" font-size="16">excepción de usuario</text><text x="360" y="344" class="sv-lbl f4" text-anchor="start" font-size="16">también nivel 1</text><text x="16" y="380" class="sv-lbl f6" text-anchor="start" font-size="16">0x3C0</text><rect x="120" y="360" width="224" height="28" class="f1 s3" stroke-width="2"/><rect x="119" y="359" width="2" height="2" class="f0"/><rect x="343" y="359" width="2" height="2" class="f0"/><rect x="119" y="387" width="2" height="2" class="f0"/><rect x="343" y="387" width="2" height="2" class="f0"/><text x="232" y="380" class="sv-lbl f6" text-anchor="middle" font-size="16">doble excepción</text><text x="360" y="380" class="sv-lbl f4" text-anchor="start" font-size="16">una excepción dentro de otra</text></svg>
+  <figcaption><b>fig 4.3</b>Tabla de vectores de los núcleos de ESP32 y ESP32-S3. Naranja: excepciones. Verde: niveles que pasan por el despachador de software. Magenta: niveles altos y NMI, directos.</figcaption>
+</figure>
+
+<p>Los niveles 1 a 3 son de <strong>prioridad media</strong>: la excepción los enmascara mientras dura. Los niveles 4, 5 y la NMI (interrupción no enmascarable) son de <strong>prioridad alta</strong>: nada los enmascara por estar dentro de una excepción. Por eso sus rutinas son cortas y no pueden usar el sistema operativo.</p>
+
+<h2>Cómo se encadenan: anidamiento y espera</h2>
+
+<p>Mientras corre la rutina de nivel 3, pueden llegar otras. La figura 4.4 muestra los casos.</p>
+
+<figure class="diagrama" data-titulo="fig-4.4">
+  <svg viewBox="0 0 640 316" role="img" aria-label="Anidamiento de interrupciones en el tiempo. El nivel de interrupción del núcleo vale 0 mientras corre el filtro, sube a 3 cuando llega el DMA, sube a 5 cuando llega una interrupción de nivel 5, vuelve a 3 con RFI, y al terminar vuelve a 0. Una interrupción de nivel 2 que llega durante el nivel 3 espera y se atiende cuando el nivel baja a 0, y luego el filtro continúa."><line x1="96" y1="232" x2="624" y2="232" class="s1" stroke-width="2"/><text x="88" y="237" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><line x1="96" y1="184" x2="624" y2="184" class="s1" stroke-width="2"/><text x="88" y="189" class="sv-lbl f4" text-anchor="end" font-size="16">2</text><line x1="96" y1="160" x2="624" y2="160" class="s1" stroke-width="2"/><text x="88" y="165" class="sv-lbl f4" text-anchor="end" font-size="16">3</text><line x1="96" y1="112" x2="624" y2="112" class="s1" stroke-width="2"/><text x="88" y="117" class="sv-lbl f4" text-anchor="end" font-size="16">5</text><text x="16" y="20" class="sv-lbl fc3" text-anchor="start" font-size="16">INTLEVEL</text><polyline points="96,232 120,232 120,160 200,160 200,112 260,112 260,160 340,160 340,184 400,184 400,232 600,232" fill="none" class="sc3" stroke-width="2"/><line x1="120" y1="36" x2="120" y2="160" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="126" y="32" class="sv-lbl fd3" text-anchor="start" font-size="16">llega el DMA, nivel 3</text><line x1="200" y1="60" x2="200" y2="112" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="206" y="56" class="sv-lbl fd3" text-anchor="start" font-size="16">llega nivel 5</text><line x1="290" y1="84" x2="290" y2="160" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="296" y="80" class="sv-lbl fd3" text-anchor="start" font-size="16">llega nivel 2: espera</text><text x="108" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">FIR</text><text x="160" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">rutina 3</text><text x="230" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">rutina 5</text><text x="300" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">rutina 3</text><text x="370" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">rutina 2</text><text x="500" y="258" class="sv-lbl f6" text-anchor="middle" font-size="16">FIR</text><text x="260" y="282" class="sv-lbl fc3" text-anchor="middle" font-size="16">RFI</text><line x1="260" y1="264" x2="260" y2="270" class="sc3" stroke-width="2"/><text x="340" y="282" class="sv-lbl fc3" text-anchor="middle" font-size="16">RFI</text><line x1="340" y1="264" x2="340" y2="270" class="sc3" stroke-width="2"/><text x="400" y="282" class="sv-lbl fc3" text-anchor="middle" font-size="16">RFI</text><line x1="400" y1="264" x2="400" y2="270" class="sc3" stroke-width="2"/><text x="624" y="302" class="sv-lbl f4" text-anchor="end" font-size="16">tiempo</text></svg>
+  <figcaption><b>fig 4.4</b>INTLEVEL en el tiempo. El nivel 5 interrumpe al 3 (anidamiento); el nivel 2 espera a que INTLEVEL baje. Cada RFI baja un escalón. Los anchos son didácticos.</figcaption>
+</figure>
+
+<p>Una de nivel 5 interrumpe a la de nivel 3, porque 5 supera a INTLEVEL: guarda el PC y el PS de la rutina 3 en EPC5 y EPS5, corre, y su RFI devuelve el control. Una de nivel 2 espera, porque 2 es menor que 3, y sigue pendiente en INTERRUPT. Cuando el RFI del nivel 3 deja INTLEVEL en 0, el núcleo la acepta antes de volver al filtro.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">La rutina de nivel 3 está corriendo y llega una interrupción de nivel 2, sensible a nivel, y su línea sigue alta. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Para interrumpir hace falta un nivel mayor que INTLEVEL. Con INTLEVEL en 3, un nivel 2 no alcanza.">Interrumpe a la rutina de nivel 3 de inmediato.</button>
+    <button type="button" data-por-que="El bit sigue pendiente en INTERRUPT mientras la línea esté alta, y el núcleo la atiende cuando INTLEVEL baja por debajo de 2.">Queda pendiente y se atiende cuando el nivel baja.</button>
+    <button type="button" data-por-que="Mientras la línea siga alta, la interrupción por nivel no se pierde: queda pendiente. Solo se perdería si la fuente la soltara antes de que el núcleo la atienda.">Se pierde, porque el núcleo estaba ocupado.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<p>Mientras PS.EXCM vale 1, los niveles hasta el 3 quedan enmascarados, y una segunda excepción entra por el vector de doble excepción.</p>
+
+<h2>Implementaciones reales: Xtensa, RISC-V y Arm</h2>
+
+<p>Los tres núcleos guardan dónde iban y saltan, pero reparten el trabajo distinto entre hardware y software.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32 / S3<br>Xtensa</th><th>RISC-V<br>(Hazard3, RP2350)</th><th>Cortex-M<br>Arm</th></tr></thead>
+  <tbody>
+    <tr><td><b>Qué guarda el hardware</b></td><td>PC en EPCn y PS en EPSn. Ningún registro general</td><td>PC en MEPC; causa en MCAUSE; MIE pasa a MPIE</td><td>PC, PSR y otros 6 registros a la pila, automático</td></tr>
+    <tr><td><b>Qué guarda el software</b></td><td>El resto de los registros, en el despachador</td><td>Todos los registros que use</td><td>Los demás registros, solo si la rutina los usa</td></tr>
+    <tr><td><b>Quién elige el vector</b></td><td>VECBASE más un desplazamiento por nivel</td><td>MTVEC: una dirección, o base más 4 por la causa</td><td>Tabla de vectores con una entrada por interrupción (base en VTOR)</td></tr>
+    <tr><td><b>Cómo se informa la causa</b></td><td>EXCCAUSE para excepciones. Para interrupciones, el registro INTERRUPT indica qué interrupción de CPU llegó (el despachador la cruza con INTENABLE); la matriz y los registros del periférico dicen qué fuente externa la causó</td><td>MCAUSE: el bit más alto distingue interrupción de excepción</td><td>Número de excepción en el registro de estado</td></tr>
+    <tr><td><b>Prioridad y anidamiento</b></td><td>Nivel fijo por interrupción; PS.INTLEVEL</td><td>Un solo nivel en el núcleo base; Hazard3 suma un controlador con prioridades (Xh3irq)</td><td>NVIC: prioridades programables y anidamiento en hardware</td></tr>
+    <tr><td><b>Retorno</b></td><td>RFI nivel (o RFE para excepciones)</td><td>MRET</td><td>Un valor especial de retorno; el hardware restaura la pila</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>La diferencia que más pesa está en el tiempo de entrada. Xtensa y RISC-V entran barato, porque solo guardan un par de registros, y delegan el resto al software. Arm apila por hardware ocho palabras de 32 bits (32 bytes), según la arquitectura Armv8-M, y busca el vector en paralelo. El manual del Cortex-M4 da 12 ciclos hasta la primera instrucción de la rutina y otros 12 para el retorno, con memoria sin espera.</p>
+
+<p>Si otra interrupción espera cuando la primera termina, el hardware hace un <strong>encadenado de interrupciones</strong> (<em>tail-chaining</em>). Salta a la siguiente sin restaurar ni volver a guardar el contexto, y tarda 6 ciclos.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el RISC-V de Espressif</h4>
+  <p>La columna de RISC-V describe el Hazard3 del RP2350, de documentación pública. El controlador de interrupciones del ESP32-C3 es propio de Espressif y no se verificó (por confirmar).</p>
+</div>
+
+<h2>El ESP32 por dentro: dos núcleos y una matriz</h2>
+
+<p>Cada núcleo Xtensa tiene su propia copia de estos registros, y la matriz tiene ruteo por núcleo. Una misma fuente puede ir a los dos núcleos y entonces los dos la atienden; si no debe atenderse dos veces, se rutea a uno solo.</p>
+
+<p>En la matriz de periféricos del S3 hay seis niveles: del 1 al 5 y la NMI (TRM v1.8, tabla 9.3-2). En el núcleo, el nivel 6 está reservado para depuración y la NMI es el nivel 7, como en la fig 4.3. La NMI no se puede enmascarar con los registros del núcleo. El nivel está cableado en la interrupción, no en la fuente: la prioridad de una fuente depende de la interrupción a la que la conectes. La matriz y sus fuentes están en el <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>Este nivel completa lo que el <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a> cuenta desde el lado del sistema: acá se ve lo que el núcleo hace con la matriz y los niveles. El DMA se ve en el <a href="../datos/04-dma.html">Tomo 3, nivel 4</a> y el ADC por DMA, en el <a href="../mundo/03-adc.html">Tomo 2, nivel 3</a>.</p>
+
+<p>El manejador de fallas del MCPWM (<a href="../mundo/02-temporizadores-pwm.html">Tomo 2, nivel 2</a>) lleva las salidas a un estado seguro desde un pin, sin la CPU. Una interrupción necesita del orden de cientos de ciclos para llegar a su rutina (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>); el hardware no pasa por ese camino. El núcleo puede enterarse después con una interrupción, pero la protección ya actuó.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Tres cuentas muestran por qué se interrumpe por bloque y qué tan chico es un vector.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: interrumpir por muestra o por bloque</h4>
+  <p class="formula"><var>carga</var> = <var>tasa</var> · <var>c</var> / <var>f</var></p>
+  <dl>
+    <dt>tasa</dt><dd>por muestra: 20 000 /s; por bloque de 256 muestras (supuesto): 20 000 / 256 = 78,125 /s</dd>
+    <dt>c</dt><dd>400 ciclos por interrupción, con despachador y retorno (supuesto, del orden de; <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>)</dd>
+    <dt>f</dt><dd>240 MHz = 240 000 000 ciclos por segundo</dd>
+  </dl>
+  <p class="resultado">por muestra: 20 000 · 400 = 8 000 000 ciclos/s, 3,3 %; por bloque: 78,125 · 400 = 31 250 ciclos/s, 0,013 %</p>
+  <p>Con la interrupción por bloque, el costo de entrar y salir baja unas 256 veces.</p>
+</div>
+
+<p>El filtro debe terminar un bloque antes de que el DMA llene el siguiente.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: plazo de un bloque</h4>
+  <p class="formula"><var>t</var><sub>filtro</sub> = <var>n</var> · <var>ciclos</var> · <var>T</var></p>
+  <p class="formula"><var>t</var><sub>bloque</sub> = <var>n</var> / <var>fs</var></p>
+  <dl>
+    <dt>n</dt><dd>256 muestras (supuesto)</dd>
+    <dt>ciclos</dt><dd>404 por muestra (<a href="01-procesador.html">nivel 1</a>, con supuestos)</dd>
+    <dt>T</dt><dd>4,17 ns (240 MHz)</dd>
+    <dt>fs</dt><dd>20 kS/s</dd>
+  </dl>
+  <p class="resultado">t_filtro = 256 · 404 = 103 424 ciclos, 103 424 · 4,17 ns ≈ 431 µs; t_bloque = 256 / 20 000 = 12,8 ms</p>
+  <p>El filtro usa 431 µs de cada 12,8 ms, o sea 3,4 %: la misma carga del nivel 1, ahora con un aviso por bloque.</p>
+  <p>404 es la base del nivel 1, que no cuenta las burbujas; el <a href="02-pipeline.html">nivel 2</a> la afina a 468. Acá se usa 404 para aislar el efecto del plazo.</p>
+</div>
+
+<p>Cada vector contiene la rutina de entrada y nada más.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: cuánto cabe en un vector</h4>
+  <p class="formula"><var>espacio</var> = offset siguiente − offset del vector; instrucciones = espacio / <var>ancho</var></p>
+  <dl>
+    <dt>offsets</dt><dd>nivel 2 en 0x180 y nivel 3 en 0x1C0</dd>
+    <dt>ancho</dt><dd>3 bytes por instrucción de 24 bits (<a href="01-procesador.html">nivel 1</a>)</dd>
+  </dl>
+  <p class="resultado">espacio = 0x1C0 − 0x180 = 0x40 = 64 bytes; 64 / 3 ≈ 21 instrucciones (un mínimo: con instrucciones de 2 bytes caben más)</p>
+  <p>Son muy pocas: por eso el vector solo salta al despachador, que sí tiene espacio.</p>
+</div>
+
+<h2>Límites del modelo</h2>
+
+<p>Este nivel describe el mecanismo de la ISA Xtensa y cómo lo configura Espressif. Las cifras de ciclos son supuestos de orden de magnitud. Quedan por confirmar:</p>
+
+<ul>
+  <li>los ciclos del despachador y de la entrada del núcleo (se usó 400);</li>
+  <li>la lista completa de códigos EXCCAUSE: solo figuran los de ESP-IDF;</li>
+  <li>el detalle de PS y de RFI, contrastado con el código de ESP-IDF y no con todo el manual de la ISA;</li>
+  <li>el controlador de interrupciones del ESP32-C3 y los niveles de las variantes sin el S3;</li>
+  <li>los ciclos de entrada del NVIC y del encadenado en otros Cortex-M: los 12 y 6 ciclos son del Cortex-M4 con memoria sin espera.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>La excepción nace de una instrucción; la interrupción, de una línea externa. Las dos terminan en un vector.</li>
+    <li>El núcleo atiende una interrupción habilitada cuyo nivel supera a PS.INTLEVEL; al entrar, sube ese nivel y guarda PC y PS en EPCn y EPSn.</li>
+    <li>RFI cierra el ciclo: devuelve el PC y el PS, y con ellos el nivel.</li>
+    <li>Xtensa guarda poco en hardware; Arm apila ocho registros y encadena; RISC-V guarda MEPC y MCAUSE.</li>
+    <li>El corte de emergencia lo hace el hardware del MCPWM. La interrupción solo avisa después.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Al ejecutarse RFI 3, ¿de dónde sale el PC al que vuelve el núcleo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="VECBASE es la base de los vectores. Se usa al entrar, no al volver.">De VECBASE más el desplazamiento del nivel 3.</button>
+    <button type="button" data-por-que="Al entrar, el núcleo guardó el PC en EPC3. RFI 3 lo copia de vuelta al PC y copia EPS3 al PS.">De EPC3, que se guardó al entrar.</button>
+    <button type="button" data-por-que="El IR solo guarda la instrucción que se está decodificando. No conserva a dónde volver.">Del registro de instrucción.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, capítulo 9 (Interrupt Matrix), tablas 9.3-1 y 9.3-2, y capítulo 3 (GDMA). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, configuración Xtensa de los núcleos (<em>core-isa.h</em> del ESP32 y del ESP32-S3): niveles, vectores y valor de VECBASE. <a href="https://github.com/espressif/esp-idf/tree/master/components/xtensa">github.com/espressif/esp-idf/…/components/xtensa</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, definiciones de bits de PS y códigos EXCCAUSE (<em>corebits.h</em>) y vectores del sistema (<em>xtensa_vectors.S</em>). <a href="https://github.com/espressif/esp-idf/tree/master/components/xtensa">github.com/espressif/esp-idf/…/components/xtensa</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>, secciones 3.7 (Cortex-M33: NVIC, excepciones, encadenado) y 3.8 (Hazard3: secuencia de entrada y retorno de trampa, MTVEC, MCAUSE, MEPC). <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>
+    <li>Arm. <em>Cortex-M4 Technical Reference Manual</em>, r0p0, sección 3.9.1 (entrada y retorno de 12 ciclos y encadenado de 6, con memoria sin espera). <a href="https://documentation-service.arm.com/static/5f19da2a20b7cf4bc524d99a">documentation-service.arm.com/static/5f19da2a20b7cf4bc524d99a</a></li>
+    <li>Cadence. <em>Xtensa Instruction Set Architecture (ISA) Summary</em>, tabla 4-73 (tipos de interrupción y cómo se limpian; edición de 2010). <a href="https://www.cadence.com/content/dam/cadence-www/global/en_US/documents/tools/silicon-solutions/compute-ip/isa-summary.pdf">cadence.com/…/isa-summary.pdf</a></li>
+    <li>Arm. <em>Armv8-M Architecture Reference Manual</em>. <a href="https://developer.arm.com/documentation/ddi0553/latest">developer.arm.com/documentation/ddi0553</a></li>
+    <li>RISC-V International. <em>The RISC-V Instruction Set Manual, Volume II: Privileged Architecture</em>. <a href="https://riscv.org/technical/specifications/">riscv.org/technical/specifications</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada. Los datos marcados como por confirmar deben contrastarse con el manual técnico de cada variante. Del manual de la ISA Xtensa (Cadence) solo se consultó la tabla de tipos de interrupción: los códigos EXCCAUSE y los bits de PS salen de las definiciones de ESP-IDF.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, procesador, nivel-04</footer>
+</body>
+</html>

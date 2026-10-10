@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1: El mapa de memoria</title>
+<meta name="description" content="Por qué el procesador tiene un bus para instrucciones y otro para datos, cómo se reparten las direcciones y por qué la misma SRAM del ESP32 responde en dos lugares. Compara Xtensa, RISC-V y Arm.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 1: El mapa de memoria">
+<meta property="og:description" content="Por qué el procesador tiene un bus para instrucciones y otro para datos, cómo se reparten las direcciones y por qué la misma SRAM del ESP32 responde en dos lugares. Compara Xtensa, RISC-V y Arm.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="buses" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01, 14 min de lectura</span>
+  <h1>El mapa de memoria</h1>
+  <p class="bajada">Por qué el procesador tiene un bus para instrucciones y otro para datos, cómo se reparten las direcciones y por qué la misma SRAM del ESP32 responde en dos lugares. Compara Xtensa, RISC-V y Arm.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel podrás…</h4>
+  <ul>
+    <li>Explicar la arquitectura Harvard modificada: dos buses y un solo espacio de direcciones.</li>
+    <li>Leer el mapa de memoria del ESP32 y ubicar cada región en su bus.</li>
+    <li>Traducir una dirección de la SRAM1 entre el bus de datos y el de instrucciones.</li>
+    <li>Explicar por qué no conviene leer datos por el bus de instrucciones.</li>
+    <li>Comparar las ventanas externas del ESP32, el ESP32-C3 y el ESP32-S3, y el mapa fijo de un Cortex-M.</li>
+  </ul>
+</div>
+
+<h2>El problema: ¿a qué dirección está el coeficiente?</h2>
+
+<p>En el <a href="../procesador/01-procesador.html">Tomo 4, nivel 1</a>, el coeficiente del filtro FIR llegaba al banco de registros «por el bus de datos», y ahí cerramos la caja. Ahora la abrimos: ¿a qué dirección pide el procesador ese coeficiente y quién le contesta?</p>
+
+<p>Nuestro ejemplo conductor es la tabla de 64 coeficientes de 16 bits del filtro. Ocupa 64 · 2 = 128 bytes y vive en la SRAM1 del ESP32. Esa SRAM se ve en dos rangos de direcciones, uno por cada bus.</p>
+
+<p>La respuesta corta: el procesador tiene un bus para instrucciones y otro para datos, pero un solo espacio de direcciones. Cada rango de direcciones pertenece a un bus. La SRAM1 está conectada a los dos, y por eso sus 128 KB aparecen en dos rangos distintos, con las palabras en orden inverso.</p>
+
+<h2>El mapa visto desde afuera</h2>
+
+<p>Un procesador de 32 bits genera direcciones de 32 bits, así que puede nombrar 2<sup>32</sup> bytes, es decir 4 GB. El <strong>mapa de memoria</strong> es la tabla que dice qué hay detrás de cada rango: ROM, SRAM, memoria externa o periféricos.</p>
+
+<p>En una arquitectura <strong>Von Neumann</strong> un solo bus lleva instrucciones y datos. En una <strong>Harvard</strong> hay dos buses independientes, y el procesador busca una instrucción y mueve un dato en el mismo ciclo. La <strong>Harvard modificada</strong> conserva los dos buses pero comparte el espacio de direcciones, de modo que código y datos pueden convivir en la misma memoria física.</p>
+
+<figure class="diagrama" data-titulo="fig-1.1">
+  <svg viewBox="0 0 640 240" role="img" aria-label="El núcleo se conecta a un bloque de SRAM1 de 128 KB por dos buses. El bus de instrucciones, en azul, llega por el rango 0x400A_0000 a 0x400B_FFFF. El bus de datos, en naranja, llega por el rango 0x3FFE_0000 a 0x3FFF_FFFF. Es la misma memoria física."><g transform="translate(0,-64)"><rect x="16" y="96" width="160" height="128" class="f1 s3" stroke-width="2"/><rect x="15" y="95" width="2" height="2" class="f0"/><rect x="175" y="95" width="2" height="2" class="f0"/><rect x="15" y="223" width="2" height="2" class="f0"/><rect x="175" y="223" width="2" height="2" class="f0"/><text x="96" y="152" class="sv-tit f6" text-anchor="middle" font-size="20">NÚCLEO</text><text x="96" y="180" class="sv-lbl f6" text-anchor="middle" font-size="16">un solo</text><text x="96" y="200" class="sv-lbl f6" text-anchor="middle" font-size="16">espacio de 4 GB</text><rect x="448" y="96" width="176" height="128" class="fa1 sa3" stroke-width="2"/><rect x="447" y="95" width="2" height="2" class="f0"/><rect x="623" y="95" width="2" height="2" class="f0"/><rect x="447" y="223" width="2" height="2" class="f0"/><rect x="623" y="223" width="2" height="2" class="f0"/><text x="536" y="152" class="sv-tit fa3" text-anchor="middle" font-size="20">SRAM1</text><text x="536" y="180" class="sv-lbl f6" text-anchor="middle" font-size="16">128 KB</text><text x="536" y="200" class="sv-lbl f6" text-anchor="middle" font-size="16">un solo bloque físico</text><line x1="184" y1="128" x2="448" y2="128" class="sb3" stroke-width="2"/><rect x="182" y="124" width="2" height="8" class="fb3"/><rect x="180" y="125" width="2" height="6" class="fb3"/><rect x="178" y="126" width="2" height="4" class="fb3"/><rect x="176" y="127" width="2" height="2" class="fb3"/><text x="312" y="112" class="sv-lbl fb3" text-anchor="middle" font-size="16">bus de instrucciones</text><text x="312" y="148" class="sv-lbl fb3" text-anchor="middle" font-size="16">0x400A_0000 a 0x400B_FFFF</text><line x1="184" y1="192" x2="440" y2="192" class="sa3" stroke-width="2"/><rect x="440" y="188" width="2" height="8" class="fa3"/><rect x="442" y="189" width="2" height="6" class="fa3"/><rect x="444" y="190" width="2" height="4" class="fa3"/><rect x="446" y="191" width="2" height="2" class="fa3"/><rect x="182" y="188" width="2" height="8" class="fa3"/><rect x="180" y="189" width="2" height="6" class="fa3"/><rect x="178" y="190" width="2" height="4" class="fa3"/><rect x="176" y="191" width="2" height="2" class="fa3"/><text x="312" y="176" class="sv-lbl fa3" text-anchor="middle" font-size="16">bus de datos</text><text x="312" y="212" class="sv-lbl fa3" text-anchor="middle" font-size="16">0x3FFE_0000 a 0x3FFF_FFFF</text><text x="320" y="264" class="sv-lbl f4" text-anchor="middle" font-size="16">la misma memoria, dos puertas, dos rangos de direcciones</text><text x="320" y="288" class="sv-lbl f4" text-anchor="middle" font-size="16">(ESP32, TRM sección 3.3.2.4)</text></g></svg>
+  <figcaption><b>fig 1.1</b>El núcleo ve un solo espacio de direcciones, pero llega a la SRAM1 por dos puertas: el bus de instrucciones (azul) y el bus de datos (naranja).</figcaption>
+</figure>
+
+<p>Quien elige el bus es el hardware, según la dirección. En el ESP32, las direcciones menores que 0x4000_0000 usan el bus de datos, las de 0x4000_0000 a 0x4FFF_FFFF usan el de instrucciones, y las desde 0x5000_0000 las atienden los dos. El ESP32-S3 y el ESP32-C3 aplican la misma regla.</p>
+
+<div class="caja analogia">
+  <h4>analogía: una memoria de dos puertos</h4>
+  <p>Desde el programa, la SRAM1 se comporta como una memoria de doble puerto: como si dos buses de dirección independientes llegaran al mismo arreglo de celdas. Lo que escribe un puerto, lo lee el otro. El TRM no detalla cómo se implementa por dentro.</p>
+</div>
+
+<h2>Adentro: las regiones y sus puertas</h2>
+
+<p>El mapa del ESP32 tiene cinco tipos de región. Cada una se conecta a uno o a los dos buses.</p>
+
+<figure class="diagrama" data-titulo="fig-1.2">
+  <svg viewBox="0 0 640 396" role="img" aria-label="Mapa de memoria del ESP32 en dos columnas. A la izquierda, el bus de datos: flash externa de 4 MB desde 0x3F40_0000, SRAM externa de 4 MB desde 0x3F80_0000, periféricos, ROM 1, SRAM2 y SRAM1 desde 0x3FFE_0000. A la derecha, el bus de instrucciones: ROM 0, SRAM0, SRAM1 desde 0x400A_0000, RTC FAST y flash externa. Una línea punteada une las dos SRAM1: es la misma memoria. Abajo, la RTC SLOW desde 0x5000_0000, que ven los dos buses."><text x="16" y="28" class="sv-tit fa3" text-anchor="start" font-size="20">BUS DE DATOS</text><text x="624" y="28" class="sv-tit fb3" text-anchor="end" font-size="20">BUS DE INSTRUCCIONES</text><rect x="16" y="44" width="280" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="43" width="2" height="2" class="f0"/><rect x="295" y="43" width="2" height="2" class="f0"/><rect x="15" y="83" width="2" height="2" class="f0"/><rect x="295" y="83" width="2" height="2" class="f0"/><text x="28" y="70" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3F40_0000</text><text x="284" y="70" class="sv-lbl f6" text-anchor="end" font-size="16">flash externa, 4 MB</text><rect x="16" y="92" width="280" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="91" width="2" height="2" class="f0"/><rect x="295" y="91" width="2" height="2" class="f0"/><rect x="15" y="131" width="2" height="2" class="f0"/><rect x="295" y="131" width="2" height="2" class="f0"/><text x="28" y="118" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3F80_0000</text><text x="284" y="118" class="sv-lbl f6" text-anchor="end" font-size="16">SRAM externa, 4 MB</text><rect x="16" y="140" width="280" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="139" width="2" height="2" class="f0"/><rect x="295" y="139" width="2" height="2" class="f0"/><rect x="15" y="179" width="2" height="2" class="f0"/><rect x="295" y="179" width="2" height="2" class="f0"/><text x="28" y="166" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3FF0_0000</text><text x="284" y="166" class="sv-lbl f6" text-anchor="end" font-size="16">periféricos, 512 KB</text><rect x="16" y="188" width="280" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="187" width="2" height="2" class="f0"/><rect x="295" y="187" width="2" height="2" class="f0"/><rect x="15" y="227" width="2" height="2" class="f0"/><rect x="295" y="227" width="2" height="2" class="f0"/><text x="28" y="214" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3FF9_0000</text><text x="284" y="214" class="sv-lbl f6" text-anchor="end" font-size="16">ROM 1, 64 KB</text><rect x="16" y="236" width="280" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="235" width="2" height="2" class="f0"/><rect x="295" y="235" width="2" height="2" class="f0"/><rect x="15" y="275" width="2" height="2" class="f0"/><rect x="295" y="275" width="2" height="2" class="f0"/><text x="28" y="262" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3FFA_E000</text><text x="284" y="262" class="sv-lbl f6" text-anchor="end" font-size="16">SRAM2, 200 KB</text><rect x="16" y="284" width="280" height="40" class="fa1 sa3" stroke-width="2"/><rect x="15" y="283" width="2" height="2" class="f0"/><rect x="295" y="283" width="2" height="2" class="f0"/><rect x="15" y="323" width="2" height="2" class="f0"/><rect x="295" y="323" width="2" height="2" class="f0"/><text x="28" y="310" class="sv-lbl fa3" text-anchor="start" font-size="16">0x3FFE_0000</text><text x="284" y="310" class="sv-lbl f6" text-anchor="end" font-size="16">SRAM1, 128 KB</text><rect x="344" y="44" width="280" height="40" class="f1 sb3" stroke-width="2"/><rect x="343" y="43" width="2" height="2" class="f0"/><rect x="623" y="43" width="2" height="2" class="f0"/><rect x="343" y="83" width="2" height="2" class="f0"/><rect x="623" y="83" width="2" height="2" class="f0"/><text x="356" y="70" class="sv-lbl fb3" text-anchor="start" font-size="16">0x4000_0000</text><text x="612" y="70" class="sv-lbl f6" text-anchor="end" font-size="16">ROM 0, 384 KB</text><rect x="344" y="92" width="280" height="40" class="f1 sb3" stroke-width="2"/><rect x="343" y="91" width="2" height="2" class="f0"/><rect x="623" y="91" width="2" height="2" class="f0"/><rect x="343" y="131" width="2" height="2" class="f0"/><rect x="623" y="131" width="2" height="2" class="f0"/><text x="356" y="118" class="sv-lbl fb3" text-anchor="start" font-size="16">0x4007_0000</text><text x="612" y="118" class="sv-lbl f6" text-anchor="end" font-size="16">SRAM0, 192 KB</text><rect x="344" y="140" width="280" height="40" class="fb1 sb3" stroke-width="2"/><rect x="343" y="139" width="2" height="2" class="f0"/><rect x="623" y="139" width="2" height="2" class="f0"/><rect x="343" y="179" width="2" height="2" class="f0"/><rect x="623" y="179" width="2" height="2" class="f0"/><text x="356" y="166" class="sv-lbl fb3" text-anchor="start" font-size="16">0x400A_0000</text><text x="612" y="166" class="sv-lbl f6" text-anchor="end" font-size="16">SRAM1, 128 KB</text><rect x="344" y="188" width="280" height="40" class="f1 sb3" stroke-width="2"/><rect x="343" y="187" width="2" height="2" class="f0"/><rect x="623" y="187" width="2" height="2" class="f0"/><rect x="343" y="227" width="2" height="2" class="f0"/><rect x="623" y="227" width="2" height="2" class="f0"/><text x="356" y="214" class="sv-lbl fb3" text-anchor="start" font-size="16">0x400C_0000</text><text x="612" y="214" class="sv-lbl f6" text-anchor="end" font-size="16">RTC FAST, 8 KB</text><rect x="344" y="236" width="280" height="40" class="f1 sb3" stroke-width="2"/><rect x="343" y="235" width="2" height="2" class="f0"/><rect x="623" y="235" width="2" height="2" class="f0"/><rect x="343" y="275" width="2" height="2" class="f0"/><rect x="623" y="275" width="2" height="2" class="f0"/><text x="356" y="262" class="sv-lbl fb3" text-anchor="start" font-size="16">0x400C_2000</text><text x="612" y="262" class="sv-lbl f6" text-anchor="end" font-size="16">flash externa, 11 512 KB</text><line x1="296" y1="304" x2="320" y2="304" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><line x1="320" y1="304" x2="320" y2="160" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><line x1="320" y1="160" x2="344" y2="160" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><text x="356" y="310" class="sv-lbl fc3" text-anchor="start" font-size="16">línea verde: la misma SRAM</text><rect x="16" y="340" width="608" height="40" class="f1 sc3" stroke-width="2"/><rect x="15" y="339" width="2" height="2" class="f0"/><rect x="623" y="339" width="2" height="2" class="f0"/><rect x="15" y="379" width="2" height="2" class="f0"/><rect x="623" y="379" width="2" height="2" class="f0"/><text x="28" y="366" class="sv-lbl fc3" text-anchor="start" font-size="16">0x5000_0000</text><text x="612" y="366" class="sv-lbl f6" text-anchor="end" font-size="16">RTC SLOW, 8 KB: lo ven los dos buses</text></svg>
+  <figcaption><b>fig 1.2</b>Mapa del ESP32, simplificado: cada columna es un bus. La línea verde punteada une las dos direcciones de la SRAM1. Solo se muestran las regiones principales.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>ROM:</strong> el código de arranque y bibliotecas fijas. La ROM 0 (384 KB) solo se ve por el bus de instrucciones y la ROM 1 (64 KB), por el de datos.</li>
+  <li><strong>SRAM interna:</strong> 520 KB en tres partes. La SRAM0 (192 KB) se ve por el bus de instrucciones, y sus primeros 64 KB pueden convertirse en caché. La SRAM2 (200 KB) se ve por el de datos. La SRAM1 (128 KB) se ve por los dos.</li>
+  <li><strong>RTC:</strong> 8 KB rápidos (solo el núcleo 0, con una dirección por bus) y 8 KB lentos, en una dirección que comparten los dos buses.</li>
+  <li><strong>Memoria externa:</strong> flash y SRAM externas llegan a través de la caché y la MMU, que traducen una dirección del mapa a una dirección física del dispositivo. La flash tiene ventana en ambos buses y la SRAM externa, solo en el de datos.</li>
+  <li><strong>Periféricos:</strong> son registros con direcciones propias. En el ESP32 ocupan 512 KB desde 0x3FF0_0000 y se alcanzan por el bus de datos. En el ESP32-S3 están en 0x6000_0000 a 0x600D_0FFF, un rango que el TRM da como compartido por los dos buses. El <a href="02-mmio.html">nivel 2</a> los abre.</li>
+</ul>
+
+<p>Para ver qué lleva cada elemento por dentro, recordá el <a href="../micro/02-anatomia-esp32.html">Tomo 1, nivel 2</a> (anatomía del ESP32) y el <a href="../micro/04-memoria.html">Tomo 1, nivel 4</a> (memoria). Acá lo nuevo es la forma en que el mapa reparte las direcciones entre los dos buses.</p>
+
+<h2>Recorrido paso a paso: la tabla de coeficientes</h2>
+
+<p>Seguimos la tabla de 128 bytes en la SRAM1. El programa la escribió por el bus de datos, a partir de 0x3FFF_EA80 (supuesto: una dirección cualquiera alineada dentro de la SRAM1).</p>
+
+<ol>
+  <li><strong>Búsqueda de la instrucción:</strong> el contador de programa (PC, la dirección de la instrucción siguiente; ver el <a href="../procesador/01-procesador.html">Tomo 4, nivel 1</a>) emite una dirección entre 0x4000_0000 y 0x4FFF_FFFF. La lógica de decodificación de direcciones la manda al bus de instrucciones, y la memoria devuelve la instrucción de carga.</li>
+  <li><strong>Carga del coeficiente:</strong> la carga suma un registro y un desplazamiento y obtiene 0x3FFF_EA80, menor que 0x4000_0000. La decodificación elige el bus de datos, y la SRAM1 entrega la palabra con los coeficientes 0 y 1. El bus de datos admite accesos de 1, 2 o 4 bytes, así que también puede entregar solo el coeficiente de 16 bits.</li>
+  <li><strong>El mismo dato por la otra puerta:</strong> esa palabra también existe en el rango de instrucciones, en 0x400A_157C. El orden de las palabras queda invertido: la última palabra de la tabla, con los coeficientes 62 y 63, está en 0x400A_1500.</li>
+  <li><strong>El intento por la puerta equivocada:</strong> si el programa cargara el coeficiente 1 por 0x400A_157E, el acceso no estaría alineado a palabra y el núcleo lanzaría una excepción. El bus de instrucciones solo admite datos en palabras alineadas.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-1.3">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Tres columnas. Al centro, las palabras físicas de SRAM1, de la 0 a la 32 767. A la izquierda, sus direcciones en el bus de datos, que suben desde 0x3FFE_0000 hasta 0x3FFF_FFFC. A la derecha, sus direcciones en el bus de instrucciones, que bajan desde 0x400B_FFFC hasta 0x400A_0000."><text x="116" y="28" class="sv-tit fa3" text-anchor="middle" font-size="20">bus de datos</text><text x="320" y="28" class="sv-tit f6" text-anchor="middle" font-size="20">palabra física</text><text x="524" y="28" class="sv-tit fb3" text-anchor="middle" font-size="20">bus de instrucciones</text><rect x="16" y="48" width="200" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="47" width="2" height="2" class="f0"/><rect x="215" y="47" width="2" height="2" class="f0"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="215" y="87" width="2" height="2" class="f0"/><text x="116" y="74" class="sv-lbl fa3" text-anchor="middle" font-size="16">0x3FFE_0000</text><rect x="240" y="48" width="160" height="40" class="f1 s3" stroke-width="2"/><rect x="239" y="47" width="2" height="2" class="f0"/><rect x="399" y="47" width="2" height="2" class="f0"/><rect x="239" y="87" width="2" height="2" class="f0"/><rect x="399" y="87" width="2" height="2" class="f0"/><text x="320" y="74" class="sv-lbl f6" text-anchor="middle" font-size="16">palabra 0</text><rect x="424" y="48" width="200" height="40" class="f1 sb3" stroke-width="2"/><rect x="423" y="47" width="2" height="2" class="f0"/><rect x="623" y="47" width="2" height="2" class="f0"/><rect x="423" y="87" width="2" height="2" class="f0"/><rect x="623" y="87" width="2" height="2" class="f0"/><text x="524" y="74" class="sv-lbl fb3" text-anchor="middle" font-size="16">0x400B_FFFC</text><line x1="216" y1="68" x2="240" y2="68" class="s4" stroke-width="2"/><line x1="400" y1="68" x2="424" y2="68" class="s4" stroke-width="2"/><rect x="16" y="104" width="200" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="215" y="103" width="2" height="2" class="f0"/><rect x="15" y="143" width="2" height="2" class="f0"/><rect x="215" y="143" width="2" height="2" class="f0"/><text x="116" y="130" class="sv-lbl fa3" text-anchor="middle" font-size="16">0x3FFE_0004</text><rect x="240" y="104" width="160" height="40" class="f1 s3" stroke-width="2"/><rect x="239" y="103" width="2" height="2" class="f0"/><rect x="399" y="103" width="2" height="2" class="f0"/><rect x="239" y="143" width="2" height="2" class="f0"/><rect x="399" y="143" width="2" height="2" class="f0"/><text x="320" y="130" class="sv-lbl f6" text-anchor="middle" font-size="16">palabra 1</text><rect x="424" y="104" width="200" height="40" class="f1 sb3" stroke-width="2"/><rect x="423" y="103" width="2" height="2" class="f0"/><rect x="623" y="103" width="2" height="2" class="f0"/><rect x="423" y="143" width="2" height="2" class="f0"/><rect x="623" y="143" width="2" height="2" class="f0"/><text x="524" y="130" class="sv-lbl fb3" text-anchor="middle" font-size="16">0x400B_FFF8</text><line x1="216" y1="124" x2="240" y2="124" class="s4" stroke-width="2"/><line x1="400" y1="124" x2="424" y2="124" class="s4" stroke-width="2"/><rect x="16" y="160" width="200" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="215" y="159" width="2" height="2" class="f0"/><rect x="15" y="199" width="2" height="2" class="f0"/><rect x="215" y="199" width="2" height="2" class="f0"/><text x="116" y="186" class="sv-lbl fa3" text-anchor="middle" font-size="16">…</text><rect x="240" y="160" width="160" height="40" class="f1 s3" stroke-width="2"/><rect x="239" y="159" width="2" height="2" class="f0"/><rect x="399" y="159" width="2" height="2" class="f0"/><rect x="239" y="199" width="2" height="2" class="f0"/><rect x="399" y="199" width="2" height="2" class="f0"/><text x="320" y="186" class="sv-lbl f6" text-anchor="middle" font-size="16">…</text><rect x="424" y="160" width="200" height="40" class="f1 sb3" stroke-width="2"/><rect x="423" y="159" width="2" height="2" class="f0"/><rect x="623" y="159" width="2" height="2" class="f0"/><rect x="423" y="199" width="2" height="2" class="f0"/><rect x="623" y="199" width="2" height="2" class="f0"/><text x="524" y="186" class="sv-lbl fb3" text-anchor="middle" font-size="16">…</text><rect x="16" y="216" width="200" height="40" class="f1 sa3" stroke-width="2"/><rect x="15" y="215" width="2" height="2" class="f0"/><rect x="215" y="215" width="2" height="2" class="f0"/><rect x="15" y="255" width="2" height="2" class="f0"/><rect x="215" y="255" width="2" height="2" class="f0"/><text x="116" y="242" class="sv-lbl fa3" text-anchor="middle" font-size="16">0x3FFF_FFFC</text><rect x="240" y="216" width="160" height="40" class="f1 s3" stroke-width="2"/><rect x="239" y="215" width="2" height="2" class="f0"/><rect x="399" y="215" width="2" height="2" class="f0"/><rect x="239" y="255" width="2" height="2" class="f0"/><rect x="399" y="255" width="2" height="2" class="f0"/><text x="320" y="242" class="sv-lbl f6" text-anchor="middle" font-size="16">palabra 32767</text><rect x="424" y="216" width="200" height="40" class="f1 sb3" stroke-width="2"/><rect x="423" y="215" width="2" height="2" class="f0"/><rect x="623" y="215" width="2" height="2" class="f0"/><rect x="423" y="255" width="2" height="2" class="f0"/><rect x="623" y="255" width="2" height="2" class="f0"/><text x="524" y="242" class="sv-lbl fb3" text-anchor="middle" font-size="16">0x400A_0000</text><line x1="216" y1="236" x2="240" y2="236" class="s4" stroke-width="2"/><line x1="400" y1="236" x2="424" y2="236" class="s4" stroke-width="2"/><text x="116" y="284" class="sv-lbl fa3" text-anchor="middle" font-size="16">sube de 4 en 4</text><text x="524" y="284" class="sv-lbl fb3" text-anchor="middle" font-size="16">baja de 4 en 4</text><text x="320" y="284" class="sv-lbl f4" text-anchor="middle" font-size="16">128 KB = 32 768 palabras</text></svg>
+  <figcaption><b>fig 1.3</b>Cada palabra física de la SRAM1 tiene dos direcciones. Por el bus de datos suben; por el de instrucciones bajan. Los bytes dentro de cada palabra conservan su orden.</figcaption>
+</figure>
+
+<div class="caja dato">
+  <h4>dato: se puede leer datos por el bus de instrucciones</h4>
+  <p>El manual del ESP32 dice que el núcleo puede leer y escribir datos por el bus de instrucciones. Solo admite palabras alineadas: un acceso no alineado provoca una excepción. El ESP32-S3 y el ESP32-C3 repiten la restricción.</p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué falla cargar un coeficiente de 16 bits en 0x400A_157E?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El bus de instrucciones sí puede transportar datos: lo restringe el alineamiento, no el tipo de contenido.">Porque el bus de instrucciones nunca lleva datos.</button>
+    <button type="button" data-por-que="La dirección termina en 0xE, no es múltiplo de 4. Ese bus solo acepta datos en palabras alineadas.">Porque la dirección no está alineada a palabra y ese bus solo admite palabras alineadas.</button>
+    <button type="button" data-por-que="La SRAM1 se puede escribir por ambas direcciones. El problema es el alineamiento del acceso.">Porque la SRAM1 es de solo lectura en ese rango.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadenan: dos buses a la vez</h2>
+
+<p>Con dos buses, el procesador busca la instrucción siguiente mientras la carga del coeficiente usa el bus de datos. Es el mismo solapamiento del <em>pipeline</em> del Tomo 4, pero ahora se ve qué lo permite: los dos accesos usan caminos separados.</p>
+
+<p>La separación también llega a la caché. El ESP32-S3 tiene una caché de instrucciones y una de datos, y su manual dice que así puede responder a pedidos simultáneos de los dos buses. Si dos núcleos piden lo mismo a la misma caché, un árbitro decide cuál pasa primero.</p>
+
+<p>Cargar datos por el bus de instrucciones rompe esa ventaja. Esa carga compite con la búsqueda de instrucciones por el mismo bus, y la restricción de palabras alineadas se suma. Por eso la ruta normal para datos es el bus de datos (razonamiento de diseño, por confirmar con medidas).</p>
+
+<h2>Implementaciones reales: ESP32, ESP32-C3 y Cortex-M33</h2>
+
+<p>La regla «la dirección elige el bus» no depende de la ISA. El ESP32-C3 usa RISC-V y repite la partición del ESP32. El Cortex-M33 estándar reparte por dirección, pero el RP2350 lo modificó y reparte por tipo de acceso, lo que se parece a la regla Harvard.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32<br>Xtensa LX6</th><th>ESP32-C3<br>RISC-V</th><th>RP2350<br>Cortex-M33</th></tr></thead>
+  <tbody>
+    <tr><td><b>Quién elige el bus</b></td><td>por dirección: menor que 0x4000_0000 datos; 0x4000_0000 a 0x4FFF_FFFF instrucciones; desde 0x5000_0000 ambos</td><td>la misma regla</td><td>M33 estándar: por dirección (menor que 0x2000_0000, puerto Code; el resto, System). RP2350: por tipo de acceso, toda búsqueda de instrucción al puerto Code y todo load/store al System (UNCROSS_I_D)</td></tr>
+    <tr><td><b>Datos por el bus de instrucciones</b></td><td>sí, solo palabras alineadas</td><td>sí, solo palabras alineadas</td><td>M33 estándar: Code atiende instrucciones y datos bajo 0x2000_0000. RP2350: los datos nunca van al puerto Code</td></tr>
+    <tr><td><b>SRAM con dos direcciones</b></td><td>SRAM1, 128 KB, orden inverso</td><td>SRAM1, 384 KB, mismo orden</td><td>una sola: 0x2000_0000 sirve instrucciones (por Code) y datos (por System)</td></tr>
+    <tr><td><b>Ventana externa de datos</b></td><td>flash 4 MB (lectura) y SRAM 4 MB</td><td>flash 8 MB (lectura), los mismos 8 MB y 128 bloques para los dos buses</td><td>XIP desde 0x1000_0000: 32 MB de flash usados de un espacio de 64 MB</td></tr>
+    <tr><td><b>Ventana externa de instrucciones</b></td><td>11 512 KB de flash</td><td>los mismos 8 MB de flash</td><td>la misma ventana XIP</td></tr>
+    <tr><td><b>Periféricos</b></td><td>bus de datos, desde 0x3FF0_0000 (en el S3, 0x6000_0000, compartido por los dos buses)</td><td>bus de datos</td><td>desde 0x4000_0000 (APB) y 0x5000_0000 (AHB)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>El ESP32-S3 sigue el modelo del C3 con más memoria: su SRAM1 de 416 KB se ve por los dos buses en el mismo orden, y la dirección de instrucciones es la de datos más 0x006F_0000. Por ejemplo, 0x3FC8_8000 y 0x4037_8000 son la misma palabra. Su ventana externa es de 32 MB para cada bus, en bloques de 64 KB.</p>
+
+<figure class="diagrama" data-titulo="fig-1.4">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Ventana de direcciones del bus de datos hacia la memoria externa, a escala. El ESP32 tiene dos ventanas de 4 MB, una de flash y una de SRAM. El ESP32-C3 tiene una de 8 MB de flash, de solo lectura. El ESP32-S3 tiene una de 32 MB que puede apuntar a RAM o flash."><text x="16" y="38" class="sv-tit f6" text-anchor="start" font-size="20">ESP32</text><rect x="128" y="16" width="60" height="32" class="f1 sb3" stroke-width="2"/><rect x="127" y="15" width="2" height="2" class="f0"/><rect x="187" y="15" width="2" height="2" class="f0"/><rect x="127" y="47" width="2" height="2" class="f0"/><rect x="187" y="47" width="2" height="2" class="f0"/><text x="158" y="37" class="sv-lbl fb3" text-anchor="middle" font-size="16">flash</text><rect x="196" y="16" width="60" height="32" class="fa1 sa3" stroke-width="2"/><rect x="195" y="15" width="2" height="2" class="f0"/><rect x="255" y="15" width="2" height="2" class="f0"/><rect x="195" y="47" width="2" height="2" class="f0"/><rect x="255" y="47" width="2" height="2" class="f0"/><text x="226" y="37" class="sv-lbl fa3" text-anchor="middle" font-size="16">SRAM</text><text x="272" y="38" class="sv-lbl f4" text-anchor="start" font-size="16">dos ventanas de 4 MB</text><text x="16" y="94" class="sv-tit f6" text-anchor="start" font-size="20">ESP32-C3</text><rect x="128" y="72" width="120" height="32" class="f1 sb3" stroke-width="2"/><rect x="127" y="71" width="2" height="2" class="f0"/><rect x="247" y="71" width="2" height="2" class="f0"/><rect x="127" y="103" width="2" height="2" class="f0"/><rect x="247" y="103" width="2" height="2" class="f0"/><text x="188" y="93" class="sv-lbl fb3" text-anchor="middle" font-size="16">flash, 8 MB</text><text x="264" y="94" class="sv-lbl f4" text-anchor="start" font-size="16">solo lectura</text><text x="16" y="150" class="sv-tit f6" text-anchor="start" font-size="20">ESP32-S3</text><rect x="128" y="128" width="480" height="32" class="fa1 sa3" stroke-width="2"/><rect x="127" y="127" width="2" height="2" class="f0"/><rect x="607" y="127" width="2" height="2" class="f0"/><rect x="127" y="159" width="2" height="2" class="f0"/><rect x="607" y="159" width="2" height="2" class="f0"/><text x="368" y="149" class="sv-lbl fa3" text-anchor="middle" font-size="16">RAM o flash, 32 MB</text><line x1="128" y1="172" x2="128" y2="184" class="s4" stroke-width="2"/><text x="128" y="204" class="sv-lbl f4" text-anchor="start" font-size="16">0 MB</text><line x1="368" y1="172" x2="368" y2="184" class="s4" stroke-width="2"/><text x="368" y="204" class="sv-lbl f4" text-anchor="middle" font-size="16">16 MB</text><line x1="608" y1="172" x2="608" y2="184" class="s4" stroke-width="2"/><text x="608" y="204" class="sv-lbl f4" text-anchor="end" font-size="16">32 MB</text><line x1="128" y1="172" x2="608" y2="172" class="s4" stroke-width="2"/></svg>
+  <figcaption><b>fig 1.4</b>Ventana del bus de datos hacia la memoria externa, a escala. Cuanto más ancha, menos hay que reasignar el mapeo para llegar a toda la memoria.</figcaption>
+</figure>
+
+<p>El <strong>Cortex-M</strong> trae un mapa fijo definido por Arm: Code (0x0000_0000 a 0x1FFF_FFFF), SRAM (0x2000_0000 a 0x3FFF_FFFF), periféricos (0x4000_0000 a 0x5FFF_FFFF) y regiones de RAM y dispositivos externos hasta 0xDFFF_FFFF. Un fabricante coloca su memoria dentro de esas regiones y no reordena el mapa. Intentar ejecutar desde las regiones de periféricos o dispositivos externos produce una falla.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el mapa lo decide el fabricante</h4>
+  <p>Espressif define su propio mapa y lo documenta por variante. Arm fija las regiones y el fabricante las llena. Los dos enfoques son válidos, pero un programa no se puede mover entre ellos sin revisar las direcciones.</p>
+</div>
+
+<div class="caja dato">
+  <h4>dato: estándares que aplican</h4>
+  <ul>
+    <li><strong>Arm Armv8-M:</strong> define las regiones Code, SRAM, periféricos, RAM externa, dispositivos externos y bus privado (PPB).</li>
+    <li><strong>RISC-V:</strong> el mapa de memoria lo define cada diseño (por confirmar en la especificación). El C3 reutiliza la partición por dirección de los Xtensa de Espressif.</li>
+    <li><strong>AMBA:</strong> la familia de buses AHB y APB de Arm, que el nivel 2 usa para los periféricos.</li>
+  </ul>
+</div>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>El mapa es el piso sobre el que se apoya todo lo demás. La <a href="../micro/04-memoria.html">memoria del Tomo 1</a> describe qué tipo de celda hay detrás de cada región. El <a href="../micro/02-anatomia-esp32.html">Tomo 1, nivel 2</a> muestra los bloques del ESP32 que cuelgan de estos buses.</p>
+
+<p>Dentro del tomo, el <a href="02-mmio.html">nivel 2</a> explica por qué los periféricos se leen como memoria. El <a href="03-cache.html">nivel 3</a> abre la caché y la MMU que traen la flash y la PSRAM. Un acceso lento a la flash se debe al camino por la caché, no al mapa.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Dos cuentas y un porcentaje ayudan a ver el alcance del mapa.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: dirección de una palabra por la otra puerta</h4>
+  <p class="formula"><var>I</var> = 0x400A_0000 + (0x3FFF_FFFC − <var>D</var>)</p>
+  <dl>
+    <dt>D</dt><dd>0x3FFF_EA80, primera palabra de la tabla en el bus de datos (supuesto)</dd>
+    <dt>0x3FFF_FFFC</dt><dd>última palabra de la SRAM1 en el bus de datos</dd>
+  </dl>
+  <p class="resultado">I = 0x400A_0000 + 0x0000_157C = 0x400A_157C</p>
+  <p>La fórmula sirve para direcciones de palabra y vale en los dos sentidos. Con D = 0x3FFE_0000 da 0x400B_FFFC, como indica el manual.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: cuántos bloques de 64 KB caben en la ventana</h4>
+  <p class="formula">bloques = ventana / 64 KB</p>
+  <dl>
+    <dt>ESP32-S3</dt><dd>ventana de 32 MB</dd>
+    <dt>ESP32-C3</dt><dd>ventana de 8 MB, la misma para los dos buses (sin PSRAM)</dd>
+    <dt>PSRAM</dt><dd>8 MB en una placa con ESP32 o ESP32-S3 (supuesto)</dd>
+  </dl>
+  <p class="resultado">S3: 32 MB / 64 KB = 512 bloques; C3: 8 MB / 64 KB = 128 bloques; PSRAM de 8 MB en el ESP32: 8 MB / 4 MB = 2 ventanas</p>
+  <p>Una PSRAM de 8 MB cabe cuatro veces en la ventana del S3, pero en el ESP32 son dos ventanas de 4 MB y hay que cambiar el mapeo para ver toda la memoria.</p>
+</div>
+
+<p>Cuánta SRAM ven los dos buses: en el ESP32, 128 KB de 520 KB (≈ 25 %); en el ESP32-C3, 384 KB de 400 KB (96 %); en el ESP32-S3, 416 KB de 512 KB (≈ 81 %). El diseño nuevo hace casi toda la SRAM accesible para código y datos y simplifica dónde poner cada cosa.</p>
+
+<h2>Límites del modelo</h2>
+
+<p>El mapa es una vista simplificada. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>cómo arbitra la SRAM1 cuando los dos buses la piden en el mismo ciclo;</li>
+  <li>los ciclos reales de cada acceso y de cada fallo de caché;</li>
+  <li>cómo reparte el enlazador código y datos entre los bloques de SRAM;</li>
+  <li>el tamaño de bloque de la MMU del ESP32 clásico (el manual lo trata en otro capítulo);</li>
+  <li>la división de buses de otros Cortex-M (M3, M4), que no se contrastó con el manual;</li>
+  <li>las regiones reservadas y las restricciones de permisos, que el mapa omite.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Harvard modificada: dos buses, un solo espacio de direcciones, y la dirección decide el bus.</li>
+    <li>La SRAM1 del ESP32 tiene dos direcciones; en el ESP32 las palabras van en orden inverso y en el C3 y el S3, en el mismo orden.</li>
+    <li>El bus de instrucciones solo admite datos en palabras alineadas, así que los datos van por el bus de datos.</li>
+    <li>La ventana externa crece de 4 MB (ESP32) a 8 MB (C3) y 32 MB (S3). El Cortex-M usa un mapa fijo de regiones.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">En el ESP32, ¿qué dirección del bus de instrucciones corresponde a la palabra de 0x3FFE_0000 del bus de datos?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Esa es la primera dirección del rango de instrucciones, pero allí está la última palabra del bus de datos: el orden se invierte.">0x400A_0000.</button>
+    <button type="button" data-por-que="Esa dirección es de la SRAM1 del ESP32-S3, otra variante con otro mapa.">0x4037_8000.</button>
+    <button type="button" data-por-que="El orden es inverso: la primera palabra del bus de datos es la última del bus de instrucciones, 0x400B_FFFC.">0x400B_FFFC.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>, v5.8, secciones 3.3.1 a 3.3.4 y tablas 3.3-1 a 3.3-4. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em>, v1.8, secciones 4.3.1 a 4.3.3 y tablas 4.3-1 y 4.3-2. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-C3 Technical Reference Manual</em>, v1.4, secciones 3.3.1 a 3.3.3 y tablas 3.3-1 y 3.3-2. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-c3_technical_reference_manual_en.pdf">espressif.com/…/esp32-c3_technical_reference_manual_en.pdf</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>, sección 2.2 (mapa de direcciones) y sección 3.7.2.1.1 (puertos Code y System, mapa por defecto del Cortex-M33). <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>
+    <li>Arm. <em>Armv8-M Architecture Reference Manual</em>. <a href="https://developer.arm.com/documentation/ddi0553/latest">developer.arm.com/documentation/ddi0553</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada. Del orden de y por confirmar: el arbitraje de la SRAM1, los ciclos de acceso, el tamaño de bloque de la MMU del ESP32 clásico y la división de buses de los Cortex-M3 y M4. Las direcciones y tamaños salen de las tablas de cada manual; la tabla de ejemplo de 0x3FFF_EA80 es un supuesto didáctico.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, buses, nivel-01</footer>
+</body>
+</html>

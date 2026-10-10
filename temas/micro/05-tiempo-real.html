@@ -155,7 +155,7 @@
 
 <div class="caja ojo">
   <h4>ojo: niveles y latencias</h4>
-  <p>La guía de ESP-IDF habla de niveles 1 a 7 (con el 6 para depuración y el 7 como NMI), mientras que el manual del S3 describe 1 a 5 más NMI. No pude confirmar cómo se corresponden, así que en este nivel usamos la numeración del manual. Las latencias que siguen también son <strong>del orden de</strong> lo que miden usuarios, no cifras oficiales de Espressif.</p>
+  <p>La guía de ESP-IDF habla de niveles 1 a 7 (con el 6 para depuración y el 7 como NMI), mientras que el manual del S3 describe 1 a 5 más NMI. Se corresponden: la configuración del núcleo que publica ESP-IDF define seis niveles (el 6 es el de depuración, con vector en 0x280), pone la NMI como nivel 7 (vector en 0x2C0) y enmascara hasta el nivel 3 durante una excepción. Los niveles 1 a 5 son los mismos en ambas numeraciones; el <a href="../procesador/04-excepciones.html">Tomo 4, nivel 4</a> los sigue por dentro del núcleo. Las latencias que siguen también son <strong>del orden de</strong> lo que miden usuarios, no cifras oficiales de Espressif.</p>
 </div>
 
 <h2>Qué pasa cuando llega una interrupción</h2>
@@ -167,6 +167,10 @@
   <li>En los niveles 1 a 3, un despachador del sistema <strong>guarda el contexto</strong> (los registros de la tarea interrumpida) en la pila, identifica qué periférico disparó y llama a tu rutina en C. Al volver, restaura todo.</li>
   <li>Si la rutina despertó a una tarea más prioritaria, el sistema salta a esa tarea en lugar de volver a la interrumpida.</li>
 </ol>
+
+<p>Del lado del periférico, la fuente pasa por cuatro registros que se llaman igual salvo la terminación. <strong>INT_RAW</strong> es la bandera cruda: el hardware la sube cuando ocurre el evento, esté o no habilitada. <strong>INT_ENA</strong> es la máscara que elegís vos. <strong>INT_ST</strong> es el estado: vale 1 solo si la bandera cruda y la habilitación están en 1, y es la que cuenta para generar la interrupción.</p>
+
+<p>La bandera en general no se baja sola al entrar a la rutina. Si queda en 1, la interrupción sigue pendiente y el núcleo vuelve a entrar apenas termina, en un lazo. Por eso la rutina tiene que limpiarla escribiendo en <strong>INT_CLR</strong>. Más sobre cómo el núcleo toma la excepción en <a href="../procesador/04-excepciones.html">Tomo 4, nivel 4</a>.</p>
 
 <figure class="diagrama" data-titulo="fig-5.2 animada">
   <canvas data-motor="chip05-irq"></canvas>
@@ -454,6 +458,7 @@
     <li>Espressif Systems. <em>ESP-IDF: Performance: Speed</em> (prioridades y núcleos de las tareas del sistema). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/speed.html">docs.espressif.com/…/performance/speed.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración de FreeRTOS</em> (tick de 100 Hz, 25 prioridades). <a href="https://github.com/espressif/esp-idf/blob/master/components/freertos/Kconfig">github.com/espressif/esp-idf/…/components/freertos/Kconfig</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración del sistema</em> (TWDT de 5 s, IWDT de 300/800 ms). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_system/Kconfig">github.com/espressif/esp-idf/…/components/esp_system/Kconfig</a></li>
+    <li>Espressif Systems. <em>ESP-IDF, configuración del núcleo Xtensa del ESP32-S3</em> (core-isa.h: niveles de interrupción, vector de depuración y de la NMI, nivel enmascarado por una excepción). <a href="https://github.com/espressif/esp-idf/tree/master/components/xtensa">github.com/espressif/esp-idf/…/components/xtensa</a></li>
     <li>Espressif Systems. <em>ESP-IDF, configuración de Wi-Fi</em> (núcleo del controlador). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/Kconfig">github.com/espressif/esp-idf/…/components/esp_wifi/Kconfig</a></li>
     <li>Real Time Engineers. <em>Mastering the FreeRTOS Real Time Kernel</em> (tareas y tick, colas, temporizadores, interrupciones, recursos, notificaciones). <a href="https://github.com/FreeRTOS/FreeRTOS-Kernel-Book">github.com/FreeRTOS/FreeRTOS-Kernel-Book</a></li>
     <li>Usuarios de foros. <em>Interrupt latency on ESP32</em> (medición no oficial de unos 2 µs). <a href="https://www.eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/">eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/</a></li>

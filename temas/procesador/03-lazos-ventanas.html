@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 3: Lazos sin sobrecarga y ventanas de registros</title>
+<meta name="description" content="Cómo el Xtensa repite un lazo sin ejecutar un salto y pasa argumentos entre funciones sin tocar la RAM, siguiendo el filtro FIR del nivel 1. La comparación cruza Xtensa, RISC-V y Arm.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 3: Lazos sin sobrecarga y ventanas de registros">
+<meta property="og:description" content="Cómo el Xtensa repite un lazo sin ejecutar un salto y pasa argumentos entre funciones sin tocar la RAM, siguiendo el filtro FIR del nivel 1. La comparación cruza Xtensa, RISC-V y Arm.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="procesador" data-nivel="3">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="03">nivel 03, 14 min de lectura</span>
+  <h1>Lazos sin sobrecarga y ventanas de registros</h1>
+  <p class="bajada">Cómo el Xtensa repite un lazo sin ejecutar un salto y pasa argumentos entre funciones sin tocar la RAM, siguiendo el filtro FIR del nivel 1. La comparación cruza Xtensa, RISC-V y Arm.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel podrás…</h4>
+  <ul>
+    <li>Explicar cómo LBEG, LEND y LCOUNT devuelven el PC al inicio de un lazo sin instrucción de salto.</li>
+    <li>Decir por qué el lazo de hardware no se anida y qué reglas impone.</li>
+    <li>Seguir una llamada por la ventana de registros: CALL8, ENTRY y RETW.</li>
+    <li>Describir qué pasa en un desbordamiento y un subdesbordamiento de ventana.</li>
+    <li>Comparar con RISC-V y Cortex-M, que usan un banco plano y la pila.</li>
+  </ul>
+</div>
+
+<h2>El problema: lo que cuesta repetir y llamar</h2>
+
+<p>En el <a href="01-procesador.html">nivel 1</a>, el filtro FIR recorría 64 coeficientes y cada vuelta terminaba con un salto tomado. Suponíamos que ese salto costaba un ciclo más dos burbujas. Ahora, al final de cada muestra, una función de escalado ajusta la ganancia.</p>
+
+<p>Aparecen dos preguntas: ¿cuánto cuesta cerrar cada vuelta del lazo y cuánto llamar a la función? El Xtensa responde con dos mecanismos de hardware. Tres registros devuelven el PC al inicio del lazo sin ejecutar un salto. Una ventana de 16 registros sobre 64 físicos pasa los argumentos sin copiarlos a la pila. Cada uno tiene un límite.</p>
+
+<h2>Las dos opciones vistas desde afuera</h2>
+
+<p>Un <strong>lazo sin sobrecarga</strong> (<em>zero-overhead loop</em>) repite un bloque de instrucciones sin que el cuerpo contenga la instrucción de salto ni el contador. Entran la cantidad de vueltas y las direcciones donde el cuerpo empieza y termina. La búsqueda de instrucciones lleva la cuenta y vuelve sola al inicio.</p>
+
+<p>Una <strong>ventana de registros</strong> es una vista de 16 registros que se desliza sobre un banco más grande. Una llamada indica cuánto avanzar (4, 8 o 12 registros) y la función ve 16 registros nuevos; los primeros son los últimos del llamador. La ISA Xtensa incluye ambas como opciones: cada diseñador decide si las configura.</p>
+
+<div class="caja dato">
+  <h4>dato: qué confirma Espressif</h4>
+  <ul>
+    <li>El TRM v1.8 del ESP32-S3 (LX7) da 64 registros AR, de los que el programa ve 16 por vez.</li>
+    <li>La configuración del núcleo que publica ESP-IDF activa el lazo sin sobrecarga y la ventana en el ESP32 (LX6) y en el ESP32-S3 (LX7), con 64 registros físicos. Los manuales técnicos de Espressif no nombran el lazo.</li>
+  </ul>
+</div>
+
+<h2>Adentro del lazo: tres registros y un comparador</h2>
+
+<p>La opción agrega tres registros especiales de 32 bits. <strong>LBEG</strong> guarda la dirección de la primera instrucción del cuerpo. <strong>LEND</strong> guarda la dirección de la instrucción que sigue al cuerpo, no la de su última instrucción. <strong>LCOUNT</strong> cuenta las vueltas que faltan. Los tres tienen una sola copia en el núcleo.</p>
+
+<figure class="diagrama" data-titulo="fig-3.1">
+  <svg viewBox="0 0 640 320" role="img" aria-label="Hardware del lazo sin sobrecarga. El contador de programa pide instrucciones a la memoria; un comparador mira si el PC siguiente es igual a LEND. Si lo es y LCOUNT no es cero, el PC recibe LBEG y LCOUNT baja en uno. El cuerpo del lazo son tres instrucciones, de la carga de la muestra a la MAC."><text x="104" y="24" class="sv-tit f6" text-anchor="middle" font-size="16">memoria de instrucciones</text><rect x="16" y="40" width="176" height="40" class="f1 s3" stroke-width="2"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="191" y="39" width="2" height="2" class="f0"/><rect x="15" y="79" width="2" height="2" class="f0"/><rect x="191" y="79" width="2" height="2" class="f0"/><text x="104" y="65" class="sv-tit f6" text-anchor="middle" font-size="16">arma el lazo</text><rect x="16" y="80" width="176" height="40" class="fa1 sa3" stroke-width="2"/><rect x="15" y="79" width="2" height="2" class="f0"/><rect x="191" y="79" width="2" height="2" class="f0"/><rect x="15" y="119" width="2" height="2" class="f0"/><rect x="191" y="119" width="2" height="2" class="f0"/><text x="104" y="105" class="sv-tit f6" text-anchor="middle" font-size="16">carga muestra</text><rect x="16" y="120" width="176" height="40" class="fa1 sa3" stroke-width="2"/><rect x="15" y="119" width="2" height="2" class="f0"/><rect x="191" y="119" width="2" height="2" class="f0"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="191" y="159" width="2" height="2" class="f0"/><text x="104" y="145" class="sv-tit f6" text-anchor="middle" font-size="16">carga coeficiente</text><rect x="16" y="160" width="176" height="40" class="fa1 sa3" stroke-width="2"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="191" y="159" width="2" height="2" class="f0"/><rect x="15" y="199" width="2" height="2" class="f0"/><rect x="191" y="199" width="2" height="2" class="f0"/><text x="104" y="185" class="sv-tit f6" text-anchor="middle" font-size="16">MAC</text><rect x="16" y="200" width="176" height="40" class="f1 s3" stroke-width="2"/><rect x="15" y="199" width="2" height="2" class="f0"/><rect x="191" y="199" width="2" height="2" class="f0"/><rect x="15" y="239" width="2" height="2" class="f0"/><rect x="191" y="239" width="2" height="2" class="f0"/><text x="104" y="225" class="sv-tit f6" text-anchor="middle" font-size="16">lo que sigue</text><line x1="196" y1="100" x2="236" y2="100" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><text x="244" y="105" class="sv-lbl fc3" text-anchor="start" font-size="16">LBEG</text><line x1="196" y1="220" x2="236" y2="220" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><text x="244" y="225" class="sv-lbl fc3" text-anchor="start" font-size="16">LEND</text><rect x="352" y="40" width="96" height="40" class="fa1 sa3" stroke-width="2"/><rect x="351" y="39" width="2" height="2" class="f0"/><rect x="447" y="39" width="2" height="2" class="f0"/><rect x="351" y="79" width="2" height="2" class="f0"/><rect x="447" y="79" width="2" height="2" class="f0"/><text x="400" y="65" class="sv-tit f6" text-anchor="middle" font-size="16">PC</text><line x1="352" y1="60" x2="194" y2="60" class="sa3" stroke-width="2"/><rect x="192" y="56" width="2" height="8" class="fa3"/><rect x="190" y="57" width="2" height="6" class="fa3"/><rect x="188" y="58" width="2" height="4" class="fa3"/><rect x="186" y="59" width="2" height="2" class="fa3"/><text x="272" y="52" class="sv-lbl fa3" text-anchor="middle" font-size="16">dirección</text><rect x="520" y="40" width="104" height="40" class="f1 sc3" stroke-width="2"/><rect x="519" y="39" width="2" height="2" class="f0"/><rect x="623" y="39" width="2" height="2" class="f0"/><rect x="519" y="79" width="2" height="2" class="f0"/><rect x="623" y="79" width="2" height="2" class="f0"/><text x="572" y="65" class="sv-tit f6" text-anchor="middle" font-size="16">LBEG</text><line x1="520" y1="60" x2="456" y2="60" class="sa3" stroke-width="2"/><rect x="454" y="56" width="2" height="8" class="fa3"/><rect x="452" y="57" width="2" height="6" class="fa3"/><rect x="450" y="58" width="2" height="4" class="fa3"/><rect x="448" y="59" width="2" height="2" class="fa3"/><text x="488" y="52" class="sv-lbl fa3" text-anchor="middle" font-size="16">recarga</text><line x1="400" y1="80" x2="400" y2="112" class="sa3" stroke-width="2"/><rect x="396" y="112" width="8" height="2" class="fa3"/><rect x="397" y="114" width="6" height="2" class="fa3"/><rect x="398" y="116" width="4" height="2" class="fa3"/><rect x="399" y="118" width="2" height="2" class="fa3"/><text x="408" y="100" class="sv-lbl fa3" text-anchor="start" font-size="16">PC siguiente</text><rect x="352" y="120" width="96" height="56" class="f1 sc3" stroke-width="2"/><rect x="351" y="119" width="2" height="2" class="f0"/><rect x="447" y="119" width="2" height="2" class="f0"/><rect x="351" y="175" width="2" height="2" class="f0"/><rect x="447" y="175" width="2" height="2" class="f0"/><text x="400" y="144" class="sv-tit f6" text-anchor="middle" font-size="16">compara</text><text x="400" y="164" class="sv-tit f6" text-anchor="middle" font-size="16">con LEND</text><rect x="520" y="120" width="104" height="56" class="f1 sc3" stroke-width="2"/><rect x="519" y="119" width="2" height="2" class="f0"/><rect x="623" y="119" width="2" height="2" class="f0"/><rect x="519" y="175" width="2" height="2" class="f0"/><rect x="623" y="175" width="2" height="2" class="f0"/><text x="572" y="153" class="sv-tit f6" text-anchor="middle" font-size="16">LEND</text><line x1="520" y1="148" x2="456" y2="148" class="sa3" stroke-width="2"/><rect x="454" y="144" width="2" height="8" class="fa3"/><rect x="452" y="145" width="2" height="6" class="fa3"/><rect x="450" y="146" width="2" height="4" class="fa3"/><rect x="448" y="147" width="2" height="2" class="fa3"/><line x1="400" y1="176" x2="400" y2="208" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="396" y="208" width="8" height="2" class="fc3"/><rect x="397" y="210" width="6" height="2" class="fc3"/><rect x="398" y="212" width="4" height="2" class="fc3"/><rect x="399" y="214" width="2" height="2" class="fc3"/><text x="408" y="198" class="sv-lbl fc3" text-anchor="start" font-size="16">iguales</text><rect x="352" y="216" width="96" height="48" class="f1 sc3" stroke-width="2"/><rect x="351" y="215" width="2" height="2" class="f0"/><rect x="447" y="215" width="2" height="2" class="f0"/><rect x="351" y="263" width="2" height="2" class="f0"/><rect x="447" y="263" width="2" height="2" class="f0"/><text x="400" y="245" class="sv-tit f6" text-anchor="middle" font-size="16">LCOUNT</text><text x="16" y="288" class="sv-lbl f6" text-anchor="start" font-size="16">Si son iguales y LCOUNT no es 0, el PC recibe LBEG</text><text x="16" y="312" class="sv-lbl f6" text-anchor="start" font-size="16">y LCOUNT baja 1. Sin salto, sin decodificar, sin burbuja.</text><rect x="14" width="180" height="44" class="fn sa4" stroke-width="4"><animate attributeName="y" values="78;118;158;78;118;158;198" dur="5.6s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect></svg>
+  <figcaption><b>fig 3.1</b>El lazo de hardware. El PC (naranja) pide instrucciones y un comparador (verde) lo mira contra LEND. El marco animado recorre el cuerpo.</figcaption>
+</figure>
+
+<p>La instrucción LOOP carga los tres registros de una vez: LCOUNT recibe la cuenta menos uno, LBEG la dirección que sigue a LOOP y LEND esa dirección más un desplazamiento de 8 bits. Por eso el cuerpo mide hasta 256 bytes.</p>
+
+<p>Después de cada instrucción buscada, el secuenciador calcula el PC siguiente y lo compara con LEND. Es el multiplexor del PC del nivel 1, con un candidato nuevo: LBEG. Si coinciden y LCOUNT no es cero, el PC recibe LBEG y LCOUNT baja uno.</p>
+
+<div class="caja analogia">
+  <h4>analogía: un temporizador con recarga automática</h4>
+  <p>Es un timer con auto-reload: al llegar al tope recarga el inicio sin intervención del programa.</p>
+</div>
+
+<h2>Recorrido paso a paso: el lazo del filtro</h2>
+
+<p>Seguimos el lazo interno del FIR con 64 coeficientes. El cuerpo tiene tres instrucciones: carga de la muestra, carga del coeficiente y MAC. El nivel 1 contaba una cuarta, el salto, que acá desaparece. Son tres por el supuesto del modelo: un lazo real agrega instrucciones para actualizar punteros.</p>
+
+<ol>
+  <li><strong>Armado:</strong> un registro recibe 64 y LOOP escribe LCOUNT = 63, LBEG = la carga de la muestra y LEND = la instrucción que sigue a la MAC. LOOP cuenta entre los 20 de sobrecarga del nivel 1 (supuesto).</li>
+  <li><strong>Primera vuelta:</strong> el PC avanza de a 3 bytes por las dos cargas y la MAC. Al buscar la MAC, el PC siguiente es igual a LEND.</li>
+  <li><strong>Vuelta atrás:</strong> el comparador ve la igualdad. LCOUNT vale 63, no es cero: baja a 62 y el PC recibe LBEG. No hubo salto que decodificar. El manual de la ISA lo describe como una ayuda del motor de búsqueda, sin penalización de salto tomado.</li>
+  <li><strong>Vueltas 2 a 63:</strong> el mismo proceso, con LCOUNT bajando hasta 0.</li>
+  <li><strong>Última vuelta:</strong> con LCOUNT en 0 el comparador no recarga. El PC sigue a LEND, y el programa sale del lazo sin instrucción extra.</li>
+</ol>
+
+<h3>Por qué no se anidan, y otras reglas</h3>
+
+<p>Con una sola terna de registros hay un lazo activo por vez: uno interno sobrescribiría LBEG, LEND y LCOUNT del externo. El manual lo resuelve así: el lazo externo se escribe con saltos comunes, porque corre pocas veces. En el filtro, el externo recorre las muestras.</p>
+
+<ul>
+  <li>La última instrucción del cuerpo no puede ser una llamada, un ISYNC, un WAITI ni una lectura de LCOUNT. Por eso la llamada de escalado va después del lazo, no dentro.</li>
+  <li>Un salto a la dirección LEND no vuelve a LBEG: sale del lazo.</li>
+  <li>La primera instrucción del cuerpo debe caer dentro de una unidad alineada de 4 bytes o más, y el ensamblador agrega relleno si hace falta.</li>
+  <li>Mientras PS.EXCM vale 1, durante una excepción, el hardware de lazo está desactivado.</li>
+</ul>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué no se puede anidar un segundo lazo de hardware dentro del primero?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El comparador no distingue qué tipo de instrucción busca; solo mira el PC contra LEND. No es el motivo.">Porque el comparador solo reconoce lazos de tres instrucciones.</button>
+    <button type="button" data-por-que="El límite de 256 bytes se refiere al tamaño del cuerpo, no al anidamiento.">Porque el cuerpo de un lazo no puede pasar de 256 bytes.</button>
+    <button type="button" data-por-que="Hay una sola terna LBEG, LEND y LCOUNT. Un lazo interno la sobrescribiría y el externo perdería su cuenta.">Porque hay una sola terna LBEG, LEND y LCOUNT, y el lazo interno la pisaría.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+
+
+<h2>Adentro de la ventana: 64 registros y dos punteros</h2>
+
+<p>El banco tiene 64 registros AR de 32 bits. El programa solo ve 16, a0 a a15, y el número de registro se traduce en uno físico. Dos registros del núcleo controlan la traducción. <strong>WINDOWBASE</strong> tiene 4 bits y da la posición de la ventana, en grupos de 4 registros. <strong>WINDOWSTART</strong> tiene un bit por grupo, 16 en total, y marca dónde empieza el marco de cada función en curso.</p>
+
+<p>Los bits de WINDOWSTART los pone ENTRY y los borra RETW. Con ellos el núcleo sabe qué grupos guardan datos útiles de una función que aún no terminó. Con ventana, a0 guarda la dirección de retorno, a1 la pila y a2 a a7 los argumentos.</p>
+
+<figure class="diagrama" data-titulo="fig-3.2">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Registros físicos en 16 grupos de 4. Antes de la llamada, la ventana cubre los grupos 0 a 3. Después de CALL8 y ENTRY, WINDOWBASE vale 2 y la ventana cubre los grupos 2 a 5; los grupos 2 y 3 son compartidos y pasan los argumentos. La fila de WINDOWSTART tiene un 1 en el grupo 0 y otro en el 2."><text x="96" y="18" class="sv-lbl f6" text-anchor="start" font-size="16">64 registros en 16 grupos de 4</text><text x="112" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">0</text><text x="144" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">1</text><text x="176" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">2</text><text x="208" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">3</text><text x="240" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">4</text><text x="272" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">5</text><text x="304" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">6</text><text x="336" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">7</text><text x="368" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">8</text><text x="400" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">9</text><text x="432" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">10</text><text x="464" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">11</text><text x="496" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">12</text><text x="528" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">13</text><text x="560" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">14</text><text x="592" y="44" class="sv-lbl f4" text-anchor="middle" font-size="16">15</text><rect x="96" y="56" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="128" y="56" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="160" y="56" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="192" y="56" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="224" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="256" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="288" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="320" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="352" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="384" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="416" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="448" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="480" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="512" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="544" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="576" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="16" y="77" class="sv-lbl f6" text-anchor="start" font-size="16">antes</text><rect x="94" y="52" width="132" height="40" class="fn sa4" stroke-width="4"/><rect x="96" y="120" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="128" y="120" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="160" y="120" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="192" y="120" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="224" y="120" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="256" y="120" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="288" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="320" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="352" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="384" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="416" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="448" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="480" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="512" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="544" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="576" y="120" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="16" y="141" class="sv-lbl f6" text-anchor="start" font-size="16">después</text><rect x="158" y="116" width="132" height="40" class="fn sb4" stroke-width="4"/><text x="352" y="108" class="sv-lbl f6" text-anchor="middle" font-size="16">CALL8 anota 8 y ENTRY suma 2 a WINDOWBASE</text><text x="96" y="186" class="sv-lbl f6" text-anchor="start" font-size="16">WINDOWSTART: un bit por grupo, en 1 donde empieza un marco</text><rect x="96" y="196" width="32" height="28" class="fa1 sa3" stroke-width="2"/><text x="112" y="215" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="128" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="144" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="160" y="196" width="32" height="28" class="fb1 sb3" stroke-width="2"/><text x="176" y="215" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="192" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="208" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="224" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="240" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="256" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="272" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="288" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="304" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="320" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="336" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="352" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="368" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="384" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="400" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="416" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="432" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="448" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="464" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="480" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="496" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="512" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="528" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="544" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="560" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="576" y="196" width="32" height="28" class="f1 s3" stroke-width="2"/><text x="592" y="215" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><text x="96" y="252" class="sv-lbl f6" text-anchor="start" font-size="16">WINDOWBASE vale 2: la ventana empieza en el registro 8</text><text x="96" y="276" class="sv-lbl fc3" text-anchor="start" font-size="16">verde: a8 a a15 del llamador son a0 a a7 del llamado</text><text x="96" y="296" class="sv-lbl f4" text-anchor="start" font-size="16">naranja: marco del llamador; azul: marco del llamado</text></svg>
+  <figcaption><b>fig 3.2</b>Antes y después de CALL8 y ENTRY. La ventana (marco grueso) se corre dos grupos; los verdes quedan compartidos y pasan argumentos. Abajo, los bits de WINDOWSTART.</figcaption>
+</figure>
+
+<h2>Recorrido paso a paso: la llamada al escalado</h2>
+
+<p>La tarea del filtro terminó los 64 productos y llama al escalado con CALL8. Seguí el camino de la figura 3.2.</p>
+
+<ol>
+  <li><strong>Argumento:</strong> la tarea deja el resultado en a10, que con CALL8 será a2 del llamado.</li>
+  <li><strong>CALL8:</strong> anota el incremento 8, deja en a8 la dirección de retorno (con el incremento en sus dos bits altos) y salta a la función.</li>
+  <li><strong>ENTRY:</strong> la primera instrucción de la función suma 2 a WINDOWBASE (8 registros entre 4). Reserva el marco de pila y pone el bit del marco nuevo en WINDOWSTART. Ahora a0 del llamado es a8 del llamador.</li>
+  <li><strong>Cálculo:</strong> la función escala el valor con sus registros y deja el resultado en a2.</li>
+  <li><strong>RETW:</strong> toma el incremento de los bits altos de a0, resta 2 a WINDOWBASE, borra el bit del marco y salta a la dirección de retorno. La tarea encuentra el resultado en a10.</li>
+</ol>
+
+<p>Los argumentos y la dirección de retorno cambiaron de dueño sin moverse; en un banco plano habría que copiarlos o apilarlos.</p>
+
+<h2>Cuando la ventana se agota: desbordamiento y subdesbordamiento</h2>
+
+<p>Con CALL8 repetida, cada marco avanza dos grupos. Tras ocho llamadas (nueve funciones activas), la que crea el noveno marco vuelve a los grupos del primero.</p>
+
+<figure class="diagrama" data-titulo="fig-3.3">
+  <svg viewBox="0 0 640 368" role="img" aria-label="Desbordamiento de ventana. Ocho marcos de llamadas CALL8, de A a H, ocupan los 16 grupos de registros. La octava llamada, de H a I, necesita los grupos 4 y 5, que todavía guardan a A. Un manejador guarda esos registros en la pila y limpia el bit de A en WINDOWSTART; el noveno marco, I, ocupa esos grupos."><text x="96" y="18" class="sv-lbl f6" text-anchor="start" font-size="16">cadena de llamadas CALL8, marcos de A a I</text><rect x="96" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="128" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="160" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="192" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="224" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="256" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="288" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="320" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="352" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="384" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="416" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="448" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="480" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="512" y="56" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="544" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="576" y="56" width="32" height="32" class="f2 s3" stroke-width="2"/><text x="128" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">G</text><text x="192" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">H</text><text x="256" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">A</text><text x="320" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">B</text><text x="384" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">C</text><text x="448" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">D</text><text x="512" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">E</text><text x="576" y="77" class="sv-tit f6" text-anchor="middle" font-size="16">F</text><text x="16" y="77" class="sv-lbl f6" text-anchor="start" font-size="16">antes</text><rect x="158" y="52" width="132" height="40" class="fn sb4" stroke-width="4"/><rect x="222" y="54" width="68" height="36" class="fn sd3" stroke-width="2"/><text x="96" y="116" class="sv-lbl f6" text-anchor="start" font-size="16">ventana de H: grupos 2 a 5. Los grupos 4 y 5 son de A.</text><text x="96" y="138" class="sv-lbl fd3" text-anchor="start" font-size="16">H arma el argumento de I en a10 y toca registros de A.</text><rect x="96" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="128" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="160" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="192" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="224" y="168" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="256" y="168" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="288" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="320" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="352" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="384" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="416" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="448" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="480" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="512" y="168" width="32" height="32" class="f1 s3" stroke-width="2"/><rect x="544" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><rect x="576" y="168" width="32" height="32" class="f2 s3" stroke-width="2"/><text x="128" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">G</text><text x="192" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">H</text><text x="256" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">I</text><text x="320" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">B</text><text x="384" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">C</text><text x="448" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">D</text><text x="512" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">E</text><text x="576" y="189" class="sv-tit f6" text-anchor="middle" font-size="16">F</text><text x="16" y="189" class="sv-lbl f6" text-anchor="start" font-size="16">después</text><line x1="256" y1="200" x2="256" y2="256" class="sd3" stroke-width="2"/><rect x="252" y="256" width="8" height="2" class="fd3"/><rect x="253" y="258" width="6" height="2" class="fd3"/><rect x="254" y="260" width="4" height="2" class="fd3"/><rect x="255" y="262" width="2" height="2" class="fd3"/><text x="300" y="226" class="sv-lbl f6" text-anchor="start" font-size="16">el manejador guarda A en la pila</text><text x="300" y="250" class="sv-lbl f6" text-anchor="start" font-size="16">y limpia su bit de WINDOWSTART</text><rect x="176" y="264" width="160" height="40" class="f1 sd3" stroke-width="2"/><rect x="175" y="263" width="2" height="2" class="f0"/><rect x="335" y="263" width="2" height="2" class="f0"/><rect x="175" y="303" width="2" height="2" class="f0"/><rect x="335" y="303" width="2" height="2" class="f0"/><text x="256" y="289" class="sv-tit f6" text-anchor="middle" font-size="16">pila (SRAM)</text><text x="96" y="332" class="sv-lbl f6" text-anchor="start" font-size="16">Al volver a A, RETW halla su bit en 0 y salta el manejador</text><text x="96" y="354" class="sv-lbl f6" text-anchor="start" font-size="16">de subdesbordamiento, que recarga A desde la pila.</text></svg>
+  <figcaption><b>fig 3.3</b>Ocho llamadas CALL8, nueve marcos en 16 grupos. A a H caben; I necesita los grupos de A, que el manejador guarda en la pila.</figcaption>
+</figure>
+
+<p>El núcleo revisa la ventana al ejecutar CALLn, ENTRY o una instrucción que use un registro cuyo grupo aún pertenece a un marco anterior. Si encuentra uno ocupado, se produce una <strong>excepción de desbordamiento</strong>. Hay tres vectores, según el tamaño del marco a guardar: 4, 8 o 12 registros.</p>
+
+<p>El hardware rota la ventana hasta el marco viejo y salta al vector. Un manejador de software copia esos registros a la pila, limpia el bit de WINDOWSTART y vuelve con una instrucción especial que repite la que falló.</p>
+
+<p>La vuelta es la imagen simétrica. Cuando RETW intenta regresar a un marco cuyo bit de WINDOWSTART está en 0, ocurre un <strong>subdesbordamiento</strong>. Un manejador recarga los registros desde la pila y RETW se vuelve a ejecutar.</p>
+
+<h2>Cómo se encadenan: lazo, ventana y pipeline</h2>
+
+<p>En cada muestra, LOOP arma los registros y corren 64 vueltas sin salto: el pipeline del <a href="02-pipeline.html">nivel 2</a> recibe instrucciones útiles en cada ciclo. Al final, CALL8 y ENTRY rotan la ventana, el escalado trabaja y RETW la devuelve.</p>
+
+<p>El lazo quita el salto que dejaba burbujas y la ventana quita las cargas y guardados de una llamada. Los dos actúan sobre el costo de control, no sobre el cálculo de la MAC.</p>
+
+<h2>Implementaciones reales: Xtensa, RISC-V y Arm</h2>
+
+<p>La pregunta común es qué hace cada núcleo cuando una función llama a otra y cuando un lazo repite. La tabla compara Xtensa con el RISC-V del ESP32-C3 y los Cortex-M. En Xtensa, los registros visibles son a0 a a15. En RISC-V, la dirección de retorno va en el registro ra; en Arm, en el registro de enlace LR.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32 / ESP32-S3<br>Xtensa</th><th>ESP32-C3<br>RISC-V RV32IMC</th><th>Cortex-M<br>Arm</th></tr></thead>
+  <tbody>
+    <tr><td><b>Banco de registros</b></td><td>64 físicos, 16 visibles en una ventana</td><td>32 registros planos</td><td>16 registros planos (R0 a R15)</td></tr>
+    <tr><td><b>Llamada</b></td><td>CALL4, 8 o 12, ENTRY y RETW rotan la ventana</td><td>guarda el retorno en ra; la función guarda en la pila lo que use</td><td>guarda el retorno en LR; la función apila lo que use</td></tr>
+    <tr><td><b>Argumentos en registros</b></td><td>a2 a a7, vistos desde el llamado</td><td>a0 a a7 (8)</td><td>R0 a R3 (4)</td></tr>
+    <tr><td><b>Registros que conserva el llamado</b></td><td>los rota la ventana; a la pila solo si hay desbordamiento</td><td>s0 a s11</td><td>R4 a R11</td></tr>
+    <tr><td><b>Lazo por hardware</b></td><td>opción de lazo: LBEG, LEND y LCOUNT, una sola terna</td><td>no existe en la ISA base; cada vuelta usa un salto condicional</td><td>no en Cortex-M4 ni en Cortex-M33; sí en Armv8.1-M (Cortex-M55) con WLS, DLS y LE</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>El RP2350 ilustra el límite: su Cortex-M33 (Armv8-M Main) no tiene extensión de lazo, y su alternativo Hazard3 es RISC-V. Un lazo corto en esos núcleos paga un salto por vuelta.</p>
+
+<p>La ventana gana en llamadas cortas y frecuentes, pero su banco de 64 registros ocupa más silicio (256 bytes) y suma excepciones. El banco plano es simple y paga la pila en cada llamada: una decisión de diseño, no una ventaja absoluta.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>La pila donde se vuelcan los registros vive en la SRAM del micro (<a href="../micro/04-memoria.html">Tomo 1, nivel 4</a>): un desbordamiento es un acceso a memoria como cualquier otro.</p>
+
+<p>Ambas opciones valen para los dos núcleos del ESP32 (<a href="../micro/02-anatomia-esp32.html">Tomo 1, nivel 2</a>). Las excepciones de ventana usan los mismos registros EPC y PS.EXCM que el resto; el <a href="04-excepciones.html">nivel 4</a> los explica.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Tres cuentas ordenan lo anterior, con los supuestos del nivel 1.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: ahorro del lazo sin sobrecarga</h4>
+  <p class="formula">ahorro = <var>N</var> · (1 + <var>b</var>); ciclos' = ciclos − ahorro</p>
+  <dl>
+    <dt>N</dt><dd>64 coeficientes, una instrucción de salto por vuelta</dd>
+    <dt>b</dt><dd>2 burbujas por salto tomado (supuesto del nivel 1)</dd>
+    <dt>ciclos</dt><dd>404 ciclos por muestra, calculados en el nivel 1</dd>
+    <dt>T</dt><dd>4,17 ns (240 MHz)</dd>
+  </dl>
+  <p class="resultado">ahorro = 64 · 3 = 192 ciclos; ciclos' = 404 − 192 = 212 ciclos; t = 212 · 4,17 ns ≈ 0,88 µs</p>
+  <p>La carga baja de 3,4 % (404 / 12 000) a 1,8 % (212 / 12 000) de un núcleo: 47 % menos de ciclos.</p>
+  <p>404 es la base del nivel 1, que no cuenta las burbujas de carga; el <a href="02-pipeline.html">nivel 2</a> la afina a 468. Acá se usa 404 para aislar el efecto del lazo. La burbuja de la carga sigue dentro del cuerpo.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: costo de llamar al escalado</h4>
+  <p class="formula">accesos = 2 · <var>k</var> (banco plano)</p>
+  <p class="formula">accesos = 0 (ventana, sin desbordamiento)</p>
+  <dl>
+    <dt>k</dt><dd>4 registros que la función debe conservar (supuesto)</dd>
+    <dt>acceso</dt><dd>1 ciclo en SRAM interna, en general (TRM del S3, sección 4.3.2); supuesto: sin esperas ni contención</dd>
+  </dl>
+  <p class="resultado">banco plano: 2 · 4 = 8 accesos, es decir 8 ciclos por llamada (supuesto); 8 / 212 ≈ 3,8 % del filtro</p>
+  <p>Si cada acceso costara 2 ciclos (supuesto pesimista), serían 16 ciclos y 7,5 %. Con ventana, la llamada no accede a la pila mientras no haya desbordamiento.</p>
+  <p>Un desbordamiento en cada llamada sumaría del orden de 20 instrucciones: unas 10 al desbordar y otras 10 al recargar al volver (manejadores de ejemplo del manual) y empeoraría el resultado.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: profundidad de llamadas sin desbordamiento</h4>
+  <p class="formula">niveles ≈ (64 − <var>r</var><sub>últ</sub>) / <var>r</var><sub>prom</sub> + 1</p>
+  <dl>
+    <dt>r_prom</dt><dd>6,5 registros vivos por llamada (supuesto del manual de la ISA)</dd>
+    <dt>r_últ</dt><dd>12 registros en la última función (supuesto del manual)</dd>
+    <dt>64</dt><dd>registros físicos del banco</dd>
+  </dl>
+  <p class="resultado">niveles = (64 − 12) / 6,5 + 1 = 9 funciones activas encadenadas</p>
+  <p>Tarea y escalado usan 2 niveles, muy por debajo.</p>
+</div>
+
+<h2>Límites del modelo</h2>
+
+<p>El modelo cuenta ciclos de control con los supuestos del nivel 1. Quedan por confirmar:</p>
+
+<ul>
+  <li>el cuerpo del lazo: el modelo de tres instrucciones no incluye actualizar punteros ni el contador, y un lazo real agrega instrucciones (supuesto);</li>
+  <li>los ciclos de entrada, manejo y salida de las excepciones de ventana en ESP-IDF (el manual solo da manejadores de ejemplo de unas 10 instrucciones);</li>
+  <li>los ciclos de WLS y LE en Armv8.1-M y los lazos por hardware de algunos RISC-V.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>LBEG, LEND y LCOUNT devuelven el PC al inicio sin salto: se ahorra la instrucción de salto y sus dos burbujas en cada vuelta.</li>
+    <li>Hay una sola terna de registros, así que los lazos de hardware no se anidan.</li>
+    <li>La ventana de 16 registros sobre 64 pasa argumentos al rotar WINDOWBASE: CALL8 anota, ENTRY rota y RETW devuelve.</li>
+    <li>Si las llamadas agotan el banco, una excepción vuelca los marcos viejos a la pila y otra los recarga.</li>
+    <li>RISC-V y Cortex-M usan un banco plano y la pila: más simple, con más accesos por llamada.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">En una cadena de CALL8, el noveno marco necesita registros que aún guardan datos del primer marco. ¿Qué ocurre?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El hardware no borra datos útiles: avisa con una excepción.">El hardware sobrescribe esos registros y el primer marco se pierde.</button>
+    <button type="button" data-por-que="Un desbordamiento: un manejador guarda esos registros en la pila, limpia su bit de WINDOWSTART y la instrucción se reintenta.">Una excepción de desbordamiento hace que un manejador los guarde en la pila.</button>
+    <button type="button" data-por-que="La llamada no falla; solo se paga más por guardar los registros en la pila.">La llamada se rechaza y el programa termina con un error.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Cadence. <em>Xtensa Instruction Set Architecture (ISA) Summary</em>, el manual de la ISA que enlaza el datasheet del ESP32-S3: opciones Loop y Windowed Register, registros LBEG, LEND, LCOUNT, WINDOWBASE y WINDOWSTART, y descripciones de LOOP, CALL8, ENTRY y RETW (numeración de capítulos de la edición de 2010). <a href="https://www.cadence.com/content/dam/cadence-www/global/en_US/documents/tools/silicon-solutions/compute-ip/isa-summary.pdf">cadence.com/…/isa-summary.pdf</a></li>
+
+    <li>Espressif Systems. <em>Overview of Xtensa ISA</em>, capítulo 1, secciones 1.3 y 1.4. <a href="https://dl.espressif.com/github_assets/espressif/xtensa-isa-doc/releases/download/latest/Xtensa.pdf">dl.espressif.com/…/Xtensa.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> v1.8, sección 1.5.1 (tabla 1.5-1, nota sobre los 64 registros AR). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> v2.2, sección 4.1.1.1. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, configuración del núcleo Xtensa del ESP32 y del ESP32-S3 (core-isa.h): lazos sin sobrecarga, registros con ventana y 64 registros físicos. <a href="https://github.com/espressif/esp-idf/tree/master/components/xtensa">github.com/espressif/esp-idf/…/components/xtensa</a></li>
+
+    <li>RISC-V International. <em>RISC-V ABIs Specification</em> (psABI), convención de llamada de enteros. <a href="https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-cc.adoc">github.com/riscv-non-isa/riscv-elf-psabi-doc</a></li>
+    <li>Arm. <em>Procedure Call Standard for the Arm Architecture (AAPCS32)</em>. <a href="https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst">github.com/ARM-software/abi-aa</a></li>
+    <li>Arm. <em>Cortex-M55 Software Optimization Guide</em> (instrucciones DLS, WLS y LE de Armv8.1-M). <a href="https://documentation-service.arm.com/static/654414b13f12c06bc0f7d000">documentation-service.arm.com</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>, Cortex-M33 con Armv8-M Main y alternativa Hazard3. <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada. Las cifras de ciclos son supuestos del nivel 1; lo marcado como por confirmar debe contrastarse con el manual de cada variante.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, procesador, nivel-03</footer>
+</body>
+</html>

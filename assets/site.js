@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.15";
+const VERSION = "0.1.16";
 
 const CURSOS = {
   micro: {
@@ -40,6 +40,17 @@ const CURSOS = {
     titulo: "El procesador por dentro", seccion: "micro",
     niveles: [
       { f: "01-procesador.html", t: "El procesador", d: "Qué es un procesador y cómo se relacionan sus piezas, siguiendo una MAC de un filtro FIR. Compara Xtensa, RISC-V y Arm." },
+      { f: "02-pipeline.html", t: "El pipeline en la práctica", d: "Riesgos de datos y de control, adelantamiento y burbujas: por qué una instrucción por ciclo no es gratis." },
+      { f: "03-lazos-ventanas.html", t: "Lazos sin sobrecarga y ventanas de registros", d: "Cómo el Xtensa repite un lazo sin saltar y pasa argumentos sin tocar la RAM." },
+      { f: "04-excepciones.html", t: "Excepciones e interrupciones en el núcleo", d: "Qué hace el procesador cuando algo lo interrumpe: niveles, registros de estado, vectores y retorno." },
+    ],
+  },
+  buses: {
+    titulo: "Memoria y buses por dentro", seccion: "micro",
+    niveles: [
+      { f: "01-mapa-memoria.html", t: "El mapa de memoria", d: "Bus de instrucciones y bus de datos: por qué la misma SRAM tiene dos direcciones." },
+      { f: "02-mmio.html", t: "Los periféricos son memoria", d: "Registros mapeados en memoria, AHB y APB: qué cuesta leer y escribir un periférico." },
+      { f: "03-cache.html", t: "La caché por dentro", d: "Líneas, etiquetas, vías y la MMU de 64 KB que trae la flash y la PSRAM." },
     ],
   },
   redes: {

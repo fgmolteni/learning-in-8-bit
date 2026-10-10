@@ -62,6 +62,8 @@
 
 <p>El periférico y el DMA se entienden con un <strong>apretón de manos</strong>: el periférico pide cuando su FIFO tiene datos (o espacio), el DMA mueve y el periférico baja el pedido. La pequeña FIFO del propio DMA desacopla el ritmo del periférico del ritmo del bus.</p>
 
+<p>Aparte del pedido hay un <strong>aviso de nivel</strong>. En el GDMA del S3 (el DMA general que se describe en <a href="../micro/03-anatomia-esp32s3.html">Microcontroladores, Tomo 1, nivel 3</a> y más abajo en este nivel), un registro fija cuántos bytes tiene que juntar la FIFO de recepción para que el GDMA le avise a la CPU con una interrupción. Ese umbral no gobierna el pedido. Un umbral bajo avisa antes pero interrumpe más; uno alto interrumpe menos pero deja menos margen antes del desborde.</p>
+
 <h3>El bus es de todos</h3>
 <p>La CPU y el DMA compiten por la memoria. Un <strong>árbitro</strong> decide quién usa el bus en cada ciclo, con prioridades fijas (el DMA primero, porque si la FIFO de una cámara desborda se pierde el cuadro) o rotativas (para no ahogar a la CPU). Los micros modernos reemplazan el bus único por una <strong>matriz de conmutación</strong>: la CPU puede leer un banco de SRAM mientras el DMA escribe en otro, sin conflicto, siempre que no apunten al mismo banco.</p>
 
@@ -109,7 +111,9 @@
   <figcaption><b>fig 4.4</b>El DMA ve la RAM, no la caché. Al <strong>transmitir</strong>, si el dato nuevo quedó en la caché sin escribirse, el DMA manda el viejo: hay que forzar la escritura (<em>writeback</em>) antes. Al <strong>recibir</strong>, la CPU puede leer una copia vieja de la caché: hay que invalidar esas líneas antes de leer.</figcaption>
 </figure>
 
-<p>La caché trabaja por <strong>líneas</strong> de decenas de bytes y no se puede invalidar un byte suelto. Si un búfer de DMA comparte una línea con otra variable, invalidar el búfer también borra una escritura reciente de la CPU en esa variable. Por eso los búferes de DMA en memoria con caché se alinean y se dimensionan en múltiplos de la línea.</p>
+<p>La caché trabaja por <strong>líneas</strong> de decenas de bytes y no se puede invalidar un byte suelto. Si un búfer de DMA comparte una línea con otra variable, invalidar el búfer también borra una escritura reciente de la CPU en esa variable. Por eso los búferes de DMA en memoria con caché empiezan y terminan en un límite de línea, y ninguna otra variable comparte una línea con ellos.</p>
+
+<p>Hay una segunda alineación, distinta, que viene del bloque de ráfaga del GDMA hacia la PSRAM (ver la tabla). En los descriptores de recepción, la dirección y el tamaño del búfer tienen que estar alineados a ese bloque; si llegan menos bytes, el GDMA rellena con ceros hasta completarlo.</p>
 
 <div class="caja analogia">
   <h4>analogía: la pizarra del despacho y la del pasillo</h4>
@@ -129,7 +133,7 @@
 <table>
   <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
   <tbody>
-    <tr><td><b>Arquitectura</b></td><td>repartida: SPI (dos canales compartidos por SPI1 a 3), I2S, Ethernet y SDIO con su propio DMA; la UART a través del UHCI</td><td>GDMA central: 5 canales de transmisión y 5 de recepción, asignables</td></tr>
+    <tr><td><b>Arquitectura</b></td><td>repartida: SPI (dos canales de DMA compartidos por los controladores SPI; en la práctica SPI2 y SPI3, porque SPI1 es el de la flash), I2S, Ethernet y SDIO con su propio DMA; la UART a través del UHCI</td><td>GDMA central: 5 canales de transmisión y 5 de recepción, asignables</td></tr>
     <tr><td><b>Periféricos con DMA</b></td><td>SPI, I2S, UART (UHCI), Ethernet, SDIO</td><td>SPI2, SPI3, I2S0, I2S1, UART (UHCI0), LCD_CAM, ADC, RMT, AES y SHA</td></tr>
     <tr><td><b>Memoria alcanzable</b></td><td>solo SRAM interna</td><td>SRAM interna y PSRAM, con ráfagas de 16, 32 o 64 bytes hacia afuera</td></tr>
     <tr><td><b>Descriptores</b></td><td colspan="2">lista enlazada en SRAM, hasta 4092 bytes por descriptor, con bit de dueño y marca de fin</td></tr>

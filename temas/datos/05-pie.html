@@ -80,7 +80,7 @@
 
 <div class="caja analogia">
   <h4>analogía: el margen de un amplificador</h4>
-  <p>Los bits de guarda son como el margen de alimentación de un amplificador: si la señal sube un poco más de lo previsto, no recorta. Con 4 bits de guarda se pueden sumar del orden de 16 productos máximos sin salirse; después hay que sacar el resultado.</p>
+  <p>Los bits de guarda son como el margen de alimentación de un amplificador: si la señal sube un poco más de lo previsto, no recorta. Con 4 bits de guarda se pueden sumar del orden de 32 productos máximos sin salirse (un acumulador de 20 bits con signo llega a unos 524 000 y un producto máximo de 8 × 8 bits vale 16 384). El peor caso, supuesto, es (−128) · (−128) = 16 384 = 2<sup>14</sup>, no 2<sup>15</sup>: por eso 4 bits de guarda dan 2<sup>19</sup> / 2<sup>14</sup> = 32 productos y no 16. Después hay que sacar el resultado.</p>
 </div>
 
 <div class="caja quiz" data-ok="1">
@@ -88,7 +88,7 @@
   <p class="pregunta">Con datos de 8 bits, QACC funciona como 16 acumuladores de 20 bits. ¿Para qué sirven los 4 bits de más sobre los 16 de cada producto?</p>
   <div class="opciones">
     <button type="button" data-por-que="El signo ya está dentro del producto de 16 bits. Los bits de más dan margen para sumar.">Para guardar el signo, que no entra en los 16 bits del producto.</button>
-    <button type="button" data-por-que="Son los bits de guarda: el margen que evita que la suma se desborde y el signo se invierta.">Para acumular varios productos sin desbordar: del orden de 16 productos máximos antes de tener que sacar el resultado.</button>
+    <button type="button" data-por-que="Son los bits de guarda: el margen que evita que la suma se desborde y el signo se invierta.">Para acumular varios productos sin desbordar: del orden de 32 productos máximos antes de tener que sacar el resultado.</button>
     <button type="button" data-por-que="Las direcciones van en otros registros. Los bits de guarda son margen numérico del acumulador.">Para guardar la dirección del siguiente dato en memoria.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>

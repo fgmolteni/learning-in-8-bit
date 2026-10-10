@@ -71,7 +71,7 @@
   <li>La <strong>MMU</strong> mapea bloques de la flash (páginas de 64 KB) a direcciones que el núcleo ve como memoria común.</li>
   <li>La <strong>caché</strong> guarda las líneas leídas recientemente (de 32 o 64 bytes). Si el dato ya está, llega en uno o dos ciclos. Si no, el núcleo se detiene mientras el controlador pide una ráfaga al chip externo y llena la línea.</li>
 </ul>
-<p><strong>Leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo.</p>
+<p><strong>Leer en orden es barato</strong>, porque cada ráfaga trae los bytes vecinos que vas a usar enseguida. Leer saltando de un lado a otro es caro, porque casi cada acceso es un fallo. Cómo se reparten las direcciones y cómo funciona la caché por dentro: <a href="../buses/01-mapa-memoria.html">Tomo 5, nivel 1</a> y <a href="../buses/03-cache.html">Tomo 5, nivel 3</a>.</p>
 
 <figure class="diagrama" data-titulo="fig-4.2 interactivo">
   <canvas data-motor="mem-cache" data-bits="mixto"></canvas>

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: El pipeline en la práctica</title>
+<meta name="description" content="Por qué una instrucción por ciclo no es gratis: riesgos de datos y de control, adelantamiento y burbujas, vistos en el lazo del filtro FIR. Compara Xtensa, RISC-V y Arm.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 2: El pipeline en la práctica">
+<meta property="og:description" content="Por qué una instrucción por ciclo no es gratis: riesgos de datos y de control, adelantamiento y burbujas, vistos en el lazo del filtro FIR. Compara Xtensa, RISC-V y Arm.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="procesador" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 14 min de lectura</span>
+  <h1>El pipeline en la práctica</h1>
+  <p class="bajada">Por qué una instrucción por ciclo no es gratis: riesgos de datos y de control, adelantamiento y burbujas, vistos en el lazo del filtro FIR. Compara Xtensa, RISC-V y Arm.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel podrás…</h4>
+  <ul>
+    <li>Distinguir un riesgo de datos de un riesgo de control.</li>
+    <li>Explicar cómo el adelantamiento evita esperas y por qué no evita la de una carga.</li>
+    <li>Contar las burbujas de un lazo y calcular su CPI.</li>
+    <li>Reordenar un lazo para quitar burbujas sin cambiar su resultado.</li>
+    <li>Comparar la profundidad del pipeline y la forma de saltar en Xtensa, RISC-V y Arm.</li>
+  </ul>
+</div>
+
+<h2>El problema: el lazo del filtro no corre a una instrucción por ciclo</h2>
+
+<p>En el <a href="01-procesador.html">nivel 1</a> el filtro FIR de 64 coeficientes cabía en el presupuesto con un CPI de 1,46. Ese número suponía que el salto de cada coeficiente dejaba dos burbujas y que nada más detenía al <em>pipeline</em>. Pero cada coeficiente empieza con dos cargas, y la MAC (multiplicación-acumulación) usa lo que esas cargas traen.</p>
+
+<p>La respuesta corta: aparece un tercer costo, una espera por la carga, y el CPI sube de 1,46 a 1,70. Ordenando mejor las mismas instrucciones el lazo baja de 468 a 308 ciclos. Eso importa porque el costo de un lazo depende tanto del orden de las instrucciones como de cuántas son.</p>
+
+<h2>El pipeline visto desde afuera</h2>
+
+<p>Un <em>pipeline</em> es una fila de etapas separadas por registros: a la entrada llegan instrucciones, a la salida se completan. Con la fila llena sale una por ciclo. Se mide con el <strong>CPI</strong> (ciclos por instrucción): vale 1 en el caso ideal y sube con cada ciclo en que una etapa no hace trabajo útil.</p>
+
+<p>Ese ciclo perdido es una <strong>burbuja</strong>. Aparece cuando una instrucción no puede avanzar porque depende de otra que todavía no terminó. Los textos clásicos llaman <strong>riesgo</strong> (<em>hazard</em>) a cada situación así y distinguen tres:</p>
+
+<ul>
+  <li>el <strong>riesgo de datos</strong>: una instrucción necesita un valor que otra, anterior, todavía no escribió;</li>
+  <li>el <strong>riesgo de control</strong>: un salto cambia el contador de programa (PC) cuando ya se buscaron las instrucciones siguientes;</li>
+  <li>el <strong>riesgo estructural</strong>: dos instrucciones piden el mismo recurso a la vez, por ejemplo la memoria.</li>
+</ul>
+
+<p>Este nivel trata los dos primeros, que son los que cuestan ciclos en el lazo del filtro.</p>
+
+<h2>Adentro: detectar la dependencia y adelantar el dato</h2>
+
+<p>El riesgo de datos más común se llama <strong>RAW</strong> (<em>read after write</em>): una instrucción lee un registro que otra, anterior, escribirá. En un <em>pipeline</em> clásico la escritura ocurre en la última etapa, y esperar hasta ahí costaría dos o tres ciclos por dependencia.</p>
+
+<p>La solución es el <strong>adelantamiento</strong> (<em>bypass</em> o <em>forwarding</em>). El valor ya existe al final de la etapa que lo calculó, aunque aún no esté en el banco. Dos cables lo devuelven a la entrada de la ALU, y un multiplexor elige entre el banco y esos cables. La unidad de control compara los registros que lee la instrucción con los que escriben las que van delante, y manda la selección.</p>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 264" role="img" aria-label="Camino de adelantamiento. El banco de registros, un multiplexor, la ALU, un registro de etapa, la memoria de datos y otro registro de etapa van en fila. Dos caminos devuelven el resultado de la ALU y el de la memoria a la entrada del multiplexor, y la unidad de control elige cuál usar."><rect x="16" y="104" width="88" height="64" class="f1 s3" stroke-width="2"/><text x="60" y="132" class="sv-lbl f6" font-size="16" text-anchor="middle">banco de</text><text x="60" y="152" class="sv-lbl f6" font-size="16" text-anchor="middle">registros</text><rect x="128" y="112" width="48" height="48" class="fc1 sc3" stroke-width="2"/><text x="152" y="141" class="sv-lbl fc3" font-size="16" text-anchor="middle">mux</text><rect x="200" y="104" width="88" height="64" class="fa1 sa3" stroke-width="2"/><text x="244" y="142" class="sv-tit f6" text-anchor="middle">ALU</text><rect x="312" y="112" width="24" height="48" class="f1 s3" stroke-width="2"/><text x="324" y="190" class="sv-lbl f4" font-size="16" text-anchor="middle">E/M</text><rect x="360" y="104" width="88" height="64" class="f1 s3" stroke-width="2"/><text x="404" y="132" class="sv-lbl f6" font-size="16" text-anchor="middle">memoria</text><text x="404" y="152" class="sv-lbl f6" font-size="16" text-anchor="middle">de datos</text><rect x="472" y="112" width="24" height="48" class="f1 s3" stroke-width="2"/><text x="484" y="190" class="sv-lbl f4" font-size="16" text-anchor="middle">M/W</text><rect x="520" y="104" width="104" height="64" class="f1 s3" stroke-width="2"/><text x="572" y="132" class="sv-lbl f6" font-size="16" text-anchor="middle">escritura al</text><text x="572" y="152" class="sv-lbl f6" font-size="16" text-anchor="middle">banco</text><polyline points="104,136 128,136" fill="none" class="sa3" stroke-width="2"/><polygon points="122,132 122,140 128,136" class="fa3"/><polyline points="176,136 200,136" fill="none" class="sa3" stroke-width="2"/><polygon points="194,132 194,140 200,136" class="fa3"/><polyline points="288,136 312,136" fill="none" class="sa3" stroke-width="2"/><polygon points="306,132 306,140 312,136" class="fa3"/><polyline points="336,136 360,136" fill="none" class="sa3" stroke-width="2"/><polygon points="354,132 354,140 360,136" class="fa3"/><polyline points="448,136 472,136" fill="none" class="sa3" stroke-width="2"/><polygon points="466,132 466,140 472,136" class="fa3"/><polyline points="496,136 520,136" fill="none" class="sa3" stroke-width="2"/><polygon points="514,132 514,140 520,136" class="fa3"/><polyline points="324,112 324,72 140,72 140,112" fill="none" class="sd3" stroke-width="2"/><polygon points="136,106 144,106 140,112" class="fd3"/><polyline points="484,112 484,36 164,36 164,112" fill="none" class="sd3" stroke-width="2"/><polygon points="160,106 168,106 164,112" class="fd3"/><text x="176" y="62" class="sv-lbl fd3" font-size="16" text-anchor="start">adelanta el resultado de la ALU</text><text x="330" y="26" class="sv-lbl fd3" font-size="16" text-anchor="middle">adelanta el dato de la memoria</text><rect x="96" y="208" width="112" height="40" class="fc1 sc3" stroke-width="2"/><text x="152" y="233" class="sv-tit fc3" font-size="20" text-anchor="middle">control</text><line x1="152" y1="208" x2="152" y2="168" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><text x="224" y="233" class="sv-lbl f4" font-size="16" text-anchor="start">compara los registros que lee</text><text x="224" y="252" class="sv-lbl f4" font-size="16" text-anchor="start">con los que otras instrucciones escriben</text></svg>
+  <figcaption><b>fig 2.1</b>El resultado de la ALU (E) y el dato de la memoria (M) vuelven por los caminos magenta a la entrada de la ALU. La unidad de control (verde) elige en el multiplexor el camino correcto.</figcaption>
+</figure>
+
+
+<p>El multiplexor es el mismo elemento del nivel 1 que elegía entre PC&nbsp;+&nbsp;3 y un salto: un selector gobernado por control. Cambia lo que elige y desde dónde.</p>
+
+<h2>Recorrido paso a paso: dos cargas y una MAC</h2>
+
+<p>Seguimos un coeficiente del filtro, tal como lo escribe un compilador: carga de la muestra, carga del coeficiente, MAC y salto. Usamos el <em>pipeline</em> clásico de cinco etapas del nivel 1 (supuesto): el resultado de la ALU existe al final de E y el dato de una carga, al final de M.</p>
+
+<ol>
+  <li><strong>Dos sumas dependientes:</strong> la segunda necesita el resultado de la primera. Ese resultado sale de E en el ciclo 3 y la segunda lo necesita en E en el ciclo 4. El adelantamiento lo entrega justo a tiempo y no hay burbuja.</li>
+  <li><strong>Una carga seguida de su uso:</strong> la carga trae el dato recién al final de M, en el ciclo 4. La MAC lo necesitaba al empezar E, también en el ciclo 4. El adelantamiento no puede viajar hacia atrás en el tiempo, así que la unidad de control retiene la MAC un ciclo.</li>
+  <li><strong>La espera:</strong> en ese ciclo la MAC queda detenida y se inserta una burbuja detrás. En el ciclo 5 la MAC ejecuta con el dato adelantado desde M.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-2.2">
+  <svg viewBox="0 0 640 336" role="img" aria-label="Dos escaleras de pipeline. En la primera, una suma y otra que usa su resultado van seguidas sin espera porque el resultado se adelanta. En la segunda, una MAC que usa un dato recién cargado espera un ciclo, marcado con una burbuja rayada, y recibe el dato adelantado desde la etapa de memoria."><defs><pattern id="bb2" width="8" height="32" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="6" height="32" class="f2"/></pattern></defs><text x="124" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">1</text><text x="188" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">2</text><text x="252" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">3</text><text x="316" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">4</text><text x="380" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">5</text><text x="444" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">6</text><text x="508" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">7</text><text x="16" y="22" class="sv-lbl f4" font-size="16" text-anchor="start">ciclo</text><text x="16" y="52" class="sv-lbl fd3" font-size="16" text-anchor="start">dos sumas dependientes: sin espera</text><text x="16" y="85" class="sv-tit f6" font-size="20" text-anchor="start">suma 1</text><rect x="96" y="60" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="124" y="85" class="sv-tit f6" text-anchor="middle">B</text><rect x="160" y="60" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="85" class="sv-tit f6" text-anchor="middle">D</text><rect x="224" y="60" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="85" class="sv-tit f6" text-anchor="middle">E</text><rect x="288" y="60" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="85" class="sv-tit f6" text-anchor="middle">M</text><rect x="352" y="60" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="85" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="133" class="sv-tit f6" font-size="20" text-anchor="start">suma 2</text><rect x="160" y="108" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="133" class="sv-tit f6" text-anchor="middle">B</text><rect x="224" y="108" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="133" class="sv-tit f6" text-anchor="middle">D</text><rect x="288" y="108" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="133" class="sv-tit f6" text-anchor="middle">E</text><rect x="352" y="108" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="133" class="sv-tit f6" text-anchor="middle">M</text><rect x="416" y="108" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="133" class="sv-tit f6" text-anchor="middle">W</text><polyline points="252,100 252,104 316,104 316,108" fill="none" class="sd3" stroke-width="2"/><polygon points="312,102 320,102 316,108" class="fd3"/><text x="16" y="194" class="sv-lbl fd3" font-size="16" text-anchor="start">carga y uso inmediato: una burbuja</text><text x="16" y="229" class="sv-tit f6" font-size="20" text-anchor="start">carga</text><rect x="96" y="204" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="124" y="229" class="sv-tit f6" text-anchor="middle">B</text><rect x="160" y="204" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="229" class="sv-tit f6" text-anchor="middle">D</text><rect x="224" y="204" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="229" class="sv-tit f6" text-anchor="middle">E</text><rect x="288" y="204" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="229" class="sv-tit f6" text-anchor="middle">M</text><rect x="352" y="204" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="229" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="277" class="sv-tit f6" font-size="20" text-anchor="start">MAC</text><rect x="160" y="252" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="277" class="sv-tit f6" text-anchor="middle">B</text><rect x="224" y="252" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="277" class="sv-tit f6" text-anchor="middle">D</text><rect x="288" y="252" width="56" height="40" fill="url(#bb2)" class="s3" stroke-width="2"/><rect x="352" y="252" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="277" class="sv-tit f6" text-anchor="middle">E</text><rect x="416" y="252" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="277" class="sv-tit f6" text-anchor="middle">M</text><rect x="480" y="252" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="508" y="277" class="sv-tit f6" text-anchor="middle">W</text><polyline points="316,244 316,248 380,248 380,252" fill="none" class="sd3" stroke-width="2"/><polygon points="376,246 384,246 380,252" class="fd3"/><text x="16" y="322" class="sv-lbl f4" font-size="16" text-anchor="start">B buscar, D decodificar, E ejecutar, M memoria, W escribir. Rayado: burbuja.</text></svg>
+  <figcaption><b>fig 2.2</b>Arriba, dos sumas dependientes: el adelantamiento (flecha magenta) evita la espera. Abajo, la carga entrega el dato recién al final de M, un ciclo tarde para la MAC, que espera con una burbuja.</figcaption>
+</figure>
+
+
+<p>En el lazo, la segunda carga va justo antes de la MAC, así que ese coeficiente paga una burbuja. La primera carga está separada de la MAC por la segunda y llega a tiempo sin esperar.</p>
+
+<h3>El salto: el riesgo de control</h3>
+
+<p>Al final del coeficiente, el salto compara y decide si el lazo continúa. Esa decisión se conoce en E. Mientras tanto la etapa de búsqueda siguió trayendo las dos instrucciones que están en memoria detrás del salto.</p>
+
+<p>Si el salto se toma, esas dos instrucciones no deben ejecutarse. La unidad de control las anula y el PC recibe el destino por el multiplexor del nivel 1. La búsqueda del destino llega con dos ciclos de atraso (supuesto de este modelo, el mismo del nivel 1).</p>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 296" role="img" aria-label="Escalera de un salto tomado. El salto se decide en la etapa de ejecución del ciclo 3. Las dos instrucciones que se buscaron detrás, dibujadas con trazo punteado, se descartan, y la instrucción de destino se busca recién en el ciclo 4, así que se pierden dos ciclos de búsqueda."><text x="124" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">1</text><text x="188" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">2</text><text x="252" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">3</text><text x="316" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">4</text><text x="380" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">5</text><text x="444" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">6</text><text x="508" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">7</text><text x="16" y="22" class="sv-lbl f4" font-size="16" text-anchor="start">ciclo</text><text x="16" y="73" class="sv-tit f6" font-size="20" text-anchor="start">salto</text><rect x="96" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="124" y="73" class="sv-tit f6" text-anchor="middle">B</text><rect x="160" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="73" class="sv-tit f6" text-anchor="middle">D</text><rect x="224" y="48" width="56" height="40" class="fa1 sa3" stroke-width="2"/><text x="252" y="73" class="sv-tit f6" text-anchor="middle">E</text><rect x="288" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="73" class="sv-tit f6" text-anchor="middle">M</text><rect x="352" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="73" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="121" class="sv-tit f4" font-size="20" text-anchor="start">sigue 1</text><rect x="160" y="96" width="56" height="40" class="fn s2" stroke-dasharray="4 4" stroke-width="2"/><text x="188" y="121" class="sv-tit f3" text-anchor="middle">B</text><rect x="224" y="96" width="56" height="40" class="fn s2" stroke-dasharray="4 4" stroke-width="2"/><text x="252" y="121" class="sv-tit f3" text-anchor="middle">D</text><text x="16" y="169" class="sv-tit f4" font-size="20" text-anchor="start">sigue 2</text><rect x="224" y="144" width="56" height="40" class="fn s2" stroke-dasharray="4 4" stroke-width="2"/><text x="252" y="169" class="sv-tit f3" text-anchor="middle">B</text><text x="16" y="217" class="sv-tit f6" font-size="20" text-anchor="start">destino</text><rect x="288" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="217" class="sv-tit f6" text-anchor="middle">B</text><rect x="352" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="217" class="sv-tit f6" text-anchor="middle">D</text><rect x="416" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="217" class="sv-tit f6" text-anchor="middle">E</text><polyline points="280,68 284,68 284,212 288,212" fill="none" class="sd3" stroke-width="2"/><polygon points="282,208 282,216 288,212" class="fd3"/><text x="300" y="160" class="sv-lbl fd3" font-size="16" text-anchor="start">el PC cambia</text><text x="16" y="262" class="sv-lbl f4" font-size="16" text-anchor="start">El salto se decide en E (ciclo 3). Se pierden las búsquedas de los ciclos 2 y 3.</text><text x="16" y="282" class="sv-lbl f4" font-size="16" text-anchor="start">Punteado: instrucción descartada.</text></svg>
+  <figcaption><b>fig 2.3</b>Un salto tomado. La decisión llega en E y las dos instrucciones ya buscadas se descartan, así que el destino se busca dos ciclos más tarde de lo ideal.</figcaption>
+</figure>
+
+
+<div class="caja analogia">
+  <h4>analogía: una línea de producción con una pieza que falta</h4>
+  <p>En una línea de armado, una estación necesita una pieza que la estación anterior termina de fabricar justo ahora. Si la pieza sale a tiempo, pasa de mano en mano. Si sale un ciclo tarde, la estación espera sin producir. Y si un desvío cambia el producto, las piezas ya empezadas se tiran.</p>
+</div>
+
+<h2>Cómo se encadenan: ordenar para no esperar</h2>
+
+<p>Las burbujas de carga y uso se pueden quitar sin cambiar el resultado. La unidad de control no puede adivinar qué instrucción conviene adelantar, pero el programa sí. Si la MAC se pasa más abajo, la carga ya tuvo tiempo de traer su dato.</p>
+
+<p>En el lazo, esto se logra juntando las cargas de dos coeficientes y haciendo después las dos MAC. Se necesitan más registros, porque ahora conviven cuatro valores cargados, y por eso aquí alcanzan los 16 visibles de Xtensa. El salto también se reparte: un solo salto atiende a dos coeficientes.</p>
+
+<figure class="diagrama" data-titulo="fig-2.4">
+  <svg viewBox="0 0 640 248" role="img" aria-label="Dos tiras de ciclos. La primera, un coeficiente sin reordenar, tiene siete ciclos: dos cargas, una burbuja de carga y uso, la MAC, el salto y dos burbujas. La segunda, dos coeficientes desenrollados con las cargas juntas, tiene nueve ciclos: cuatro cargas, dos MAC, el salto y dos burbujas, y ninguna burbuja de carga y uso."><defs><pattern id="bb4" width="8" height="32" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="6" height="32" class="f2"/></pattern></defs><text x="20" y="22" class="sv-lbl fd3" font-size="16" text-anchor="start">un coeficiente, tal como llega: 7 ciclos</text><rect x="20" y="34" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="48" y="59" class="sv-tit f6" text-anchor="middle">C</text><rect x="80" y="34" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="108" y="59" class="sv-tit f6" text-anchor="middle">C</text><rect x="140" y="34" width="56" height="40" fill="url(#bb4)" class="s3" stroke-width="2"/><rect x="200" y="34" width="56" height="40" class="fa1 sa3" stroke-width="2"/><text x="228" y="59" class="sv-tit f6" text-anchor="middle">M</text><rect x="260" y="34" width="56" height="40" class="fc1 sc3" stroke-width="2"/><text x="288" y="59" class="sv-tit f6" text-anchor="middle">S</text><rect x="320" y="34" width="56" height="40" fill="url(#bb4)" class="s3" stroke-width="2"/><rect x="380" y="34" width="56" height="40" fill="url(#bb4)" class="s3" stroke-width="2"/><text x="20" y="110" class="sv-lbl fd3" font-size="16" text-anchor="start">dos coeficientes, cargas juntas: 9 ciclos</text><rect x="20" y="122" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="48" y="147" class="sv-tit f6" text-anchor="middle">C</text><rect x="80" y="122" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="108" y="147" class="sv-tit f6" text-anchor="middle">C</text><rect x="140" y="122" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="168" y="147" class="sv-tit f6" text-anchor="middle">C</text><rect x="200" y="122" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="228" y="147" class="sv-tit f6" text-anchor="middle">C</text><rect x="260" y="122" width="56" height="40" class="fa1 sa3" stroke-width="2"/><text x="288" y="147" class="sv-tit f6" text-anchor="middle">M</text><rect x="320" y="122" width="56" height="40" class="fa1 sa3" stroke-width="2"/><text x="348" y="147" class="sv-tit f6" text-anchor="middle">M</text><rect x="380" y="122" width="56" height="40" class="fc1 sc3" stroke-width="2"/><text x="408" y="147" class="sv-tit f6" text-anchor="middle">S</text><rect x="440" y="122" width="56" height="40" fill="url(#bb4)" class="s3" stroke-width="2"/><rect x="500" y="122" width="56" height="40" fill="url(#bb4)" class="s3" stroke-width="2"/><text x="20" y="194" class="sv-lbl f4" font-size="16" text-anchor="start">C carga, M multiplicar y acumular, S salto. Rayado: burbuja.</text><text x="20" y="214" class="sv-lbl f4" font-size="16" text-anchor="start">Arriba, 7 ciclos por coeficiente. Abajo, 9 ciclos por dos: 4,5 por coeficiente.</text></svg>
+  <figcaption><b>fig 2.4</b>Un mismo trabajo en dos órdenes. Con las cargas juntas y dos coeficientes por vuelta desaparece la burbuja de carga y uso, y el costo del salto se reparte entre dos coeficientes.</figcaption>
+</figure>
+
+
+<p>Quien hace este reordenamiento es el compilador o el programador. Es una de las razones por las que el mismo micro rinde distinto con un código u otro: el CPI no es una propiedad solo del núcleo, sino del par núcleo y programa.</p>
+
+<h2>Implementaciones reales: Xtensa, RISC-V y Arm</h2>
+
+<p>La profundidad del <em>pipeline</em> decide cuánto cuesta cada riesgo. Más etapas permiten un reloj más rápido, pero un salto tarda más en conocerse y deja más burbujas. Menos etapas hacen lo contrario.</p>
+
+<figure class="diagrama" data-titulo="fig-2.5">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Barras de etapas de pipeline: el LX6 del ESP32 tiene 7, el LX7 del ESP32-S3 tiene 5, el RISC-V del ESP32-C3 tiene 4, el Cortex-M4 tiene 3 y el Hazard3 del RP2350 tiene 3."><text x="16" y="41" class="sv-tit f6" font-size="20" text-anchor="start">ESP32 · LX6</text><rect x="220" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="264" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="308" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="352" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="396" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="440" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="484" y="16" width="40" height="32" class="fa1 sa3" stroke-width="2"/><text x="536" y="40" class="sv-lbl f4" font-size="20" text-anchor="start">7 etapas</text><text x="16" y="81" class="sv-tit f6" font-size="20" text-anchor="start">ESP32-S3 · LX7</text><rect x="220" y="56" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="264" y="56" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="308" y="56" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="352" y="56" width="40" height="32" class="fa1 sa3" stroke-width="2"/><rect x="396" y="56" width="40" height="32" class="fa1 sa3" stroke-width="2"/><text x="448" y="80" class="sv-lbl f4" font-size="20" text-anchor="start">5 etapas</text><text x="16" y="121" class="sv-tit f6" font-size="20" text-anchor="start">ESP32-C3 · RISC-V</text><rect x="220" y="96" width="40" height="32" class="fc1 sc3" stroke-width="2"/><rect x="264" y="96" width="40" height="32" class="fc1 sc3" stroke-width="2"/><rect x="308" y="96" width="40" height="32" class="fc1 sc3" stroke-width="2"/><rect x="352" y="96" width="40" height="32" class="fc1 sc3" stroke-width="2"/><text x="404" y="120" class="sv-lbl f4" font-size="20" text-anchor="start">4 etapas</text><text x="16" y="161" class="sv-tit f6" font-size="20" text-anchor="start">Cortex-M4 · Arm</text><rect x="220" y="136" width="40" height="32" class="fb1 sb3" stroke-width="2"/><rect x="264" y="136" width="40" height="32" class="fb1 sb3" stroke-width="2"/><rect x="308" y="136" width="40" height="32" class="fb1 sb3" stroke-width="2"/><text x="360" y="160" class="sv-lbl f4" font-size="20" text-anchor="start">3 etapas</text><text x="16" y="201" class="sv-tit f6" font-size="20" text-anchor="start">Hazard3 · RISC-V</text><rect x="220" y="176" width="40" height="32" class="fc1 sc3" stroke-width="2"/><rect x="264" y="176" width="40" height="32" class="fc1 sc3" stroke-width="2"/><rect x="308" y="176" width="40" height="32" class="fc1 sc3" stroke-width="2"/><text x="360" y="200" class="sv-lbl f4" font-size="20" text-anchor="start">3 etapas</text></svg>
+  <figcaption><b>fig 2.5</b>Etapas del pipeline según los datasheets de Espressif y de la Raspberry Pi y el manual del Cortex-M4. Naranja: Xtensa. Verde: RISC-V. Azul: Arm.</figcaption>
+</figure>
+
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32<br>Xtensa LX6</th><th>ESP32-S3<br>Xtensa LX7</th><th>ESP32-C3<br>RISC-V</th><th>Cortex-M4<br>Arm</th></tr></thead>
+  <tbody>
+    <tr><td><b>Etapas del pipeline</b></td><td>7</td><td>5</td><td>4</td><td>3, desacopladas</td></tr>
+    <tr><td><b>Reloj máximo citado</b></td><td>240 MHz (160 MHz en el ESP32-S0WD)</td><td>240 MHz</td><td>160 MHz</td><td>no se cita</td></tr>
+    <tr><td><b>Decisión de un salto</b></td><td>compara dos registros, sin banderas</td><td>compara dos registros, sin banderas</td><td>compara dos registros, sin banderas</td><td>una comparación fija las banderas del APSR y el salto las consulta</td></tr>
+    <tr><td><b>Costo de un salto tomado</b></td><td>por confirmar</td><td>por confirmar</td><td>por confirmar</td><td>1 ciclo más una recarga de 1 a 3 ciclos</td></tr>
+    <tr><td><b>Carga seguida de su uso</b></td><td>por confirmar</td><td>por confirmar</td><td>por confirmar</td><td>la carga ocupa 2 ciclos; cargas vecinas se solapan</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>El RP2350 repite la comparación con dos núcleos propios: el RISC-V Hazard3 tiene un <em>pipeline</em> de 3 etapas en orden, y el Cortex-M33 emite en orden, aunque el datasheet no da su cantidad de etapas. El Cortex-M4 pone la recarga entre 1 y 3 ciclos porque a veces especula la dirección del destino con anticipación.</p>
+
+<p>La decisión del salto cambia dónde se resuelve. En Xtensa y en RISC-V, una sola instrucción compara y salta, así que el comparador trabaja en la etapa de ejecución del salto. En Arm la comparación es una instrucción aparte que escribe las banderas, y el salto solo las lee. El mecanismo de burbujas es el mismo; cambia cuántas instrucciones tiene el coeficiente: una más en Arm si no se reutilizan las banderas de otra operación.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>La espera por una carga depende de cuánto tarda la <a href="../micro/04-memoria.html"><strong>memoria</strong></a> en responder. Si la SRAM interna contesta dentro de la etapa M (supuesto), el costo es de una burbuja. Una carga que pasa por una caché o por la flash externa puede detener al <em>pipeline</em> muchos ciclos, y ningún adelantamiento lo evita.</p>
+
+<p>Una <a href="../micro/05-tiempo-real.html"><strong>interrupción</strong></a> también cambia el PC fuera de un salto del programa. Las instrucciones ya buscadas detrás de la interrumpida deben descartarse o terminarse, como en un salto tomado. El <a href="04-excepciones.html">nivel 4</a> estudia cómo lo resuelve cada núcleo.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Tres cuentas dicen cuánto cuestan las burbujas del lazo. Todas usan la base del nivel 1: 4 instrucciones por coeficiente, 20 de sobrecarga por muestra y 64 coeficientes. El reloj es de 240 MHz (T = 4,17 ns) y el presupuesto, de 12 000 ciclos por muestra.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: lazo tal como llega</h4>
+  <p class="formula">ciclos = <var>n</var> · (<var>I</var> + <var>b</var><sub>carga</sub> + <var>b</var><sub>salto</sub>) + <var>S</var></p>
+  <dl>
+    <dt>n</dt><dd>64 coeficientes</dd>
+    <dt>I</dt><dd>4 instrucciones por coeficiente (supuesto)</dd>
+    <dt>b_carga</dt><dd>1 burbuja por la carga seguida de su uso (supuesto)</dd>
+    <dt>b_salto</dt><dd>2 burbujas por salto tomado (supuesto del nivel 1)</dd>
+    <dt>S</dt><dd>20 ciclos de sobrecarga por muestra (supuesto)</dd>
+  </dl>
+  <p class="resultado">ciclos = 64 · (4 + 1 + 2) + 20 = 468 ciclos; CPI = 468 / 276 ≈ 1,70; t = 468 · 4,17 ns ≈ 1,95 µs</p>
+  <p>El CPI de solo el cuerpo del lazo es 7 / 4 = 1,75; el de la muestra completa, con la sobrecarga, es 1,70. El nivel 1 estimaba 404 ciclos (CPI 1,46) porque no contaba la burbuja de la carga. La carga sobre el presupuesto es 468 / 12 000 ≈ 3,9 %: el filtro sigue cabiendo con holgura.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: lazo con las cargas juntas</h4>
+  <p class="formula">ciclos = (<var>n</var> / 2) · (<var>I</var><sub>par</sub> + <var>b</var><sub>carga</sub> + <var>b</var><sub>salto</sub>) + <var>S</var></p>
+  <dl>
+    <dt>n / 2</dt><dd>32 vueltas de dos coeficientes</dd>
+    <dt>I_par</dt><dd>7 instrucciones: 4 cargas, 2 MAC y 1 salto</dd>
+    <dt>b_carga</dt><dd>0 burbujas: cada MAC queda lejos de sus cargas</dd>
+    <dt>b_salto</dt><dd>2 burbujas por salto tomado (supuesto)</dd>
+  </dl>
+  <p class="resultado">ciclos = 32 · (7 + 0 + 2) + 20 = 308 ciclos; t = 308 · 4,17 ns ≈ 1,28 µs; ahorro = (468 − 308) / 468 ≈ 34 %</p>
+  <p>La comparación usa el mismo trabajo, 64 coeficientes completos, con la misma sobrecarga. Se ahorra un tercio de los ciclos sin cambiar el reloj ni el micro.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: sensibilidad a la penalización de salto</h4>
+  <p class="formula">ciclos = (<var>n</var> / 2) · (7 + <var>P</var>) + <var>S</var></p>
+  <dl>
+    <dt>P</dt><dd>burbujas por salto tomado: 1, 2 o 3 (el rango que da el manual del Cortex-M4 para la recarga)</dd>
+    <dt>n / 2, S</dt><dd>los mismos de arriba</dd>
+  </dl>
+  <p class="resultado">P = 1: 32 · 8 + 20 = 276 ciclos; P = 2: 308 ciclos; P = 3: 32 · 10 + 20 = 340 ciclos</p>
+  <p>Pasar de P = 1 a P = 3 suma 64 ciclos, un 23 % más, en el lazo ya reordenado. Cada burbuja extra por salto pesa 32 ciclos en el lazo reordenado. Los valores de P vienen del Cortex-M4, un <em>pipeline</em> corto, y no se midieron en los núcleos de Espressif.</p>
+</div>
+
+<h2>Límites del modelo</h2>
+
+<p>El modelo es el clásico de cinco etapas con adelantamiento. Los pipelines reales de Espressif no publican el detalle de cada etapa, así que estos puntos quedan por confirmar:</p>
+
+<ul>
+  <li>el cuerpo del lazo: el modelo de 4 instrucciones no incluye actualizar punteros ni el contador, y un lazo real agrega instrucciones (supuesto);</li>
+  <li>las burbujas por carga y uso y por salto tomado del LX6, el LX7 y el RISC-V del ESP32-C3 (aquí son supuestos: 1 y 2);</li>
+  <li>si cada núcleo anula o especula las instrucciones que siguen a un salto;</li>
+  <li>la cantidad de etapas del Cortex-M33;</li>
+  <li>el efecto de la caché y de la flash externa sobre las cargas, que el modelo no incluye;</li>
+  <li>el costo de interrumpir el <em>pipeline</em> en cada variante.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Un riesgo de datos aparece cuando una instrucción lee un valor que otra aún no escribió; el adelantamiento lo resuelve si el valor ya existe en alguna etapa.</li>
+    <li>La carga seguida de su uso es la excepción: el dato llega al final de M y cuesta una burbuja.</li>
+    <li>Un salto tomado vacía las instrucciones ya buscadas; su costo crece con la profundidad.</li>
+    <li>Reordenar el programa quita burbujas sin tocar el hardware: en el lazo del filtro, de 468 a 308 ciclos (supuestos del modelo).</li>
+    <li>Xtensa y RISC-V saltan comparando dos registros; Arm separa la comparación y el salto.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Por qué la MAC espera un ciclo después de la carga aunque exista el adelantamiento?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El dato de una carga recién existe al final de la etapa M. La MAC lo necesita al empezar E, un ciclo antes, y el adelantamiento no viaja hacia atrás en el tiempo.">Porque el dato de la carga existe un ciclo después de cuando la MAC lo necesita.</button>
+    <button type="button" data-por-que="El banco de registros no es la causa: el adelantamiento justamente evita pasar por él. La espera ocurre aunque el banco fuera instantáneo.">Porque el banco de registros tarda en escribir.</button>
+    <button type="button" data-por-que="El salto es otro riesgo, el de control. Aquí la espera ocurre entre la carga y la MAC, sin que haya un salto de por medio.">Porque el salto del coeficiente anterior no se resolvió.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Qué cambio quita la burbuja de carga y uso sin tocar el hardware?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Subir el reloj no cambia el número de ciclos de espera, solo su duración en nanosegundos.">Subir la frecuencia del reloj.</button>
+    <button type="button" data-por-que="Al poner entre la carga y la MAC otras instrucciones independientes, el dato llega a tiempo y la unidad de control no tiene que retener nada.">Poner instrucciones independientes entre la carga y su uso.</button>
+    <button type="button" data-por-que="Las cargas no se pueden eliminar: el dato debe venir de la memoria. Lo que se cambia es el orden, no la cantidad.">Eliminar las cargas del lazo.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet</em>, v5.3, sección 4.1.1 (CPU: pipeline de 7 etapas). <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em>, v2.2, sección 4.1.1.1 (CPU: pipeline de 5 etapas). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-C3 Series Datasheet</em>, v2.4, sección 4.1.1.1 (RISC-V, pipeline de 4 etapas, RV32IMC, hasta 160 MHz). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf">espressif.com/…/esp32-c3_datasheet_en.pdf</a></li>
+    <li>Arm. <em>Cortex-M4 Technical Reference Manual</em>, r0p0: características (pipeline desacoplado de tres etapas) y sección 3.3, tabla 3-1 (salto condicional: 1 o 1 + P; P de 1 a 3; carga: 2 ciclos, cargas vecinas solapadas). <a href="https://documentation-service.arm.com/static/5f19da2a20b7cf4bc524d99a">documentation-service.arm.com/static/5f19da2a20b7cf4bc524d99a</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>, secciones 3.7 (Cortex-M33, emisión en orden) y 3.8 (Hazard3, 3 etapas en orden). <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em> y <em>ESP32-S3 Technical Reference Manual</em> (no detallan burbujas por carga ni por salto). <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>RISC-V International. <em>The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA</em> (saltos que comparan dos registros). <a href="https://riscv.org/technical/specifications/">riscv.org/technical/specifications</a></li>
+    <li>Cadence. <em>Tensilica Xtensa LX Processors</em>. <a href="https://www.cadence.com/en_US/home/tools/ip/tensilica-ip/xtensa-lx-processors.html">cadence.com/…/xtensa-lx-processors.html</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada. Las profundidades del pipeline vienen de los datasheets citados; las burbujas por carga y por salto de los núcleos Xtensa y RISC-V son supuestos del modelo clásico y están por confirmar.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, procesador, nivel-02</footer>
+</body>
+</html>

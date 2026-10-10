@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: Los periféricos son memoria</title>
+<meta name="description" content="Un registro de periférico es una dirección: cómo la CPU lo lee y lo escribe en un modelo AMBA con AHB y APB, por qué leer cuesta más que escribir y qué hacen los registros con efectos laterales.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 2: Los periféricos son memoria">
+<meta property="og:description" content="Un registro de periférico es una dirección: cómo la CPU lo lee y lo escribe en un modelo AMBA con AHB y APB, por qué leer cuesta más que escribir y qué hacen los registros con efectos laterales.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="buses" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 13 min de lectura</span>
+  <h1>Los periféricos son memoria</h1>
+  <p class="bajada">Un registro de periférico es una dirección: cómo la CPU lo lee y lo escribe en un modelo AMBA con AHB y APB, por qué leer cuesta más que escribir y qué hacen los registros con efectos laterales.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel podrás…</h4>
+  <ul>
+    <li>Explicar por qué un periférico se maneja con las mismas instrucciones que la memoria.</li>
+    <li>Seguir una escritura y una lectura desde la CPU hasta el registro, en un modelo AMBA con AHB, puente y APB.</li>
+    <li>Calcular por qué leer un registro detiene a la CPU y sondearlo en un lazo es caro.</li>
+    <li>Usar la idea de los registros de poner y borrar bits, y reconocer las lecturas que cambian el estado.</li>
+    <li>Comparar el ESP32 con Cortex-M (bit-band y PPB) y con RISC-V.</li>
+  </ul>
+</div>
+
+<h2>El problema: mover un pin lo más rápido posible</h2>
+
+<p>Querés generar una onda cuadrada subiendo y bajando un pin desde el programa, y además mirar el pin entre un cambio y otro. Del <a href="../mundo/01-pin.html">Tomo 2, nivel 1</a> ya sabés qué hace el hardware del pin; acá la pregunta es qué le cuesta a la CPU tocarlo.</p>
+
+<p>Respuesta corta: el registro del pin es una dirección más del mapa. Escribirlo es rápido porque la CPU puede seguir sin esperar. Leerlo es lento porque la CPU necesita el dato y la petición cruza un puente hacia un bus más lento. Esa diferencia fija cuántos cambios por segundo logra el programa.</p>
+
+<h2>El periférico visto desde la CPU: un bloque de direcciones</h2>
+
+<p>Para la CPU un periférico es un grupo de registros de 32 bits en direcciones fijas. No existen instrucciones especiales de entrada y salida: la misma carga y el mismo guardado que usás con la RAM llegan al periférico. A este esquema se lo llama <strong>E/S mapeada en memoria</strong> (<em>memory-mapped I/O</em>, MMIO).</p>
+
+<p>En el ESP32, el bloque del GPIO ocupa 4 KB desde la dirección 0x3FF4_4000. En el ESP32-S3 ocupa también 4 KB, desde 0x6000_4000, dentro de un rango de periféricos que va de 0x6000_0000 a 0x600D_0FFF y que el TRM da como compartido por el bus de datos y el de instrucciones. Dentro del bloque, cada registro es un desplazamiento: el de puesta en alto del GPIO está a 0x0008 del inicio.</p>
+
+<p>La diferencia con la RAM está en lo que hace la dirección. En la RAM, lo escrito se queda y lo leído es lo último escrito. En un periférico, escribir puede disparar una acción y leer puede mostrar algo que cambió solo.</p>
+
+<h2>Adentro: un modelo con matriz AHB, puente y APB</h2>
+
+<p>La CPU no habla directo con cada periférico. Para explicarlo usamos el modelo de la familia <strong>AMBA</strong>, el estándar de Arm que usa casi toda la industria. Es un modelo genérico: ningún TRM de Espressif documenta esta cadena para estos núcleos. El <strong>AHB</strong> es el bus rápido: une a los maestros (los núcleos y el DMA) con el puente. El <strong>APB</strong> es el bus simple y lento de los periféricos, y su único maestro es el <strong>puente AHB-APB</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 408" role="img" aria-label="Camino del procesador a los periféricos. Modelo AMBA genérico. El núcleo y el DMA entran a una matriz AHB. De ella sale un puente AHB a APB; el puente alimenta el bus APB, del que cuelgan UART, GPIO, SPI e I2C. El reloj de CPU es de 240 MHz y el de APB de 80 MHz."><rect x="40" y="16" width="152" height="48" class="f1 sa3" stroke-width="2"/><rect x="39" y="15" width="2" height="2" class="f0"/><rect x="191" y="15" width="2" height="2" class="f0"/><rect x="39" y="63" width="2" height="2" class="f0"/><rect x="191" y="63" width="2" height="2" class="f0"/><text x="116" y="45" class="sv-tit f6" text-anchor="middle" font-size="16">NÚCLEO</text><rect x="280" y="16" width="152" height="48" class="f1 s3" stroke-width="2"/><rect x="279" y="15" width="2" height="2" class="f0"/><rect x="431" y="15" width="2" height="2" class="f0"/><rect x="279" y="63" width="2" height="2" class="f0"/><rect x="431" y="63" width="2" height="2" class="f0"/><text x="356" y="45" class="sv-tit f6" text-anchor="middle" font-size="16">DMA</text><line x1="116" y1="64" x2="116" y2="96" class="sa3" stroke-width="2"/><rect x="112" y="96" width="8" height="2" class="fa3"/><rect x="113" y="98" width="6" height="2" class="fa3"/><rect x="114" y="100" width="4" height="2" class="fa3"/><rect x="115" y="102" width="2" height="2" class="fa3"/><line x1="356" y1="64" x2="356" y2="96" class="sa3" stroke-width="2"/><rect x="352" y="96" width="8" height="2" class="fa3"/><rect x="353" y="98" width="6" height="2" class="fa3"/><rect x="354" y="100" width="4" height="2" class="fa3"/><rect x="355" y="102" width="2" height="2" class="fa3"/><rect x="40" y="104" width="392" height="40" class="f1 s3" stroke-width="2"/><rect x="39" y="103" width="2" height="2" class="f0"/><rect x="431" y="103" width="2" height="2" class="f0"/><rect x="39" y="143" width="2" height="2" class="f0"/><rect x="431" y="143" width="2" height="2" class="f0"/><text x="236" y="129" class="sv-tit f6" text-anchor="middle" font-size="16">MATRIZ AHB</text><line x1="348" y1="144" x2="348" y2="184" class="sa3" stroke-width="2"/><rect x="344" y="184" width="8" height="2" class="fa3"/><rect x="345" y="186" width="6" height="2" class="fa3"/><rect x="346" y="188" width="4" height="2" class="fa3"/><rect x="347" y="190" width="2" height="2" class="fa3"/><rect x="264" y="192" width="168" height="48" class="f1 sc3" stroke-width="2"/><rect x="263" y="191" width="2" height="2" class="f0"/><rect x="431" y="191" width="2" height="2" class="f0"/><rect x="263" y="239" width="2" height="2" class="f0"/><rect x="431" y="239" width="2" height="2" class="f0"/><text x="348" y="221" class="sv-tit f6" text-anchor="middle" font-size="16">PUENTE AHB-APB</text><line x1="348" y1="240" x2="348" y2="280" class="sa3" stroke-width="2"/><rect x="344" y="280" width="8" height="2" class="fa3"/><rect x="345" y="282" width="6" height="2" class="fa3"/><rect x="346" y="284" width="4" height="2" class="fa3"/><rect x="347" y="286" width="2" height="2" class="fa3"/><line x1="96" y1="288" x2="540" y2="288" class="sa3" stroke-width="2"/><line x1="96" y1="288" x2="96" y2="328" class="sa3" stroke-width="2"/><rect x="92" y="328" width="8" height="2" class="fa3"/><rect x="93" y="330" width="6" height="2" class="fa3"/><rect x="94" y="332" width="4" height="2" class="fa3"/><rect x="95" y="334" width="2" height="2" class="fa3"/><rect x="40" y="336" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="39" y="335" width="2" height="2" class="f0"/><rect x="151" y="335" width="2" height="2" class="f0"/><rect x="39" y="383" width="2" height="2" class="f0"/><rect x="151" y="383" width="2" height="2" class="f0"/><text x="96" y="365" class="sv-tit f6" text-anchor="middle" font-size="16">UART</text><line x1="244" y1="288" x2="244" y2="328" class="sa3" stroke-width="2"/><rect x="240" y="328" width="8" height="2" class="fa3"/><rect x="241" y="330" width="6" height="2" class="fa3"/><rect x="242" y="332" width="4" height="2" class="fa3"/><rect x="243" y="334" width="2" height="2" class="fa3"/><rect x="188" y="336" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="187" y="335" width="2" height="2" class="f0"/><rect x="299" y="335" width="2" height="2" class="f0"/><rect x="187" y="383" width="2" height="2" class="f0"/><rect x="299" y="383" width="2" height="2" class="f0"/><text x="244" y="365" class="sv-tit f6" text-anchor="middle" font-size="16">GPIO</text><line x1="392" y1="288" x2="392" y2="328" class="sa3" stroke-width="2"/><rect x="388" y="328" width="8" height="2" class="fa3"/><rect x="389" y="330" width="6" height="2" class="fa3"/><rect x="390" y="332" width="4" height="2" class="fa3"/><rect x="391" y="334" width="2" height="2" class="fa3"/><rect x="336" y="336" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="335" y="335" width="2" height="2" class="f0"/><rect x="447" y="335" width="2" height="2" class="f0"/><rect x="335" y="383" width="2" height="2" class="f0"/><rect x="447" y="383" width="2" height="2" class="f0"/><text x="392" y="365" class="sv-tit f6" text-anchor="middle" font-size="16">SPI</text><line x1="540" y1="288" x2="540" y2="328" class="sa3" stroke-width="2"/><rect x="536" y="328" width="8" height="2" class="fa3"/><rect x="537" y="330" width="6" height="2" class="fa3"/><rect x="538" y="332" width="4" height="2" class="fa3"/><rect x="539" y="334" width="2" height="2" class="fa3"/><rect x="484" y="336" width="112" height="48" class="f1 s3" stroke-width="2"/><rect x="483" y="335" width="2" height="2" class="f0"/><rect x="595" y="335" width="2" height="2" class="f0"/><rect x="483" y="383" width="2" height="2" class="f0"/><rect x="595" y="383" width="2" height="2" class="f0"/><text x="540" y="365" class="sv-tit f6" text-anchor="middle" font-size="16">I2C</text><text x="204" y="34" class="sv-lbl fb3" text-anchor="start" font-size="16">CPU</text><text x="204" y="54" class="sv-lbl fb3" text-anchor="start" font-size="16">240 MHz</text><text x="448" y="216" class="sv-lbl fb3" text-anchor="start" font-size="16">reloj APB</text><text x="448" y="238" class="sv-lbl fb3" text-anchor="start" font-size="16">80 MHz</text><text x="360" y="276" class="sv-lbl fa3" text-anchor="start" font-size="16">bus APB</text><text x="448" y="122" class="sv-lbl f4" text-anchor="start" font-size="16">modelo AMBA</text><text x="448" y="142" class="sv-lbl f4" text-anchor="start" font-size="16">genérico</text><text x="24" y="176" class="sv-lbl f4" text-anchor="start" font-size="16">AHB</text><text x="24" y="276" class="sv-lbl f4" text-anchor="start" font-size="16">APB</text></svg>
+  <figcaption><b>fig 2.1</b>Modelo AMBA genérico, no documentado para estos núcleos. El núcleo y el DMA (maestros) entran a la matriz AHB; los periféricos, detrás del puente, cuelgan del bus APB. La SRAM no está en esta cadena. Relojes en azul.</figcaption>
+</figure>
+
+<p>En el modelo, la matriz AHB mira la dirección de cada acceso a un periférico y lo entrega al puente. El puente traduce el protocolo AHB al APB. Le da al periférico elegido la dirección, el sentido y, en una escritura, el dato.</p>
+
+<div class="caja ojo">
+  <h4>ojo: es un modelo, no el plano del ESP32</h4>
+  <p>Los TRM de Espressif no describen esta cadena. El del ESP32-S3 nombra AHB solo para el GDMA y el SDHOST, y no dice qué periférico cuelga de qué bus. El del ESP32 (sección 3.3.5) llama «dirección AHB» a la ventana que empieza en 0x6000_0000. La SRAM tampoco pasa por esta cadena: va por los buses propios de instrucciones y de datos del <a href="01-mapa-memoria.html">nivel 1</a>. Tomamos AMBA como la forma típica de resolver el problema.</p>
+</div>
+
+<h3>Qué fija el estándar AMBA</h3>
+
+<ul>
+  <li><strong>AHB:</strong> separa la fase de dirección de la fase de datos y las solapa, así que una transferencia puede empezar mientras otra termina. El esclavo puede pedir esperas con una señal de listo.</li>
+  <li><strong>APB:</strong> no solapa nada. Cada transferencia tiene una fase de preparación, con la dirección y la selección del periférico, y una fase de acceso. Dura como mínimo dos ciclos del reloj APB. Desde APB3, una señal de listo permite al periférico alargar el acceso.</li>
+</ul>
+
+<p>Por eso el APB resulta barato de implementar en cada periférico: sin solapamiento, cada uno solo decodifica una dirección y responde. El precio es el tiempo de cada acceso.</p>
+
+<h2>Recorrido paso a paso: escribir y leer el pin</h2>
+
+<p>Seguimos dos instrucciones del lazo del pin: un guardado en el registro de puesta en alto y una carga del registro de entrada (en el ESP32, direcciones 0x3FF4_4008 y 0x3FF4_403C).</p>
+
+<ol>
+  <li><strong>La instrucción forma la dirección.</strong> Un registro base más un desplazamiento da 0x3FF4_4008. Para la CPU es un guardado común.</li>
+  <li><strong>La matriz AHB mira la dirección (modelo).</strong> Cae en el rango de periféricos, así que encamina el acceso al puente.</li>
+  <li><strong>El puente acepta el acceso.</strong> En una escritura, si tiene un búfer, guarda el dato y libera a la CPU de inmediato (supuesto; por confirmar en el ESP32). En una lectura no hay nada que guardar: el bus queda ocupado hasta que vuelva el dato.</li>
+  <li><strong>El APB cumple sus dos fases.</strong> Preparación y acceso: cada una dura un ciclo de 80 MHz, es decir, tres ciclos de CPU a 240 MHz.</li>
+  <li><strong>El registro actúa.</strong> En el guardado, los bits en uno suben el pin. En la carga, el registro coloca el estado del pin en el bus.</li>
+  <li><strong>Vuelve el dato (solo en la lectura).</strong> Recorre el camino inverso: APB, puente, AHB. Recién entonces el registro destino de la CPU recibe el valor y la instrucción termina.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-2.2">
+  <svg viewBox="0 0 640 328" role="img" aria-label="Línea de tiempo en ciclos de CPU. Un ciclo de APB equivale a tres de CPU. Leer SRAM ocupa un ciclo. Escribir un periférico ocupa dos ciclos y la CPU sigue, aunque el puente queda ocupado seis ciclos de CPU. Leer un periférico detiene a la CPU cinco ciclos tras emitir la lectura, seis en total, dos ciclos de APB, hasta que llega el dato en el séptimo."><defs><pattern id="esp-espera" width="8" height="40" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="6" height="40" class="f2"/></pattern></defs><text x="16" y="22" class="sv-lbl f4" text-anchor="start" font-size="16">ciclo CPU</text><text x="168" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><text x="204" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">2</text><text x="240" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">3</text><text x="276" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">4</text><text x="312" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">5</text><text x="348" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">6</text><text x="384" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">7</text><text x="420" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">8</text><text x="456" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">9</text><text x="492" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">10</text><text x="528" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">11</text><text x="564" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">12</text><text x="16" y="66" class="sv-lbl fb3" text-anchor="start" font-size="16">reloj APB</text><rect x="150" y="40" width="108" height="36" class="fb1 sb3" stroke-width="2"/><rect x="149" y="39" width="2" height="2" class="f0"/><rect x="257" y="39" width="2" height="2" class="f0"/><rect x="149" y="75" width="2" height="2" class="f0"/><rect x="257" y="75" width="2" height="2" class="f0"/><rect x="258" y="40" width="108" height="36" class="fb1 sb3" stroke-width="2"/><rect x="257" y="39" width="2" height="2" class="f0"/><rect x="365" y="39" width="2" height="2" class="f0"/><rect x="257" y="75" width="2" height="2" class="f0"/><rect x="365" y="75" width="2" height="2" class="f0"/><rect x="366" y="40" width="108" height="36" class="fb1 sb3" stroke-width="2"/><rect x="365" y="39" width="2" height="2" class="f0"/><rect x="473" y="39" width="2" height="2" class="f0"/><rect x="365" y="75" width="2" height="2" class="f0"/><rect x="473" y="75" width="2" height="2" class="f0"/><rect x="474" y="40" width="108" height="36" class="fb1 sb3" stroke-width="2"/><rect x="473" y="39" width="2" height="2" class="f0"/><rect x="581" y="39" width="2" height="2" class="f0"/><rect x="473" y="75" width="2" height="2" class="f0"/><rect x="581" y="75" width="2" height="2" class="f0"/><text x="204" y="63" class="sv-lbl fb3" text-anchor="middle" font-size="16">preparar</text><text x="312" y="63" class="sv-lbl fb3" text-anchor="middle" font-size="16">acceso</text><text x="420" y="63" class="sv-lbl f4" text-anchor="middle" font-size="16">ocioso</text><text x="528" y="63" class="sv-lbl f4" text-anchor="middle" font-size="16">ocioso</text><text x="16" y="133" class="sv-lbl f6" text-anchor="start" font-size="16">lee SRAM</text><rect x="150" y="108" width="36" height="40" class="fa1 sa3" stroke-width="2"/><rect x="149" y="107" width="2" height="2" class="f0"/><rect x="185" y="107" width="2" height="2" class="f0"/><rect x="149" y="147" width="2" height="2" class="f0"/><rect x="185" y="147" width="2" height="2" class="f0"/><text x="168" y="133" class="sv-tit fa3" text-anchor="middle" font-size="16">1</text><text x="16" y="188" class="sv-lbl f6" text-anchor="start" font-size="16">escribe</text><text x="16" y="206" class="sv-lbl f6" text-anchor="start" font-size="16">periférico</text><rect x="150" y="172" width="72" height="40" class="fa1 sa3" stroke-width="2"/><rect x="149" y="171" width="2" height="2" class="f0"/><rect x="221" y="171" width="2" height="2" class="f0"/><rect x="149" y="211" width="2" height="2" class="f0"/><rect x="221" y="211" width="2" height="2" class="f0"/><text x="186" y="197" class="sv-tit fa3" text-anchor="middle" font-size="16">2</text><text x="232" y="197" class="sv-lbl f6" text-anchor="start" font-size="16">la CPU sigue; el puente sigue ocupado</text><text x="16" y="252" class="sv-lbl f6" text-anchor="start" font-size="16">lee</text><text x="16" y="270" class="sv-lbl f6" text-anchor="start" font-size="16">periférico</text><rect x="150" y="236" width="36" height="40" class="fa1 sa3" stroke-width="2"/><rect x="149" y="235" width="2" height="2" class="f0"/><rect x="185" y="235" width="2" height="2" class="f0"/><rect x="149" y="275" width="2" height="2" class="f0"/><rect x="185" y="275" width="2" height="2" class="f0"/><text x="168" y="261" class="sv-tit fa3" text-anchor="middle" font-size="16">1</text><rect x="186" y="236" width="180" height="40" fill="url(#esp-espera)"/><rect x="186" y="236" width="180" height="40" class="fn sd3" stroke-width="2"/><text x="276" y="261" class="sv-lbl fd3" text-anchor="middle" font-size="16">CPU detenida</text><rect x="366" y="236" width="36" height="40" class="fa1 sa3" stroke-width="2"/><rect x="365" y="235" width="2" height="2" class="f0"/><rect x="401" y="235" width="2" height="2" class="f0"/><rect x="365" y="275" width="2" height="2" class="f0"/><rect x="401" y="275" width="2" height="2" class="f0"/><text x="384" y="261" class="sv-tit fa3" text-anchor="middle" font-size="16">7</text><text x="412" y="261" class="sv-lbl f6" text-anchor="start" font-size="16">llega el dato</text><text x="16" y="310" class="sv-lbl f4" text-anchor="start" font-size="16">supuestos: SRAM de 1 ciclo; escritura de 2 ciclos aceptada por un búfer.</text></svg>
+  <figcaption><b>fig 2.2</b>Una escritura ocupa dos ciclos de CPU y la CPU sigue (el puente tarda seis). Una lectura la deja detenida: al menos dos ciclos de APB, seis de CPU. Esquema con los supuestos del pie.</figcaption>
+</figure>
+
+<h2>Dos relojes y un lazo de sondeo</h2>
+
+<p>La CPU y el APB no comparten reloj. Con la CPU alimentada desde el PLL, el TRM del ESP32-S3 fija el reloj APB en 80 MHz (tabla 7.2-4); si la CPU usa el cristal o el oscilador interno, el APB va a la misma frecuencia que la CPU. Este nivel supone el caso habitual: CPU a 240 MHz y APB a 80 MHz.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: ciclos de CPU por acceso mínimo de lectura</h4>
+  <p class="formula"><var>n</var> = <var>f</var><sub>CPU</sub> / <var>f</var><sub>APB</sub>; piso = 2 · <var>n</var></p>
+  <dl>
+    <dt>f_CPU</dt><dd>240 MHz</dd>
+    <dt>f_APB</dt><dd>80 MHz (TRM del ESP32-S3, tabla 7.2-4)</dd>
+    <dt>fases</dt><dd>2 ciclos APB: preparación y acceso (especificación APB)</dd>
+    <dt>supuesto</dt><dd>la CPU cruza un APB estándar de 2 fases; viene de AMBA, no de Espressif</dd>
+  </dl>
+  <p class="resultado">n = 240 MHz / 80 MHz = 3 ciclos de CPU por ciclo de APB; piso = 2 · 3 = 6 ciclos de CPU ≈ 25 ns</p>
+  <p>Es un piso del modelo: el cruce del puente y las esperas del periférico se suman. Una lectura de SRAM, en cambio, suele tardar un solo ciclo de CPU (TRM del ESP32-S3, sección 4.3.2: «generalmente»).</p>
+</div>
+
+<p>Esto explica por qué sondear es caro. Un lazo que lee un registro de estado hasta que cambie un bit repite lectura y salto sin parar. Con el supuesto del APB de 2 fases, cada vuelta cuesta al menos 6 ciclos de lectura y 2 de salto (supuesto), unos 8 ciclos o 33 ns. El núcleo queda ocupado al 100 % para detectar un evento. Una interrupción lo detecta sin repetir lecturas, aunque entrar a la excepción también cuesta ciclos. De eso trata el <a href="../procesador/04-excepciones.html">Tomo 4, nivel 4</a>.</p>
+
+<div class="caja ojo">
+  <h4>ojo: no todo registro se lee igual</h4>
+  <p>El ESP32 clásico expone los periféricos en dos direcciones: 0x3FF4_0000 a 0x3FF7_FFFF (DPORT) y 0x6000_0000 a 0x6003_FFFF (AHB), con el mismo contenido. El TRM v5.8 (sección 3.3.5) dice que DPORT es más eficiente pero hace lecturas especulativas y puede reordenar accesos. Y que leer registros FIFO por la dirección AHB da errores impredecibles. Ese nivel de detalle no existe en una RAM.</p>
+</div>
+
+<h2>Registros con efectos laterales</h2>
+
+<p>En un periférico, el acceso no siempre es inocente. Hay tres casos que debés reconocer, porque cambian cómo se escribe el programa.</p>
+
+<ul>
+  <li><strong>Registros de poner y borrar bits.</strong> En el GPIO, el registro de salida tiene dos compañeros: W1TS (<em>write 1 to set</em>) y W1TC (<em>write 1 to clear</em>). Escribir un uno en un bit de W1TS sube ese pin; un uno en W1TC lo baja. Los ceros no hacen nada.</li>
+  <li><strong>Registros de limpieza.</strong> Una interrupción pendiente se anota en un registro de estado y se baja escribiendo un uno en el registro de limpieza. En la UART del ESP32-S3 son el registro de estado crudo de interrupciones y el de limpieza.</li>
+  <li><strong>Lecturas que cambian el estado.</strong> La UART entrega el dato recibido al leer el campo del byte de la FIFO de recepción: según el TRM del ESP32-S3, leerlo saca el byte de la FIFO, y escribir ese mismo campo carga la FIFO de transmisión. Leer dos veces seguidas da dos bytes distintos.</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 312" role="img" aria-label="Ocho bits de un registro de salida. Escribir un uno en el bit 4 del registro W1TS lo sube sin tocar los demás. Escribir un uno en el bit 7 del registro W1TC lo baja, también sin tocar los demás."><text x="16" y="22" class="sv-lbl f4" text-anchor="start" font-size="16">bit</text><text x="292" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">7</text><text x="332" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">6</text><text x="372" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">5</text><text x="412" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">4</text><text x="452" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">3</text><text x="492" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">2</text><text x="532" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><text x="572" y="22" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><text x="16" y="65" class="sv-lbl f6" text-anchor="start" font-size="16">registro de salida</text><rect x="272" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="271" y="39" width="2" height="2" class="f0"/><rect x="311" y="39" width="2" height="2" class="f0"/><rect x="271" y="75" width="2" height="2" class="f0"/><rect x="311" y="75" width="2" height="2" class="f0"/><text x="292" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="312" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="311" y="39" width="2" height="2" class="f0"/><rect x="351" y="39" width="2" height="2" class="f0"/><rect x="311" y="75" width="2" height="2" class="f0"/><rect x="351" y="75" width="2" height="2" class="f0"/><text x="332" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="352" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="351" y="39" width="2" height="2" class="f0"/><rect x="391" y="39" width="2" height="2" class="f0"/><rect x="351" y="75" width="2" height="2" class="f0"/><rect x="391" y="75" width="2" height="2" class="f0"/><text x="372" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="392" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="391" y="39" width="2" height="2" class="f0"/><rect x="431" y="39" width="2" height="2" class="f0"/><rect x="391" y="75" width="2" height="2" class="f0"/><rect x="431" y="75" width="2" height="2" class="f0"/><text x="412" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="432" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="431" y="39" width="2" height="2" class="f0"/><rect x="471" y="39" width="2" height="2" class="f0"/><rect x="431" y="75" width="2" height="2" class="f0"/><rect x="471" y="75" width="2" height="2" class="f0"/><text x="452" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="472" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="471" y="39" width="2" height="2" class="f0"/><rect x="511" y="39" width="2" height="2" class="f0"/><rect x="471" y="75" width="2" height="2" class="f0"/><rect x="511" y="75" width="2" height="2" class="f0"/><text x="492" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="512" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="511" y="39" width="2" height="2" class="f0"/><rect x="551" y="39" width="2" height="2" class="f0"/><rect x="511" y="75" width="2" height="2" class="f0"/><rect x="551" y="75" width="2" height="2" class="f0"/><text x="532" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="552" y="40" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="551" y="39" width="2" height="2" class="f0"/><rect x="591" y="39" width="2" height="2" class="f0"/><rect x="551" y="75" width="2" height="2" class="f0"/><rect x="591" y="75" width="2" height="2" class="f0"/><text x="572" y="64" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><text x="16" y="117" class="sv-lbl f6" text-anchor="start" font-size="16">escribo en W1TS</text><rect x="272" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="271" y="91" width="2" height="2" class="f0"/><rect x="311" y="91" width="2" height="2" class="f0"/><rect x="271" y="127" width="2" height="2" class="f0"/><rect x="311" y="127" width="2" height="2" class="f0"/><text x="292" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="312" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="311" y="91" width="2" height="2" class="f0"/><rect x="351" y="91" width="2" height="2" class="f0"/><rect x="311" y="127" width="2" height="2" class="f0"/><rect x="351" y="127" width="2" height="2" class="f0"/><text x="332" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="352" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="351" y="91" width="2" height="2" class="f0"/><rect x="391" y="91" width="2" height="2" class="f0"/><rect x="351" y="127" width="2" height="2" class="f0"/><rect x="391" y="127" width="2" height="2" class="f0"/><text x="372" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="392" y="92" width="40" height="36" class="fc1 sc3" stroke-width="2"/><rect x="391" y="91" width="2" height="2" class="f0"/><rect x="431" y="91" width="2" height="2" class="f0"/><rect x="391" y="127" width="2" height="2" class="f0"/><rect x="431" y="127" width="2" height="2" class="f0"/><text x="412" y="116" class="sv-tit fc3" text-anchor="middle" font-size="16">1</text><rect x="432" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="431" y="91" width="2" height="2" class="f0"/><rect x="471" y="91" width="2" height="2" class="f0"/><rect x="431" y="127" width="2" height="2" class="f0"/><rect x="471" y="127" width="2" height="2" class="f0"/><text x="452" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="472" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="471" y="91" width="2" height="2" class="f0"/><rect x="511" y="91" width="2" height="2" class="f0"/><rect x="471" y="127" width="2" height="2" class="f0"/><rect x="511" y="127" width="2" height="2" class="f0"/><text x="492" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="512" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="511" y="91" width="2" height="2" class="f0"/><rect x="551" y="91" width="2" height="2" class="f0"/><rect x="511" y="127" width="2" height="2" class="f0"/><rect x="551" y="127" width="2" height="2" class="f0"/><text x="532" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="552" y="92" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="551" y="91" width="2" height="2" class="f0"/><rect x="591" y="91" width="2" height="2" class="f0"/><rect x="551" y="127" width="2" height="2" class="f0"/><rect x="591" y="127" width="2" height="2" class="f0"/><text x="572" y="116" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><text x="16" y="161" class="sv-lbl f6" text-anchor="start" font-size="16">registro de salida</text><rect x="272" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="271" y="135" width="2" height="2" class="f0"/><rect x="311" y="135" width="2" height="2" class="f0"/><rect x="271" y="171" width="2" height="2" class="f0"/><rect x="311" y="171" width="2" height="2" class="f0"/><text x="292" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="312" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="311" y="135" width="2" height="2" class="f0"/><rect x="351" y="135" width="2" height="2" class="f0"/><rect x="311" y="171" width="2" height="2" class="f0"/><rect x="351" y="171" width="2" height="2" class="f0"/><text x="332" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="352" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="351" y="135" width="2" height="2" class="f0"/><rect x="391" y="135" width="2" height="2" class="f0"/><rect x="351" y="171" width="2" height="2" class="f0"/><rect x="391" y="171" width="2" height="2" class="f0"/><text x="372" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="392" y="136" width="40" height="36" class="fa1 sa3" stroke-width="2"/><rect x="391" y="135" width="2" height="2" class="f0"/><rect x="431" y="135" width="2" height="2" class="f0"/><rect x="391" y="171" width="2" height="2" class="f0"/><rect x="431" y="171" width="2" height="2" class="f0"/><text x="412" y="160" class="sv-tit fa3" text-anchor="middle" font-size="16">1</text><rect x="432" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="431" y="135" width="2" height="2" class="f0"/><rect x="471" y="135" width="2" height="2" class="f0"/><rect x="431" y="171" width="2" height="2" class="f0"/><rect x="471" y="171" width="2" height="2" class="f0"/><text x="452" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="472" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="471" y="135" width="2" height="2" class="f0"/><rect x="511" y="135" width="2" height="2" class="f0"/><rect x="471" y="171" width="2" height="2" class="f0"/><rect x="511" y="171" width="2" height="2" class="f0"/><text x="492" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="512" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="511" y="135" width="2" height="2" class="f0"/><rect x="551" y="135" width="2" height="2" class="f0"/><rect x="511" y="171" width="2" height="2" class="f0"/><rect x="551" y="171" width="2" height="2" class="f0"/><text x="532" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="552" y="136" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="551" y="135" width="2" height="2" class="f0"/><rect x="591" y="135" width="2" height="2" class="f0"/><rect x="551" y="171" width="2" height="2" class="f0"/><rect x="591" y="171" width="2" height="2" class="f0"/><text x="572" y="160" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><text x="16" y="213" class="sv-lbl f6" text-anchor="start" font-size="16">escribo en W1TC</text><rect x="272" y="188" width="40" height="36" class="fc1 sc3" stroke-width="2"/><rect x="271" y="187" width="2" height="2" class="f0"/><rect x="311" y="187" width="2" height="2" class="f0"/><rect x="271" y="223" width="2" height="2" class="f0"/><rect x="311" y="223" width="2" height="2" class="f0"/><text x="292" y="212" class="sv-tit fc3" text-anchor="middle" font-size="16">1</text><rect x="312" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="311" y="187" width="2" height="2" class="f0"/><rect x="351" y="187" width="2" height="2" class="f0"/><rect x="311" y="223" width="2" height="2" class="f0"/><rect x="351" y="223" width="2" height="2" class="f0"/><text x="332" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="352" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="351" y="187" width="2" height="2" class="f0"/><rect x="391" y="187" width="2" height="2" class="f0"/><rect x="351" y="223" width="2" height="2" class="f0"/><rect x="391" y="223" width="2" height="2" class="f0"/><text x="372" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="392" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="391" y="187" width="2" height="2" class="f0"/><rect x="431" y="187" width="2" height="2" class="f0"/><rect x="391" y="223" width="2" height="2" class="f0"/><rect x="431" y="223" width="2" height="2" class="f0"/><text x="412" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="432" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="431" y="187" width="2" height="2" class="f0"/><rect x="471" y="187" width="2" height="2" class="f0"/><rect x="431" y="223" width="2" height="2" class="f0"/><rect x="471" y="223" width="2" height="2" class="f0"/><text x="452" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="472" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="471" y="187" width="2" height="2" class="f0"/><rect x="511" y="187" width="2" height="2" class="f0"/><rect x="471" y="223" width="2" height="2" class="f0"/><rect x="511" y="223" width="2" height="2" class="f0"/><text x="492" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="512" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="511" y="187" width="2" height="2" class="f0"/><rect x="551" y="187" width="2" height="2" class="f0"/><rect x="511" y="223" width="2" height="2" class="f0"/><rect x="551" y="223" width="2" height="2" class="f0"/><text x="532" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><rect x="552" y="188" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="551" y="187" width="2" height="2" class="f0"/><rect x="591" y="187" width="2" height="2" class="f0"/><rect x="551" y="223" width="2" height="2" class="f0"/><rect x="591" y="223" width="2" height="2" class="f0"/><text x="572" y="212" class="sv-tit f4" text-anchor="middle" font-size="16">0</text><text x="16" y="257" class="sv-lbl f6" text-anchor="start" font-size="16">registro de salida</text><rect x="272" y="232" width="40" height="36" class="fa1 sa3" stroke-width="2"/><rect x="271" y="231" width="2" height="2" class="f0"/><rect x="311" y="231" width="2" height="2" class="f0"/><rect x="271" y="267" width="2" height="2" class="f0"/><rect x="311" y="267" width="2" height="2" class="f0"/><text x="292" y="256" class="sv-tit fa3" text-anchor="middle" font-size="16">0</text><rect x="312" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="311" y="231" width="2" height="2" class="f0"/><rect x="351" y="231" width="2" height="2" class="f0"/><rect x="311" y="267" width="2" height="2" class="f0"/><rect x="351" y="267" width="2" height="2" class="f0"/><text x="332" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="352" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="351" y="231" width="2" height="2" class="f0"/><rect x="391" y="231" width="2" height="2" class="f0"/><rect x="351" y="267" width="2" height="2" class="f0"/><rect x="391" y="267" width="2" height="2" class="f0"/><text x="372" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="392" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="391" y="231" width="2" height="2" class="f0"/><rect x="431" y="231" width="2" height="2" class="f0"/><rect x="391" y="267" width="2" height="2" class="f0"/><rect x="431" y="267" width="2" height="2" class="f0"/><text x="412" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="432" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="431" y="231" width="2" height="2" class="f0"/><rect x="471" y="231" width="2" height="2" class="f0"/><rect x="431" y="267" width="2" height="2" class="f0"/><rect x="471" y="267" width="2" height="2" class="f0"/><text x="452" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="472" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="471" y="231" width="2" height="2" class="f0"/><rect x="511" y="231" width="2" height="2" class="f0"/><rect x="471" y="267" width="2" height="2" class="f0"/><rect x="511" y="267" width="2" height="2" class="f0"/><text x="492" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><rect x="512" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="511" y="231" width="2" height="2" class="f0"/><rect x="551" y="231" width="2" height="2" class="f0"/><rect x="511" y="267" width="2" height="2" class="f0"/><rect x="551" y="267" width="2" height="2" class="f0"/><text x="532" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">1</text><rect x="552" y="232" width="40" height="36" class="f1 s3" stroke-width="2"/><rect x="551" y="231" width="2" height="2" class="f0"/><rect x="591" y="231" width="2" height="2" class="f0"/><rect x="551" y="267" width="2" height="2" class="f0"/><rect x="591" y="267" width="2" height="2" class="f0"/><text x="572" y="256" class="sv-tit f6" text-anchor="middle" font-size="16">0</text><text x="16" y="292" class="sv-lbl f4" text-anchor="start" font-size="16">los ceros escritos no cambian nada: solo los unos actúan.</text></svg>
+  <figcaption><b>fig 2.3</b>W1TS sube solo el bit 4 y W1TC baja solo el bit 7. El resto del registro queda igual, aunque se escriba de una sola vez.</figcaption>
+</figure>
+
+<p>El TRM del ESP32-S3 recomienda usar W1TS y W1TC para modificar el registro de salida y el de habilitación. La razón es el costo de la alternativa: para cambiar un bit sin tocar los otros, habría que leer el registro entero, modificarlo y volver a escribirlo.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: leer-modificar-escribir contra W1TS</h4>
+  <p class="formula"><var>t</var><sub>RMW</sub> = <var>t</var><sub>lectura</sub> + <var>t</var><sub>modificar</sub> + <var>t</var><sub>escritura</sub></p>
+  <dl>
+    <dt>t_lectura</dt><dd>6 ciclos como mínimo (cálculo anterior)</dd>
+    <dt>t_modificar</dt><dd>1 ciclo (supuesto)</dd>
+    <dt>t_escritura</dt><dd>2 ciclos (supuesto)</dd>
+  </dl>
+  <p class="resultado">t_RMW ≥ 6 + 1 + 2 = 9 ciclos ≈ 37,5 ns; con W1TS, una escritura de 2 ciclos ≈ 8,3 ns</p>
+  <p>W1TS gana 4,5 veces. Además, durante los 9 ciclos una interrupción podría cambiar otro bit del registro, y la escritura final lo pisaría. W1TS no tiene esa ventana.</p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué una lectura de un registro detiene a la CPU y una escritura puede no hacerlo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Lectura y escritura usan el mismo camino por la matriz, el puente y el APB. La diferencia no está en el bus.">Porque la lectura usa un bus distinto del de la escritura.</button>
+    <button type="button" data-por-que="La instrucción de lectura no puede terminar sin el dato, que vuelve desde el periférico. La escritura puede quedar en un búfer del puente y la CPU sigue.">Porque la lectura necesita el dato para terminar, y la escritura puede quedar en un búfer.</button>
+    <button type="button" data-por-que="El APB tiene el mismo reloj para leer y para escribir. El costo viene de esperar el dato, no de leer más despacio.">Porque el APB corre más lento al leer que al escribir.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Implementaciones reales: ESP32, Cortex-M y RISC-V</h2>
+
+<p>El mecanismo es el mismo en todas las familias: periféricos en direcciones, un puente a un bus lento y registros con efectos laterales. Cambia cómo cada una ayuda a modificar un bit sin leer.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32 / ESP32-S3<br>Xtensa</th><th>Cortex-M3 / M4<br>Arm</th><th>RISC-V</th></tr></thead>
+  <tbody>
+    <tr><td><b>Periféricos en el mapa</b></td><td>ESP32: 0x3FF4_0000 a 0x3FF7_FFFF; S3: 0x6000_0000 a 0x600D_0FFF</td><td>Región de 512 MB desde 0x4000_0000; bit-band en el primer 1 MB</td><td>Regiones de E/S que fija cada diseño; la especificación solo les da atributos</td></tr>
+    <tr><td><b>Cambiar un bit sin leer</b></td><td>Registros W1TS y W1TC en el periférico</td><td>Alias bit-band: cada bit tiene una palabra propia; en el M33, sin bit-band</td><td>Lo decide el periférico (por ejemplo, registros de poner y borrar, como en el GPIO del ESP32-C3, con el de poner en el desplazamiento 0x0008)</td></tr>
+    <tr><td><b>Registros del propio núcleo</b></td><td>Registros especiales del núcleo; no son MMIO</td><td>PPB, 0xE000_0000 a 0xE00F_FFFF, tipo fuertemente ordenado</td><td>Registros de control y estado del núcleo, con instrucciones propias y fuera del mapa</td></tr>
+    <tr><td><b>Orden de los accesos</b></td><td>DPORT puede reordenar; el alias AHB conserva el orden</td><td>Los accesos a dispositivos mantienen el orden; instrucciones de barrera de memoria</td><td>Instrucción de barrera con bits de entrada y salida</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>Bit-band.</strong> En Cortex-M3 y M4, un megabyte de SRAM desde 0x2000_0000 y un megabyte de periféricos desde 0x4000_0000 tienen un alias de 32 MB (desde 0x2200_0000 y 0x4200_0000). Cada bit del megabyte tiene su propia palabra en el alias.</p>
+
+<p>La dirección del alias es la base, más 32 por el desplazamiento en bytes, más 4 por el número de bit. Escribir 1 o 0 en esa palabra cambia solo ese bit, y el hardware hace la lectura-modificación-escritura. El Cortex-M33 (Armv8-M) no lo incluye: por confirmar en su manual.</p>
+
+<p><strong>PPB.</strong> El bus de periféricos privados contiene el temporizador del sistema y el controlador de interrupciones del Cortex-M. Es parte del núcleo, no un periférico de fabricante, y por eso cada Cortex-M lo ofrece en la misma dirección.</p>
+
+<p><strong>RISC-V.</strong> La especificación privilegiada no define un mapa de periféricos: cada diseño marca qué regiones son de E/S (atributos de memoria física) y una instrucción de barrera ordena los accesos de entrada y salida. El mecanismo de poner y borrar bits queda a cargo del periférico.</p>
+
+<div class="caja dato">
+  <h4>dato: estándares detrás de esta comparación</h4>
+  <ul>
+    <li><strong>AMBA AHB y APB</strong> (Arm, IHI 0033 e IHI 0024): fijan señales, fases y esperas de ambos buses.</li>
+    <li><strong>Armv7-M</strong> (Arm, DDI 0403): define bit-band, el espacio del PPB y el tipo de memoria de dispositivo.</li>
+    <li><strong>RISC-V privilegiada</strong>: atributos de memoria física y barrera de E/S.</li>
+  </ul>
+</div>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>Este nivel completa lo que el <a href="../mundo/01-pin.html">Tomo 2, nivel 1</a> mostró desde el pin: ahora ves el camino de la dirección hasta él. La alternativa al sondeo es la interrupción, que invierte la iniciativa: el periférico avisa y la CPU actúa. Su mecanismo en el núcleo está en el <a href="../procesador/04-excepciones.html">Tomo 4, nivel 4</a>. El <a href="01-mapa-memoria.html">nivel 1</a> muestra el mapa completo donde viven estas direcciones.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Ya tenés el piso de una lectura (6 ciclos, en el modelo) y el costo de leer-modificar-escribir. Falta ver qué pasa con la frecuencia máxima del pin.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: frecuencia máxima de la onda cuadrada</h4>
+  <p class="formula"><var>T</var><sub>onda</sub> = 2 · <var>t</var><sub>flanco</sub>; <var>f</var> = <var>f</var><sub>CPU</sub> / <var>T</var><sub>onda</sub></p>
+  <dl>
+    <dt>t_escritura</dt><dd>2 ciclos de CPU para emitirla (supuesto); el puente la atiende en 6 ciclos de CPU (2 de APB)</dd>
+    <dt>t_salto</dt><dd>2 ciclos (supuesto)</dd>
+    <dt>t_lectura</dt><dd>0 sin lectura; 6 ciclos como mínimo con ella, y espera a que el puente termine la escritura anterior (supuesto)</dd>
+    <dt>f_CPU</dt><dd>240 MHz</dd>
+  </dl>
+  <p class="resultado">sin lectura: emitir y saltar toma 2 + 2 = 4 ciclos, pero el puente tarda 6 por escritura, así que t_flanco = 6, T = 12 ciclos y f = 20 MHz; con lectura: t_flanco = 6 + 6 + 2 = 14, T = 28 ciclos y f ≈ 8,6 MHz</p>
+  <p>El límite lo pone el puente, no la CPU: una escritura cada 6 ciclos son como máximo 40 millones de escrituras por segundo. Una sola lectura entre cambios baja el techo un 57 %. Son techos del modelo, no mediciones: la frecuencia real es menor.</p>
+</div>
+
+<h2>Límites del modelo</h2>
+
+<p>El modelo cuenta ciclos ideales, sin esperas del periférico, sin arbitraje entre maestros y con un puente sin otros accesos en curso. Quedan por confirmar:</p>
+
+<ul>
+  <li>si el puente del ESP32 tiene búfer de escritura y de cuántos accesos;</li>
+  <li>el costo real de una lectura APB en el ESP32 y en el ESP32-S3, medido;</li>
+  <li>qué periféricos del S3 cuelgan de APB y cuáles de AHB;</li>
+  <li>si el Cortex-M33 omite el bit-band;</li>
+  <li>si la cadena AMBA del modelo existe tal cual en los núcleos de Espressif;</li>
+  <li>los detalles de las fases de AHB y APB, leídos de fuentes secundarias y no de la especificación de Arm.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Un registro de periférico es una dirección: se maneja con cargas y guardados comunes.</li>
+    <li>En el modelo AMBA, entre la CPU y el periférico hay un puente y un bus APB más lento; el reloj APB del ESP32-S3 es de 80 MHz con la CPU en el PLL.</li>
+    <li>Escribir puede liberar a la CPU; leer la detiene al menos 6 ciclos (en el modelo), y por eso sondear un registro en un lazo es caro.</li>
+    <li>W1TS y W1TC, los registros de limpieza y las lecturas que sacan datos de una FIFO son efectos laterales: el acceso hace algo más que mover un valor.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Qué ventaja tiene W1TS sobre leer, modificar y escribir el registro de salida?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="W1TS no cambia la frecuencia del APB. Ese reloj es fijo para todos los accesos.">Acelera el reloj APB mientras escribe.</button>
+    <button type="button" data-por-que="W1TS no evita el puente: el guardado también cruza AHB y APB. Lo que evita es la lectura.">Evita pasar por el puente.</button>
+    <button type="button" data-por-que="Una sola escritura sube los bits elegidos sin leer antes: cuesta menos y no deja una ventana en la que otra rutina cambie el registro.">Cambia solo los bits elegidos con una escritura, sin leer antes ni arriesgar una interrupción en el medio.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em> v5.8, sección 3.3.5 (periféricos, DPORT y AHB) y tabla de registros del GPIO. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> v1.8: sección 4.3.5 y tabla 4.3-3 (mapa de periféricos), tabla 7.2-4 (reloj APB), capítulo 6 (W1TS y W1TC), capítulo 26 (UART), sección 4.3.2 (SRAM «generalmente» en un ciclo de CPU). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Arm. <em>AMBA APB Protocol Specification</em> (IHI 0024). <a href="https://developer.arm.com/documentation/ihi0024/latest/">developer.arm.com/documentation/ihi0024</a></li>
+    <li>Arm. <em>AMBA AHB Protocol Specification</em> (IHI 0033). <a href="https://developer.arm.com/documentation/ihi0033/latest/">developer.arm.com/documentation/ihi0033</a></li>
+    <li>Arm. <em>Armv7-M Architecture Reference Manual</em> (DDI 0403). <a href="https://developer.arm.com/documentation/ddi0403/latest/">developer.arm.com/documentation/ddi0403</a></li>
+    <li>Arm. <em>Cortex-M3 Technical Reference Manual</em> (bit-band). <a href="https://developer.arm.com/documentation/ddi0337/latest/">developer.arm.com/documentation/ddi0337</a></li>
+    <li>RISC-V International. <em>The RISC-V Instruction Set Manual, Volume II: Privileged Architecture</em>. <a href="https://riscv.org/technical/specifications/">riscv.org/technical/specifications</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA y revisada. Las cifras de Espressif se leyeron en los TRM; los detalles de AMBA, bit-band, PPB y RISC-V se contrastaron con fuentes secundarias y deben confirmarse en la especificación. La cadena núcleo, AHB, puente y APB es un modelo AMBA genérico, no documentado por Espressif para estos núcleos. Los ciclos de escritura, salto y modificación son supuestos.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, buses, nivel-02</footer>
+</body>
+</html>
