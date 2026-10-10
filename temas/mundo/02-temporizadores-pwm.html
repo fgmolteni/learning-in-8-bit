@@ -63,6 +63,16 @@
   <p>El péndulo es el cristal: oscila rápido. Los engranajes reductores son el prescaler. El cuadrante que avanza es el contador. Una leva en el minuto 45 que hace sonar una campanita es el comparador. Y el cuadrante, al ser redondo, vuelve solo al cero: la recarga automática.</p>
 </div>
 
+<h3>El temporizador es tan exacto como su reloj</h3>
+<p>El contador no sabe cuánto dura un segundo: cuenta flancos. Si el reloj se corre, la medida se corre con él. Hay dos errores distintos, y conviene no mezclarlos:</p>
+
+<ul>
+  <li><strong>Deriva</strong> (<em>drift</em>). La frecuencia media del oscilador se aparta de la nominal por la tolerancia del cristal, la temperatura o el envejecimiento. Se expresa en partes por millón (ppm) y se <strong>acumula</strong>: un reloj que adelanta un poco cada día termina corrido minutos al cabo de unos meses.</li>
+  <li><strong>Jitter</strong>. Cada flanco cae un poco antes o un poco después de su lugar ideal, al azar, por el ruido térmico y el de la alimentación. En promedio la frecuencia es correcta y el error <strong>no se acumula</strong>, pero un flanco aislado no es confiable. Importa cuando se muestrea rápido o se mide un intervalo corto. Es el mismo nombre que la variación de período que evita la recarga automática: en los dos casos el flanco no cae donde debería.</li>
+</ul>
+
+<p>El PLL que lleva la frecuencia del cristal a la del sistema <strong>multiplica, no corrige</strong>: hereda la deriva del cristal en ppm y puede sumar jitter propio. Para ganar exactitud hace falta un oscilador mejor, como un cristal compensado en temperatura, o corregir el reloj contra una referencia externa.</p>
+
 <h2>PWM: una tensión hecha de ceros y unos</h2>
 
 <p>Para regular la potencia de una carga se puede usar un transistor en su zona lineal, pero disipa mucho calor. El <strong>PWM</strong> hace lo contrario: el transistor solo está cortado (no pasa corriente) o saturado (casi no cae tensión), y en los dos casos disipa poco. Lo que se regula es qué fracción del período pasa encendido, el <strong>ciclo de trabajo</strong> D. El valor medio es D × V<sub>pico</sub>, y si la carga es lenta (la inercia de un motor, la masa térmica de un calefactor, el ojo frente a un LED) responde a ese promedio.</p>
@@ -211,6 +221,8 @@
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: LEDC (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/ledc.html">docs.espressif.com/…/ledc.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: MCPWM (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/mcpwm.html">docs.espressif.com/…/mcpwm.html</a></li>
     <li>Texas Instruments. <em>Using PWM Output as a Digital-to-Analog Converter (SPRAA88)</em>. <a href="https://www.ti.com/lit/an/spraa88a/spraa88a.pdf">ti.com/lit/an/spraa88a/spraa88a.pdf</a></li>
+    <li>Analog Devices. <em>MT-008: Converting Oscillator Phase Noise to Time Jitter</em>. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-008.pdf">analog.com/…/MT-008.pdf</a></li>
+    <li>IEEE. <em>IEEE Std 1139-2022: Standard Definitions of Physical Quantities for Fundamental Frequency and Time Metrology, Random Instabilities</em> (definiciones de inestabilidad de frecuencia y de fase). <a href="https://standards.ieee.org/ieee/1139/7585/">standards.ieee.org/ieee/1139/7585/</a></li>
   </ol>
   <p class="nota">El rango útil de tiempo muerto depende del transistor y del driver de compuerta; las cifras de rizado y asentamiento son aproximaciones de primer orden.</p>
 </section>

@@ -34,6 +34,7 @@
     <li>Explicar cómo un SAR usa un <strong>DAC de capacitores</strong> y un comparador para resolver un bit por paso.</li>
     <li>Calcular cuánto tiempo de muestreo pide una fuente de alta impedancia y cómo resolverlo.</li>
     <li>Distinguir <strong>offset, ganancia, DNL e INL</strong> y saber qué corrige la calibración.</li>
+    <li>Explicar por qué el <strong>aliasing</strong> se combate con un filtro analógico antes del pin y no después.</li>
     <li>Elegir atenuación, canal (ADC1 o ADC2) y micro según el rango y la exactitud que necesites.</li>
   </ul>
 </div>
@@ -96,7 +97,7 @@
 
 <h2>La fuente importa</h2>
 
-<p>Un ADC no es un voltímetro de impedancia infinita. Al cerrar la llave de muestreo, el capacitor interno se conecta de golpe al pin y se carga a través de la resistencia de la fuente y la de la propia llave.</p>
+<p>Un ADC no es un voltímetro de impedancia infinita. Al cerrar la llave de muestreo, el capacitor interno se conecta de golpe al pin y se carga a través de la resistencia de la fuente y la de la propia llave. Ese tirón de corriente se llama <strong>patada de carga</strong> (<em>kickback</em>): el capacitor trae la carga de la muestra anterior y, en el instante en que la llave se cierra, la reparte con el pin. Si la fuente no la repone a tiempo, la lectura queda a mitad de camino entre el canal anterior y el actual.</p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
   <svg viewBox="0 0 640 256" role="img" aria-label="Circuito equivalente de la entrada: la fuente con su resistencia, la capacidad del pin, la resistencia de la llave interna y el capacitor de muestreo; al lado, la curva de carga que necesita unas nueve constantes de tiempo para llegar a medio LSB de 12 bits">
@@ -138,7 +139,7 @@
 
 <div class="caja dato">
   <h4>dato: 12 bits son resolución, no exactitud</h4>
-  <p>Que el resultado tenga 12 bits dice cuán finos son los escalones, no cuán cerca está del valor real. En los dos micros, después de calibrar, el error total en el rango más amplio es de decenas de milivolts.</p>
+  <p>Son tres palabras distintas. La <strong>resolución</strong> es el tamaño del escalón. La <strong>exactitud</strong> es cuán cerca queda la lectura del valor real; la degradan el offset, la ganancia y la INL. La <strong>repetibilidad</strong> (lo que en metrología se llama precisión) es cuánto se parecen dos lecturas de la misma tensión; la degrada el ruido. Un ADC puede dar siempre el mismo código y estar lejos del valor real, o acertar en promedio con mucha dispersión. En los dos micros, después de calibrar, el error total en el rango más amplio es de decenas de milivolts.</p>
 </div>
 
 <div class="caja quiz" data-ok="1">
@@ -155,6 +156,11 @@
 <h2>Atenuadores: medir más de un volt</h2>
 
 <p>Los transistores finos del núcleo no aguantan 3,3 V, así que el SAR trabaja con una referencia interna de alrededor de <strong>1,1 V</strong>. Para medir más, la entrada pasa por un <strong>atenuador</strong> programable. El costo: la señal se achica pero el ruido del núcleo no, así que la resolución en volts empeora; el divisor agrega resistencia en serie y algo de curvatura; y cerca del techo la cadena se comprime y satura antes de 3,3 V.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el ADC mide una relación, no volts</h4>
+  <p>El código es la fracción V<sub>in</sub> / V<sub>ref</sub>. Si el sensor se alimenta de la misma tensión que usa el ADC como referencia, una variación de esa tensión mueve las dos cosas juntas y se cancela: es una medición <strong>ratiométrica</strong>. En estos micros la referencia es interna y el potenciómetro o el divisor cuelgan de la alimentación, así que no se cancela nada: el ruido de la fuente, por ejemplo las caídas cuando transmite la radio, aparece entero en la lectura.</p>
+</div>
 
 <div class="tabla-scroll">
 <table>
@@ -185,6 +191,17 @@
   <li><strong>Controlador RTC:</strong> conversiones sueltas a pedido, de bajo consumo. Es el que puede usar el coprocesador ULP con los núcleos dormidos.</li>
   <li><strong>Controlador digital:</strong> muestreo continuo a ritmo fijo, marcado por hardware. Recorre una <strong>tabla de patrones</strong> (canal y atenuación de cada paso) y entrega las muestras por <strong>DMA</strong> (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) a la RAM, con el número de canal pegado a cada una. La CPU solo se entera cuando se llena un bloque. En el S3 suma filtros IIR y un monitor de umbrales que interrumpe solo si la señal sale de una banda.</li>
 </ul>
+
+<h2>Muestrear a ritmo fijo: el aliasing</h2>
+
+<p>Entre una muestra y la siguiente, el ADC no ve nada. Si la señal tiene componentes por encima de la mitad de la frecuencia de muestreo (la <strong>frecuencia de Nyquist</strong>), sus muestras coinciden con las de una señal más lenta. La componente rápida se <strong>pliega</strong> y aparece dentro de la banda como una frecuencia que no existe: el <strong>alias</strong>.</p>
+
+<p>Una vez muestreado, el alias es idéntico a una señal real de baja frecuencia. Ningún filtro digital lo separa después, y promediar baja el ruido pero no saca un alias que ya entró. Por eso el filtro <strong>antialiasing</strong> es analógico y va antes del pin: un pasabajos que atenúe lo que esté por encima de Nyquist. Como un filtro real no corta de golpe, en la práctica se muestrea bastante por encima del doble de la frecuencia más alta que interesa. El capacitor del pin junto con la resistencia de la fuente ya es un pasabajos: ayuda contra el alias, y a la vez limita qué tan rápido puede cambiar la señal que medís.</p>
+
+<div class="caja analogia">
+  <h4>analogía: las aspas en el video</h4>
+  <p>En un video, las aspas de un helicóptero parecen girar despacio o quedarse quietas: la cámara saca pocos cuadros por segundo y entre uno y otro el aspa dio casi una vuelta entera. Ningún programa de edición recupera la velocidad real a partir del archivo; la información se perdió al filmar. Para verla bien hay que filmar más rápido o, en el ADC, sacar lo rápido antes de muestrear.</p>
+</div>
 
 <h2>ADC2 y la radio</h2>
 
@@ -248,6 +265,8 @@
     <li>Espressif Systems. <em>ESP32-S3 Series SoC Errata</em>. <a href="https://docs.espressif.com/projects/esp-chip-errata/en/latest/esp32s3/">docs.espressif.com/projects/esp-chip-errata/…/esp32s3/</a></li>
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: ADC Calibration Driver (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc_calibration.html">docs.espressif.com/…/adc_calibration.html</a></li>
     <li>Analog Devices. <em>MT-021: Successive Approximation ADCs</em>. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-021.pdf">analog.com/…/MT-021.pdf</a></li>
+    <li>Analog Devices. <em>MT-002: What the Nyquist Criterion Means to Your Sampled Data System Design</em>. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-002.pdf">analog.com/…/MT-002.pdf</a></li>
+    <li>IEEE. <em>IEEE Std 1241-2023: Standard for Terminology and Test Methods for Analog-to-Digital Converters</em> (definiciones de offset, ganancia, DNL, INL y ENOB). <a href="https://standards.ieee.org/ieee/1241/6797/">standards.ieee.org/ieee/1241/6797/</a></li>
   </ol>
   <p class="nota">El valor del capacitor de muestreo interno, la resistencia de la llave y los bits efectivos no figuran en los datasheets; los cálculos usan órdenes de magnitud típicos de un SAR integrado.</p>
 </section>

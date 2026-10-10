@@ -22,7 +22,7 @@
 <header>
   <span class="nivel-chip" data-n="01">nivel 01, 12 min de lectura</span>
   <h1>El procesador</h1>
-  <p class="bajada">Es la pieza que lee instrucciones y las ejecuta, una tras otra, millones de veces por segundo. Abrimos la caja siguiendo una sola instrucción de un filtro digital en un ESP32.</p>
+  <p class="bajada">Qué es un procesador, qué elementos tiene y cómo se relacionan, siguiendo una instrucción de un filtro digital. El ESP32 es la guía; la comparación cruza Xtensa, RISC-V y Arm.</p>
 </header>
 
 <div class="caja objetivos">
@@ -79,7 +79,7 @@
 
 <p>Un <strong>multiplexor</strong> elige entre dos entradas según una señal de control. Delante del PC elige entre PC&nbsp;+&nbsp;3 y el destino de un salto, y así la unidad de control decide la próxima instrucción.</p>
 
-<h2>Recorrido paso a paso: un MAC del filtro</h2>
+<h2>Recorrido paso a paso: una MAC del filtro</h2>
 
 <p>Seguimos una instrucción de 24 bits del ESP32 (Xtensa) que multiplica y acumula un coeficiente; los números son los de la figura 1.2. Los pasos 1 a 5 son la MAC; el paso 6 muestra cómo llegaron antes sus operandos.</p>
 
@@ -102,9 +102,9 @@
   <h4>repaso rápido</h4>
   <p class="pregunta">Antes de la MAC, ¿por qué bus llegó el coeficiente al banco de registros?</p>
   <div class="opciones">
-    <button type="button" data-por-que="Ese bus solo trae instrucciones al IR. Un coeficiente es un dato y viaja por el bus de datos.">Por el bus de instrucciones.</button>
-    <button type="button" data-por-que="La carga forma la dirección con un registro más un desplazamiento, la memoria de datos devuelve el valor y el banco lo escribe.">Por el bus de datos, con una dirección de registro más desplazamiento.</button>
-    <button type="button" data-por-que="Una interrupción solo avisa de un evento. No transporta datos.">Por una línea de interrupción.</button>
+    <button type="button" data-por-que="Ese bus solo trae instrucciones al IR. Un coeficiente es un dato y viaja por el bus de datos.">Por el bus de instrucciones, con una captura.</button>
+    <button type="button" data-por-que="La carga forma la dirección con un registro más un desplazamiento, la memoria de datos devuelve el valor y el banco lo escribe.">Por el bus de datos, con una carga.</button>
+    <button type="button" data-por-que="Una interrupción solo avisa de un evento. No transporta datos.">Por una línea de interrupción, con un aviso.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>
 </div>
@@ -115,7 +115,7 @@
 
 <figure class="diagrama" data-titulo="fig-1.3">
   <svg viewBox="0 0 640 304" role="img" aria-label="Diagrama animado de un pipeline de cinco etapas con cuatro instrucciones: cada instrucción empieza un ciclo después de la anterior y las etapas se solapan, formando una escalera."><text x="16" y="22" class="sv-lbl f4" font-size="16" text-anchor="start">ciclo</text><text x="124" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">1</text><text x="188" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">2</text><text x="252" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">3</text><text x="316" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">4</text><text x="380" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">5</text><text x="444" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">6</text><text x="508" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">7</text><text x="572" y="22" class="sv-lbl f6" font-size="16" text-anchor="middle">8</text><text x="16" y="73" class="sv-tit f6">I1</text><rect x="96" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="124" y="73" class="sv-tit f6" text-anchor="middle">B</text><rect x="160" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="73" class="sv-tit f6" text-anchor="middle">D</text><rect x="224" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="73" class="sv-tit f6" text-anchor="middle">E</text><rect x="288" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="73" class="sv-tit f6" text-anchor="middle">M</text><rect x="352" y="48" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="73" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="121" class="sv-tit f6">I2</text><rect x="160" y="96" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="188" y="121" class="sv-tit f6" text-anchor="middle">B</text><rect x="224" y="96" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="121" class="sv-tit f6" text-anchor="middle">D</text><rect x="288" y="96" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="121" class="sv-tit f6" text-anchor="middle">E</text><rect x="352" y="96" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="121" class="sv-tit f6" text-anchor="middle">M</text><rect x="416" y="96" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="121" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="169" class="sv-tit f6">I3</text><rect x="224" y="144" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="252" y="169" class="sv-tit f6" text-anchor="middle">B</text><rect x="288" y="144" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="169" class="sv-tit f6" text-anchor="middle">D</text><rect x="352" y="144" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="169" class="sv-tit f6" text-anchor="middle">E</text><rect x="416" y="144" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="169" class="sv-tit f6" text-anchor="middle">M</text><rect x="480" y="144" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="508" y="169" class="sv-tit f6" text-anchor="middle">W</text><text x="16" y="217" class="sv-tit f6">I4</text><rect x="288" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="316" y="217" class="sv-tit f6" text-anchor="middle">B</text><rect x="352" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="380" y="217" class="sv-tit f6" text-anchor="middle">D</text><rect x="416" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="444" y="217" class="sv-tit f6" text-anchor="middle">E</text><rect x="480" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="508" y="217" class="sv-tit f6" text-anchor="middle">M</text><rect x="544" y="192" width="56" height="40" class="f1 s3" stroke-width="2"/><text x="572" y="217" class="sv-tit f6" text-anchor="middle">W</text><rect y="32" width="56" height="6" class="fb3"><animate attributeName="x" values="96;160;224;288;352;416;480;544" dur="6.4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><rect y="48" width="56" height="40" class="fa2 sa4" fill-opacity="0.5" stroke-width="4"><animate attributeName="x" values="96;160;224;288;352;352;352;352" dur="6.4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;1;1;1;0;0;0" dur="6.4s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><text x="16" y="264" class="sv-lbl f6" font-size="16" text-anchor="start">B buscar, D decodificar, E ejecutar,</text><text x="16" y="288" class="sv-lbl f6" font-size="16" text-anchor="start">M memoria, W escribir en registro</text></svg>
-  <figcaption><b>fig 1.3</b>Cada fila es una instrucción del lazo (cargas, MAC y salto) y cada columna un ciclo. El marco naranja sigue a la primera; la barra azul es el reloj.</figcaption>
+  <figcaption><b>fig 1.3</b>Cada fila es una de cuatro instrucciones cualesquiera en un pipeline ideal, sin burbujas, y cada columna un ciclo. El marco naranja sigue a la primera; la barra azul es el reloj.</figcaption>
 </figure>
 
 <p>Con la línea llena sale una instrucción por ciclo: 1000 instrucciones pasan de 5000 ciclos sin <em>pipeline</em> a 1004 con él.</p>
@@ -155,7 +155,7 @@
     <li><strong>RISC-V</strong>: base RV32I más extensiones con letra: M multiplica y divide, A es atómica, F es flotante simple y C comprime a 16 bits. RV32IMC es la base con M y C.</li>
     <li><strong>Arm Thumb-2</strong>: instrucciones de 16 y 32 bits.</li>
     <li><strong>IEEE 754</strong>: el float de 32 bits tiene 1 bit de signo, 8 de exponente y 23 de fracción; todas estas FPU lo siguen.</li>
-    <li><strong>AMBA</strong>: familia de buses internos de Arm (AHB y APB), común en la industria y usada en muchos chips RISC-V.</li>
+    <li><strong>AMBA</strong>: familia de buses internos de Arm (AHB y APB), común en la industria y usada en muchos micros RISC-V.</li>
   </ul>
 </div>
 
@@ -174,7 +174,7 @@
 
 <p>El ESP32-S3 ensancha el camino de datos con la extensión <strong>PIE</strong>: 8 registros de 128 bits y acumuladores QACC de 160 bits, en ambos núcleos. Con datos de 8 bits hace 16 MAC por instrucción, y a 240 MHz el techo teórico es de 3,84 mil millones de MAC por segundo por núcleo.</p>
 
-<h2>Relación con el resto del chip</h2>
+<h2>Relación con el resto del micro</h2>
 
 <p>El procesador solo ve direcciones y datos, y todo lo demás se le presenta como memoria. La <a href="../micro/04-memoria.html"><strong>memoria</strong></a> responde por los buses. En el ESP32 la SRAM interna tarda 1 o 2 ciclos, y la flash y la PSRAM pasan por una caché. Los <strong>periféricos</strong> son registros en direcciones de memoria: el procesador lee el <a href="../mundo/03-adc.html">ADC</a> o mueve un <a href="../mundo/01-pin.html">pin</a> con una carga o un guardado.</p>
 
@@ -229,7 +229,7 @@
 
 <ul>
   <li>la profundidad del pipeline (7 etapas en el LX6 y 5 en el LX7, citadas);</li>
-  <li>el lazo sin sobrecarga (<em>zero-overhead loop</em>) de cada chip;</li>
+  <li>el lazo sin sobrecarga (<em>zero-overhead loop</em>) de cada variante;</li>
   <li>la ventana de registros del LX7;</li>
   <li>los puertos del banco de registros del núcleo real;</li>
   <li>el tamaño de las cachés;</li>
@@ -257,8 +257,6 @@
   <p class="feedback" aria-live="polite"></p>
 </div>
 
-<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->
-
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
@@ -272,7 +270,7 @@
     <li>Raspberry Pi Ltd. <em>RP2350 Datasheet</em>. <a href="https://datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf">datasheets.raspberrypi.com/rp2350/rp2350-datasheet.pdf</a></li>
     <li>Arm. <em>Armv8-M Architecture Reference Manual</em>. <a href="https://developer.arm.com/documentation/ddi0553/latest">developer.arm.com/documentation/ddi0553</a></li>
   </ol>
-  <p class="nota">Investigación asistida por IA y revisada; los datos marcados como por confirmar deben contrastarse con el manual técnico de cada chip.</p>
+  <p class="nota">Investigación asistida por IA y revisada; los datos marcados como por confirmar deben contrastarse con el manual técnico de cada variante.</p>
 </section>
 
 <div data-nav-niveles></div>

@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.13";
+const VERSION = "0.1.15";
 
 const CURSOS = {
   micro: {
@@ -39,7 +39,7 @@ const CURSOS = {
   procesador: {
     titulo: "El procesador por dentro", seccion: "micro",
     niveles: [
-      { f: "01-procesador.html", t: "El procesador", d: "Piloto de la estructura nueva: definición, piezas, pipeline y cómo lo construyen el ESP32 y el ESP32-S3." },
+      { f: "01-procesador.html", t: "El procesador", d: "Qué es un procesador y cómo se relacionan sus piezas, siguiendo una MAC de un filtro FIR. Compara Xtensa, RISC-V y Arm." },
     ],
   },
   redes: {
