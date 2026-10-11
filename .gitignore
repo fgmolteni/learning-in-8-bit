@@ -1,5 +1,7 @@
 # no publicar: material personal, notas internas y encargos
 ref/
+# libros y apuntes con derechos de autor (solo uso local)
+docs/bibliografia/
 investigacion/
 GUIA.md
 DESPLIEGUE.md
