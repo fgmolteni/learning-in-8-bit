@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 5: De la cámara al tensor</title>
+<meta name="description" content="Cómo llega cada cuadro de la cámara al tensor de entrada del detector: la interfaz DVP, el periférico LCD_CAM, el DMA, el doble buffer y el paso de uint8 a int8 con un solo XOR.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 5: De la cámara al tensor">
+<meta property="og:description" content="Cómo llega cada cuadro de la cámara al tensor de entrada del detector: la interfaz DVP, el periférico LCD_CAM, el DMA, el doble buffer y el paso de uint8 a int8 con un solo XOR.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="5">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="05">nivel 05, 16 min de lectura</span>
+  <h1>De la cámara al tensor</h1>
+  <p class="bajada">Cómo llega cada cuadro de la cámara al tensor de entrada del detector: la interfaz DVP, el periférico LCD_CAM, el DMA, el doble buffer y el paso de uint8 a int8 con un solo XOR.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Leer el cronograma de una cámara paralela: VSYNC, HREF, PCLK y los 8 bits de datos.</li>
+    <li>Seguir un cuadro desde el sensor hasta el tensor de entrada, sin que la CPU copie píxeles.</li>
+    <li>Calcular el tamaño de un cuadro según el formato de píxel.</li>
+    <li>Explicar por qué el doble buffer sube los cuadros por segundo y cuánto.</li>
+    <li>Explicar por qué un XOR con 0x80 convierte un píxel de uint8 a int8.</li>
+  </ul>
+</div>
+
+<h2>El problema: una imagen por cada inferencia</h2>
+
+<p>El detector recibe una imagen gris de 96×96 píxeles como enteros con signo, int8, de −128 a 127. La cámara entrega bytes sin signo, de 0 a 255, por una interfaz que no espera a nadie: los píxeles salen al ritmo de su reloj. Entre la cámara y el tensor de entrada hay que recibir, guardar, avisar y convertir.</p>
+
+<p>La respuesta corta: un periférico del ESP32-S3, LCD_CAM, recibe los bytes y el DMA los guarda en memoria sin la CPU. Con dos buffers, la cámara llena uno mientras la red procesa el otro. Al final, una tarea convierte cada píxel con un XOR y lo deja en el tensor.</p>
+
+<h2>La cadena vista desde afuera</h2>
+
+<p>Entra una señal digital paralela desde el sensor de imagen; sale un tensor de 9216 bytes int8 en la arena, listo para la red. En el ejemplo de Espressif para el ESP32-S3, el sensor ya entrega la imagen de 96×96 en gris, así que no hace falta reescalar ni quitar color.</p>
+
+<figure class="diagrama" data-titulo="fig-5.1">
+  <svg viewBox="0 0 640 352" role="img" aria-label="Cadena de captura. El sensor envía 8 bits de datos por píxel con el reloj PCLK y las señales VSYNC y HREF al periférico LCD_CAM. El GDMA copia los bytes a uno de dos buffers en PSRAM sin la CPU. Al terminar el cuadro, una interrupción pone el buffer en una cola; la tarea lo convierte de uint8 a int8 con un XOR y lo deja en el tensor de entrada."><rect x="16" y="40" width="128" height="112" class="f1 s3" stroke-width="2"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="143" y="39" width="2" height="2" class="f0"/><rect x="15" y="151" width="2" height="2" class="f0"/><rect x="143" y="151" width="2" height="2" class="f0"/><text x="80" y="92" class="sv-tit f6" text-anchor="middle" font-size="16">SENSOR</text><text x="80" y="110" class="sv-lbl f4" text-anchor="middle" font-size="16">OV2640</text><rect x="224" y="40" width="128" height="112" class="f1 s3" stroke-width="2"/><rect x="223" y="39" width="2" height="2" class="f0"/><rect x="351" y="39" width="2" height="2" class="f0"/><rect x="223" y="151" width="2" height="2" class="f0"/><rect x="351" y="151" width="2" height="2" class="f0"/><text x="288" y="92" class="sv-tit f6" text-anchor="middle" font-size="16">LCD_CAM</text><text x="288" y="110" class="sv-lbl f4" text-anchor="middle" font-size="16">FIFO</text><line x1="144" y1="64" x2="216" y2="64" class="sa3" stroke-width="2"/><rect x="208" y="60" width="2" height="8" class="fa3"/><rect x="210" y="61" width="2" height="6" class="fa3"/><rect x="212" y="62" width="2" height="4" class="fa3"/><rect x="214" y="63" width="2" height="2" class="fa3"/><text x="180" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="16">D0–D7</text><line x1="144" y1="96" x2="216" y2="96" class="sb3" stroke-width="2"/><rect x="208" y="92" width="2" height="8" class="fb3"/><rect x="210" y="93" width="2" height="6" class="fb3"/><rect x="212" y="94" width="2" height="4" class="fb3"/><rect x="214" y="95" width="2" height="2" class="fb3"/><text x="180" y="90" class="sv-lbl fb3" text-anchor="middle" font-size="16">PCLK</text><line x1="144" y1="128" x2="216" y2="128" class="sc3" stroke-width="2"/><rect x="208" y="124" width="2" height="8" class="fc3"/><rect x="210" y="125" width="2" height="6" class="fc3"/><rect x="212" y="126" width="2" height="4" class="fc3"/><rect x="214" y="127" width="2" height="2" class="fc3"/><text x="180" y="122" class="sv-lbl fc3" text-anchor="middle" font-size="16">VSYNC, HREF</text><rect x="432" y="40" width="192" height="48" class="f1 s3" stroke-width="2"/><rect x="431" y="39" width="2" height="2" class="f0"/><rect x="623" y="39" width="2" height="2" class="f0"/><rect x="431" y="87" width="2" height="2" class="f0"/><rect x="623" y="87" width="2" height="2" class="f0"/><text x="528" y="60" class="sv-tit f6" text-anchor="middle" font-size="16">GDMA</text><text x="528" y="78" class="sv-lbl f4" text-anchor="middle" font-size="16">copia sin la CPU</text><line x1="352" y1="64" x2="424" y2="64" class="sa3" stroke-width="2"/><rect x="416" y="60" width="2" height="8" class="fa3"/><rect x="418" y="61" width="2" height="6" class="fa3"/><rect x="420" y="62" width="2" height="4" class="fa3"/><rect x="422" y="63" width="2" height="2" class="fa3"/><rect x="432" y="120" width="88" height="48" class="fa1 sa3" stroke-width="2"/><rect x="431" y="119" width="2" height="2" class="f0"/><rect x="519" y="119" width="2" height="2" class="f0"/><rect x="431" y="167" width="2" height="2" class="f0"/><rect x="519" y="167" width="2" height="2" class="f0"/><text x="476" y="149" class="sv-tit f6" text-anchor="middle" font-size="16">BUFFER A</text><rect x="536" y="120" width="88" height="48" class="f1 sa3" stroke-width="2"/><rect x="535" y="119" width="2" height="2" class="f0"/><rect x="623" y="119" width="2" height="2" class="f0"/><rect x="535" y="167" width="2" height="2" class="f0"/><rect x="623" y="167" width="2" height="2" class="f0"/><text x="580" y="149" class="sv-tit fa3" text-anchor="middle" font-size="16">BUFFER B</text><line x1="528" y1="88" x2="528" y2="112" class="sa3" stroke-width="2"/><rect x="524" y="104" width="8" height="2" class="fa3"/><rect x="525" y="106" width="6" height="2" class="fa3"/><rect x="526" y="108" width="4" height="2" class="fa3"/><rect x="527" y="110" width="2" height="2" class="fa3"/><text x="432" y="188" class="sv-lbl f4" text-anchor="start" font-size="16">9216 bytes; el ejemplo los pide en PSRAM</text><line x1="288" y1="152" x2="288" y2="232" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><line x1="288" y1="232" x2="424" y2="232" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><rect x="416" y="228" width="2" height="8" class="fd3"/><rect x="418" y="229" width="2" height="6" class="fd3"/><rect x="420" y="230" width="2" height="4" class="fd3"/><rect x="422" y="231" width="2" height="2" class="fd3"/><text x="296" y="220" class="sv-lbl fd3" text-anchor="start" font-size="16">fin de cuadro</text><rect x="432" y="208" width="192" height="48" class="f1 sd3" stroke-width="2"/><rect x="431" y="207" width="2" height="2" class="f0"/><rect x="623" y="207" width="2" height="2" class="f0"/><rect x="431" y="255" width="2" height="2" class="f0"/><rect x="623" y="255" width="2" height="2" class="f0"/><text x="528" y="228" class="sv-tit fd3" text-anchor="middle" font-size="16">COLA</text><text x="528" y="246" class="sv-lbl f4" text-anchor="middle" font-size="16">cuadro listo</text><line x1="528" y1="256" x2="528" y2="280" class="sa3" stroke-width="2"/><rect x="524" y="272" width="8" height="2" class="fa3"/><rect x="525" y="274" width="6" height="2" class="fa3"/><rect x="526" y="276" width="4" height="2" class="fa3"/><rect x="527" y="278" width="2" height="2" class="fa3"/><rect x="432" y="288" width="192" height="48" class="f1 sa3" stroke-width="2"/><rect x="431" y="287" width="2" height="2" class="f0"/><rect x="623" y="287" width="2" height="2" class="f0"/><rect x="431" y="335" width="2" height="2" class="f0"/><rect x="623" y="335" width="2" height="2" class="f0"/><text x="528" y="308" class="sv-tit fa3" text-anchor="middle" font-size="16">XOR 0x80</text><text x="528" y="326" class="sv-lbl f4" text-anchor="middle" font-size="16">uint8 a int8</text><line x1="432" y1="312" x2="360" y2="312" class="sa3" stroke-width="2"/><rect x="366" y="308" width="2" height="8" class="fa3"/><rect x="364" y="309" width="2" height="6" class="fa3"/><rect x="362" y="310" width="2" height="4" class="fa3"/><rect x="360" y="311" width="2" height="2" class="fa3"/><rect x="160" y="288" width="192" height="48" class="fa1 sa3" stroke-width="2"/><rect x="159" y="287" width="2" height="2" class="f0"/><rect x="351" y="287" width="2" height="2" class="f0"/><rect x="159" y="335" width="2" height="2" class="f0"/><rect x="351" y="335" width="2" height="2" class="f0"/><text x="256" y="308" class="sv-tit f6" text-anchor="middle" font-size="16">TENSOR DE ENTRADA</text><text x="256" y="326" class="sv-lbl f4" text-anchor="middle" font-size="16">en la arena</text></svg>
+  <figcaption><b>fig 5.1</b>Datos (naranja), reloj (azul) y sincronismo (verde) llegan a LCD_CAM; el GDMA guarda el cuadro en uno de dos buffers. El aviso de fin de cuadro (magenta) lo pone en una cola, y la tarea lo convierte al tensor de entrada.</figcaption>
+</figure>
+
+<h2>Adentro: la interfaz y quién mueve los bytes</h2>
+
+<p>La cámara usa una interfaz <strong>DVP</strong> (<em>digital video port</em>): 8 líneas de datos, D0 a D7, y tres señales de tiempo. <strong>PCLK</strong> es el reloj de píxel: en cada flanco hay un byte válido. <strong>HREF</strong> está alto mientras sale una fila. <strong>VSYNC</strong> marca el comienzo de cada cuadro.</p>
+
+<figure class="diagrama" data-titulo="fig-5.2">
+  <svg viewBox="0 0 640 252" role="img" aria-label="Cronograma de la interfaz paralela de la cámara. VSYNC marca el comienzo del cuadro; HREF está alto durante cada fila; PCLK es el reloj de píxel, y en cada flanco las líneas D0 a D7 llevan un byte. En gris, un cuadro de 96 por 96 son 96 filas de 96 bytes."><text x="16" y="38" class="sv-lbl fc3" text-anchor="start" font-size="16">VSYNC</text><polyline points="112,42 128,42 128,22 160,22 160,42 624,42" class="fn sc3" stroke-width="2"/><text x="16" y="86" class="sv-lbl fc3" text-anchor="start" font-size="16">HREF</text><polyline points="112,90 192,90 192,70 304,70 304,90 336,90 336,70 448,70 448,90 480,90 480,70 592,70 592,90 624,90" class="fn sc3" stroke-width="2"/><text x="16" y="134" class="sv-lbl fb3" text-anchor="start" font-size="16">PCLK</text><polyline points="112,138 112,138 112,118 120,118 120,138 128,138 128,118 136,118 136,138 144,138 144,118 152,118 152,138 160,138 160,118 168,118 168,138 176,138 176,118 184,118 184,138 192,138 192,118 200,118 200,138 208,138 208,118 216,118 216,138 224,138 224,118 232,118 232,138 240,138 240,118 248,118 248,138 256,138 256,118 264,118 264,138 272,138 272,118 280,118 280,138 288,138 288,118 296,118 296,138 304,138 304,118 312,118 312,138 320,138 320,118 328,118 328,138 336,138 336,118 344,118 344,138 352,138 352,118 360,118 360,138 368,138 368,118 376,118 376,138 384,138 384,118 392,118 392,138 400,138 400,118 408,118 408,138 416,138 416,118 424,118 424,138 432,138 432,118 440,118 440,138 448,138 448,118 456,118 456,138 464,138 464,118 472,118 472,138 480,138 480,118 488,118 488,138 496,138 496,118 504,118 504,138 512,138 512,118 520,118 520,138 528,138 528,118 536,118 536,138 544,138 544,118 552,118 552,138 560,138 560,118 568,118 568,138 576,138 576,118 584,118 584,138 592,138 592,118 600,118 600,138 608,138 608,118 616,118 616,138" class="fn sb3" stroke-width="2"/><text x="16" y="182" class="sv-lbl fa3" text-anchor="start" font-size="16">D0–D7</text><rect x="192" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="208" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="224" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="240" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="256" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="272" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="288" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="336" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="352" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="368" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="384" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="400" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="416" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="432" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="480" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="496" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="512" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="528" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="544" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="560" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><rect x="576" y="168" width="14" height="20" class="fa1 sa3" stroke-width="2"/><text x="192" y="212" class="sv-lbl f4" text-anchor="start" font-size="16">un byte por flanco de PCLK, mientras HREF está alto: una fila</text><text x="112" y="236" class="sv-lbl f4" text-anchor="start" font-size="16">VSYNC marca el cuadro; 96 filas de 96 bytes en gris</text></svg>
+  <figcaption><b>fig 5.2</b>VSYNC (verde) marca el cuadro y HREF, cada fila. Mientras HREF está alto, cada flanco de PCLK (azul) trae un byte por D0 a D7 (naranja). En gris, 96 filas de 96 bytes.</figcaption>
+</figure>
+
+<p>Del lado del micro, el periférico <strong>LCD_CAM</strong> del ESP32-S3 recibe esas señales: acepta cámaras DVP de 8 o 16 bits. Junta los bytes en una FIFO, una cola de hardware que separa el reloj de la cámara del reloj del micro.</p>
+
+<p>El <strong>GDMA</strong>, el controlador de acceso directo a memoria, vacía la FIFO en la memoria siguiendo una lista de descriptores (<a href="../datos/04-dma.html">Microcontroladores, Tomo 3, nivel 4</a>). La CPU no toca ningún píxel mientras llega el cuadro: puede estar haciendo la inferencia del cuadro anterior.</p>
+
+<p>El sensor también tiene su propio reloj de entrada, <strong>XCLK</strong>, que le da el micro. En el ejemplo de Espressif vale 15 MHz. El sensor lo usa para generar PCLK y fijar a qué ritmo saca los cuadros.</p>
+
+<h2>Recorrido: un cuadro, del sensor al tensor</h2>
+
+<ol>
+  <li><strong>El sensor arma la imagen.</strong> Configurado en gris y 96×96, el sensor recorta y achica la imagen adentro. Así salen 9216 bytes por cuadro, en vez de los 153 600 de una QVGA en color.</li>
+  <li><strong>LCD_CAM recibe.</strong> Con cada flanco de PCLK, mientras HREF está alto, un byte entra a la FIFO. VSYNC le avisa dónde empieza el cuadro.</li>
+  <li><strong>El GDMA guarda.</strong> El GDMA copia la FIFO a la memoria, byte tras byte, en el buffer libre. El ejemplo pide dos buffers y los ubica en PSRAM; el driver se ocupa de llevarlos ahí.</li>
+  <li><strong>El fin de cuadro avisa.</strong> Al terminar el cuadro, una interrupción le dice al driver que el buffer está completo. El driver lo pone en una <strong>cola</strong>, una lista de FreeRTOS donde una tarea puede esperar sin gastar CPU.</li>
+  <li><strong>La tarea convierte.</strong> La tarea de inferencia toma el buffer de la cola y recorre los 9216 bytes. A cada uno le invierte el bit 7, un XOR con 0x80, y lo escribe en el tensor de entrada.</li>
+  <li><strong>Devolver el buffer.</strong> La tarea le devuelve el buffer al driver para que la cámara lo vuelva a llenar, y lanza la inferencia.</li>
+</ol>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Mientras el GDMA guarda un cuadro, ¿qué hace la CPU?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El GDMA copia sin la CPU, así que la CPU queda libre: con doble buffer, procesa el cuadro anterior.">Puede procesar el cuadro anterior: el GDMA copia solo.</button>
+    <button type="button" data-por-que="Copiar byte a byte es justamente lo que hace el GDMA en su lugar.">Copia cada byte de la FIFO a la memoria.</button>
+    <button type="button" data-por-que="PCLK lo genera el sensor, no la CPU.">Genera el reloj PCLK para la cámara.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Por qué un XOR convierte de uint8 a int8</h2>
+
+<p>La red espera píxeles de −128 a 127, que es el mismo valor de la cámara menos 128. Restar 128 a un byte sin signo da el mismo patrón de bits que invertir su bit más alto, el bit 7. Leído como int8, ese patrón es justo el resultado de la resta.</p>
+
+<figure class="diagrama" data-titulo="fig-5.3">
+  <svg viewBox="0 0 640 248" role="img" aria-label="Dos ejemplos del XOR con 0x80. 200 en binario 1100 1000 pasa a 0100 1000, que leído como int8 es 72, igual a 200 menos 128. 10, 0000 1010, pasa a 1000 1010, que como int8 es menos 118. Invertir el bit 7 equivale a restar 128."><text x="16" y="46" class="sv-lbl fb3" text-anchor="start" font-size="16">200</text><rect x="64" y="24" width="26" height="32" class="fb1 sb3" stroke-width="2"/><text x="77" y="46" class="sv-lbl fb3" text-anchor="middle" font-size="16">1</text><rect x="92" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="105" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="120" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="133" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="148" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="161" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="176" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="189" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="204" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="217" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="232" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="245" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="260" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="273" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><line x1="296" y1="40" x2="336" y2="40" class="sa3" stroke-width="2"/><rect x="328" y="36" width="2" height="8" class="fa3"/><rect x="330" y="37" width="2" height="6" class="fa3"/><rect x="332" y="38" width="2" height="4" class="fa3"/><rect x="334" y="39" width="2" height="2" class="fa3"/><text x="316" y="20" class="sv-lbl fa3" text-anchor="middle" font-size="16">XOR 0x80</text><rect x="344" y="24" width="26" height="32" class="fa1 sa3" stroke-width="2"/><text x="357" y="46" class="sv-lbl fa3" text-anchor="middle" font-size="16">0</text><rect x="372" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="385" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="400" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="413" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="428" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="441" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="456" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="469" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="484" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="497" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="512" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="525" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="540" y="24" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="553" y="46" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><text x="576" y="46" class="sv-lbl fa3" text-anchor="start" font-size="16">72</text><text x="16" y="134" class="sv-lbl fb3" text-anchor="start" font-size="16">10</text><rect x="64" y="112" width="26" height="32" class="fb1 sb3" stroke-width="2"/><text x="77" y="134" class="sv-lbl fb3" text-anchor="middle" font-size="16">0</text><rect x="92" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="105" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="120" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="133" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="148" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="161" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="176" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="189" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="204" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="217" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="232" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="245" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="260" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="273" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><line x1="296" y1="128" x2="336" y2="128" class="sa3" stroke-width="2"/><rect x="328" y="124" width="2" height="8" class="fa3"/><rect x="330" y="125" width="2" height="6" class="fa3"/><rect x="332" y="126" width="2" height="4" class="fa3"/><rect x="334" y="127" width="2" height="2" class="fa3"/><text x="316" y="108" class="sv-lbl fa3" text-anchor="middle" font-size="16">XOR 0x80</text><rect x="344" y="112" width="26" height="32" class="fa1 sa3" stroke-width="2"/><text x="357" y="134" class="sv-lbl fa3" text-anchor="middle" font-size="16">1</text><rect x="372" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="385" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="400" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="413" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="428" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="441" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="456" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="469" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="484" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="497" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><rect x="512" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="525" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">1</text><rect x="540" y="112" width="26" height="32" class="f1 s3" stroke-width="2"/><text x="553" y="134" class="sv-lbl f6" text-anchor="middle" font-size="16">0</text><text x="576" y="134" class="sv-lbl fa3" text-anchor="start" font-size="16">−118</text><text x="16" y="208" class="sv-lbl f4" text-anchor="start" font-size="16">uint8 (0 a 255) a la izquierda; int8 (−128 a 127) a la derecha</text><text x="16" y="232" class="sv-lbl f4" text-anchor="start" font-size="16">invertir el bit 7 es restar 128: una instrucción por píxel</text></svg>
+  <figcaption><b>fig 5.3</b>200 (1100 1000) pasa a 0100 1000, que es 72 = 200 − 128. 10 (0000 1010) pasa a 1000 1010, que como int8 es −118 = 10 − 128. Solo cambia el bit 7.</figcaption>
+</figure>
+
+<p>Si la cámara entregara color, habría dos pasos más: pasar de RGB565 a gris con una suma pesada de los tres colores, y reescalar al tamaño de la red. Los dos se pueden hacer con enteros y desplazamientos, como muestra el bloque de firmware al final.</p>
+
+<h2>Cómo se encadena: el doble buffer</h2>
+
+<p>Con un solo buffer, el driver espera el próximo VSYNC, arranca el DMA, lo frena al terminar el cuadro y recién ahí lo entrega. La cámara queda parada mientras la red trabaja. Con dos o más buffers, según el driver de Espressif, el DMA corre continuo, cada cuadro va a la cola, y la tasa de cuadros puede duplicarse.</p>
+
+<figure class="diagrama" data-titulo="fig-5.4">
+  <svg viewBox="0 0 640 192" role="img" aria-label="Dos cronogramas a escala. En serie, cada cuadro espera su captura de 30 ms, un supuesto, y después la inferencia de 47 ms: un cuadro cada 77 ms. Con doble buffer, la captura del cuadro siguiente ocurre mientras la red procesa el anterior: un cuadro cada 47 ms."><text x="16" y="37" class="sv-lbl f6" text-anchor="start" font-size="16">en serie</text><rect x="120" y="20" width="88" height="24" class="fb1 sb3" stroke-width="2"/><text x="164" y="37" class="sv-lbl fb3" text-anchor="middle" font-size="16">captura</text><rect x="210" y="20" width="139" height="24" class="fa1 sa3" stroke-width="2"/><text x="279" y="37" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia</text><rect x="351" y="20" width="88" height="24" class="fb1 sb3" stroke-width="2"/><text x="395" y="37" class="sv-lbl fb3" text-anchor="middle" font-size="16">captura</text><rect x="441" y="20" width="139" height="24" class="fa1 sa3" stroke-width="2"/><text x="510" y="37" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia</text><text x="16" y="101" class="sv-lbl f6" text-anchor="start" font-size="16">doble buffer</text><rect x="120" y="68" width="88" height="24" class="fb1 sb3" stroke-width="2"/><text x="164" y="85" class="sv-lbl fb3" text-anchor="middle" font-size="16">captura 1</text><rect x="261" y="68" width="88" height="24" class="fb1 sb3" stroke-width="2"/><text x="305" y="85" class="sv-lbl fb3" text-anchor="middle" font-size="16">captura 2</text><rect x="402" y="68" width="88" height="24" class="fb1 sb3" stroke-width="2"/><text x="446" y="85" class="sv-lbl fb3" text-anchor="middle" font-size="16">captura 3</text><rect x="210" y="100" width="139" height="24" class="fa1 sa3" stroke-width="2"/><text x="279" y="117" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia 1</text><rect x="351" y="100" width="139" height="24" class="fa1 sa3" stroke-width="2"/><text x="420" y="117" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia 2</text><rect x="492" y="100" width="139" height="24" class="fa1 sa3" stroke-width="2"/><text x="561" y="117" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia 3</text><text x="16" y="156" class="sv-lbl f4" text-anchor="start" font-size="16">en serie: un cuadro cada 77 ms; con doble buffer: uno cada 47 ms</text><text x="16" y="180" class="sv-lbl f4" text-anchor="start" font-size="16">captura de 30 ms: supuesto; inferencia: 47 ms (Espressif)</text></svg>
+  <figcaption><b>fig 5.4</b>En serie, captura (azul) e inferencia (naranja) se suman. Con doble buffer se solapan, y el ritmo lo marca la etapa más lenta: la inferencia.</figcaption>
+</figure>
+
+<p>Con el doble buffer, el ritmo lo fija la etapa más lenta. Si la inferencia dura más que la captura, la red trabaja todo el tiempo y la cámara espera; si la captura dura más, al revés. En el detector manda la inferencia, de 47 ms.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el ping-pong de una placa de audio</h4>
+  <p>Es el mismo truco que el buffer ping-pong de un conversor de audio: mientras el DMA llena una mitad, el procesador filtra la otra. Si el filtro tarda menos que llenar una mitad, nunca se pierde una muestra.</p>
+</div>
+
+<h2>Implementaciones reales: ESP32, S3, P4 y Arm</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>ESP32-P4</th><th>Cortex-M de otros fabricantes</th></tr></thead>
+  <tbody>
+    <tr><td><b>Interfaz de cámara</b></td><td>DVP por el I2S en modo cámara</td><td>DVP de 8 o 16 bits por LCD_CAM</td><td>MIPI-CSI serie y DVP por LCD_CAM</td><td>DVP por un periférico propio de cada fabricante</td></tr>
+    <tr><td><b>Quién mueve los bytes</b></td><td>el DMA del I2S</td><td>GDMA</td><td>DMA, con un procesador de imagen (ISP) en el camino</td><td>el DMA del micro</td></tr>
+    <tr><td><b>Preproceso</b></td><td>CPU</td><td>CPU (el PIE puede acelerarlo)</td><td>acelerador de píxeles (PPA) para escalar y convertir</td><td>CPU, o un acelerador 2D si el micro lo trae</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>El estándar <strong>MIPI CSI-2</strong> del ESP32-P4 manda los píxeles en serie, por pares diferenciales de alta velocidad, en vez de 8 líneas paralelas. Llega a resoluciones mayores con menos pines. DVP no es un estándar formal: es la convención de facto de los sensores CMOS de bajo costo.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>El GDMA y sus descriptores son los del <a href="../datos/04-dma.html">Microcontroladores, Tomo 3, nivel 4</a>. La cola y la tarea que espera son de FreeRTOS (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>). Dónde caben los buffers, en SRAM o PSRAM, lo calcula el <a href="02-memoria.html">nivel 2</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: bytes por cuadro según el formato</h4>
+  <p class="formula"><var>B</var> = <var>ancho</var> · <var>alto</var> · <var>bytes por píxel</var></p>
+  <dl>
+    <dt>gris</dt><dd>1 byte por píxel</dd>
+    <dt>RGB565 o YUV422</dt><dd>2 bytes por píxel</dd>
+  </dl>
+  <p class="resultado">96·96 gris = 9216 B; QVGA (320·240) RGB565 = 153 600 B; VGA (640·480) RGB565 = 614 400 B</p>
+  <p>Pedirle al sensor la imagen ya chica y en gris ahorra unas 17 veces la memoria y el tiempo de bus frente a una QVGA en color.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: cuadros por segundo, en serie y con doble buffer</h4>
+  <p class="formula"><var>F</var><sub>serie</sub> = 1 / (<var>t</var><sub>c</sub> + <var>t</var><sub>i</sub>); <var>F</var><sub>doble</sub> = 1 / máx(<var>t</var><sub>c</sub>, <var>t</var><sub>i</sub>)</p>
+  <dl>
+    <dt>t_c</dt><dd>30 ms de captura (supuesto)</dd>
+    <dt>t_i</dt><dd>47 ms de inferencia (Espressif, arena en SRAM)</dd>
+  </dl>
+  <p class="resultado">F_serie = 1 / 77 ms ≈ 13 cuadros por segundo; F_doble = 1 / 47 ms ≈ 21 cuadros por segundo</p>
+  <p>El doble buffer suma un 64 % de cuadros. Con la arena en PSRAM, t_i = 54 ms y el máximo baja a 18,5 cuadros por segundo.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: costo de convertir el cuadro</h4>
+  <p class="formula"><var>t</var> = <var>N</var> · <var>c</var> / <var>f</var></p>
+  <dl>
+    <dt>N</dt><dd>9216 píxeles</dd>
+    <dt>c</dt><dd>3 ciclos por píxel: cargar, invertir y guardar (supuesto)</dd>
+    <dt>f</dt><dd>240 MHz</dd>
+  </dl>
+  <p class="resultado">t = 9216 · 3 / 240 MHz ≈ 115 µs</p>
+  <p>Convertir el cuadro gris cuesta del orden del 0,2 % de la inferencia. Con color y reescalado el costo sube, pero sigue lejos de los 47 ms.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>Los tiempos de captura dependen del sensor, de XCLK y de su configuración, y Espressif no los publica para este ejemplo. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>el tiempo real de captura de un cuadro de 96×96 con el sensor del ejemplo;</li>
+  <li>la tasa de cuadros real del ejemplo con doble buffer; la cifra de 15 cuadros por segundo que circula no tiene fuente;</li>
+  <li>cómo lleva el driver los cuadros a la PSRAM: el TRM describe el GDMA de la cámara hacia la memoria interna;</li>
+  <li>los ciclos por píxel de la conversión, que dependen del compilador.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>La cámara DVP manda un byte por flanco de PCLK; HREF marca las filas y VSYNC el cuadro.</li>
+    <li>LCD_CAM recibe y el GDMA guarda el cuadro sin la CPU; un aviso de fin de cuadro lo pone en una cola.</li>
+    <li>Con doble buffer, la captura y la inferencia se solapan, y el ritmo lo fija la más lenta.</li>
+    <li>Pasar de uint8 a int8 es restar 128, que es invertir el bit 7: un XOR con 0x80.</li>
+    <li>Pedir la imagen chica y en gris al sensor ahorra unas 17 veces memoria frente a QVGA en color.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Con doble buffer, la captura tarda 30 ms y la inferencia 47 ms. Si optimizás la captura a 20 ms, ¿cuántos cuadros por segundo ganás?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Con doble buffer las etapas se solapan, así que el tiempo de captura no se suma al de inferencia.">De 13 a 15 por segundo.</button>
+    <button type="button" data-por-que="El ritmo lo fija la etapa más lenta, la inferencia de 47 ms. Acortar la captura no cambia nada: hay que acelerar la red.">Ninguno: sigue mandando la inferencia de 47 ms.</button>
+    <button type="button" data-por-que="Duplicar exigiría que las dos etapas se acortaran a la mitad.">El doble, unos 42 por segundo.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · del píxel al tensor en C</h4>
+  <p>La primera función es el paso 5 del recorrido: el XOR con 0x80 sobre cada byte gris. La segunda resuelve el caso en color: pasa de RGB565 a gris con pesos enteros que suman 1024 y reescala por vecino más cercano.</p>
+  <p>Lo probé con los valores de la figura 5.3 (200 da 72 y 10 da −118) y con una imagen QVGA blanca y negra reducida a 96×96.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>#include &lt;stdint.h&gt;
+
+/* De la cámara al tensor de entrada del detector.
+   La red espera int8 de -128 a 127; la cámara entrega
+   bytes sin signo de 0 a 255. */
+
+/* Gris: restar 128 es invertir el bit 7 (XOR 0x80).
+   200 = 1100 1000 -&gt; 0100 1000 = 72 = 200 - 128. */
+void gris_a_int8(const uint8_t *px, int8_t *t, int n)
+{
+    for (int i = 0; i &lt; n; i++)
+        t[i] = (int8_t)(px[i] ^ 0x80);
+}
+
+/* Color RGB565 a gris: Y = 0,299 R + 0,587 G + 0,114 B,
+   con pesos enteros que suman 1024 (= 2^10). */
+static uint8_t rgb565_a_gris(uint16_t p)
+{
+    uint32_t r = (p &gt;&gt; 11) &amp; 0x1F, g = (p &gt;&gt; 5) &amp; 0x3F,
+             b = p &amp; 0x1F;
+    r = r &lt;&lt; 3;              /* de 5 bits a 8 */
+    g = g &lt;&lt; 2;              /* de 6 bits a 8 */
+    b = b &lt;&lt; 3;
+    return (uint8_t)((306 * r + 601 * g + 117 * b) &gt;&gt; 10);
+}
+
+/* Reescala por vecino más cercano: toma, para cada
+   píxel de salida, el píxel de entrada más próximo. */
+void color_a_int8(const uint16_t *img, int ancho, int alto,
+                  int8_t *t, int lado)
+{
+    for (int y = 0; y &lt; lado; y++)
+        for (int x = 0; x &lt; lado; x++) {
+            int sy = y * alto / lado, sx = x * ancho / lado;
+            uint8_t g = rgb565_a_gris(img[sy * ancho + sx]);
+            t[y * lado + x] = (int8_t)(g ^ 0x80);
+        }
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> v1.8, capítulo 29: <em>LCD and Camera Controller (LCD_CAM)</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>, ejemplo de detección de personas: configuración de cámara (96×96, gris, 2 buffers en PSRAM, XCLK de 15 MHz) y conversión de la imagen. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Espressif Systems. <em>esp32-camera</em>, README: modo de un buffer y modo continuo con dos o más. <a href="https://github.com/espressif/esp32-camera">github.com/espressif/esp32-camera</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>, capítulo del controlador I2S (modo cámara). <a href="https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf">espressif.com/…/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-P4 Series Datasheet</em> (MIPI CSI, LCD_CAM, ISP y PPA). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-p4_datasheet_en.pdf">espressif.com/…/esp32-p4_datasheet_en.pdf</a></li>
+    <li>MIPI Alliance. <em>MIPI CSI-2</em>. <a href="https://www.mipi.org/specifications/csi-2">mipi.org/specifications/csi-2</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. El tiempo de captura de 30 ms y los ciclos por píxel son supuestos declarados.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-05</footer>
+</body>
+</html>
