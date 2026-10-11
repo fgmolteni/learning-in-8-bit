@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 6: Decidir con la salida</title>
+<meta name="description" content="De dos números por cuadro a una decisión estable: el puntaje, la histéresis, los votos, la precisión y el recall, y la supresión de cajas repetidas en un detector de objetos.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 6: Decidir con la salida">
+<meta property="og:description" content="De dos números por cuadro a una decisión estable: el puntaje, la histéresis, los votos, la precisión y el recall, y la supresión de cajas repetidas en un detector de objetos.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="6">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="06">nivel 06, 15 min de lectura</span>
+  <h1>Decidir con la salida</h1>
+  <p class="bajada">De dos números por cuadro a una decisión estable: el puntaje, la histéresis, los votos, la precisión y el recall, y la supresión de cajas repetidas en un detector de objetos.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Pasar la salida int8 de la red a un puntaje entre 0 y 1.</li>
+    <li>Explicar por qué un solo umbral hace parpadear la decisión y cómo lo evitan la histéresis y los votos.</li>
+    <li>Leer una matriz de confusión y calcular precisión y recall.</li>
+    <li>Explicar qué es el IoU y cómo la supresión de no máximos deja una caja por objeto.</li>
+    <li>Explicar por qué la exactitud cae con imágenes del lugar real.</li>
+  </ul>
+</div>
+
+<h2>El problema: dos números por cuadro</h2>
+
+<p>Al terminar la inferencia, el detector deja dos bytes: el puntaje de "hay persona" y el de "no hay persona". Llega uno nuevo cada 47 ms. Una persona que cruza la puerta puede dar 0,9 en un cuadro, 0,4 en el siguiente porque se movió, y 0,8 en el otro.</p>
+
+<p>Si cada cuadro prendiera o apagara una luz, la luz parpadearía. Y la red se equivoca: según MLPerf Tiny, este detector acierta del orden del 86 % de las imágenes de prueba. La respuesta corta: pasar los bytes a un puntaje, usar dos umbrales en vez de uno y pedir que el cambio se sostenga varios cuadros.</p>
+
+<h2>La decisión vista desde afuera</h2>
+
+<p>Entra el tensor de salida de la red, cuadro tras cuadro. Sale una <strong>decisión</strong>, "hay persona" o "no hay", que cambia pocas veces, y una <strong>acción</strong>: prender un pin, mandar un aviso o despertar a otra parte del sistema.</p>
+
+<figure class="diagrama" data-titulo="fig-6.1">
+  <svg viewBox="0 0 640 132" role="img" aria-label="Cadena de decisión: los dos bytes int8 de la salida se pasan a un puntaje entre 0 y 1; la histéresis usa dos umbrales, 0,7 para subir y 0,5 para bajar; los votos piden 3 de 5 cuadros; recién entonces se actúa con un GPIO o un aviso."><rect x="16" y="24" width="112" height="64" class="f1 s3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="127" y="23" width="2" height="2" class="f0"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="127" y="87" width="2" height="2" class="f0"/><text x="72" y="52" class="sv-tit f6" text-anchor="middle" font-size="16">SALIDA</text><text x="72" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">2 bytes int8</text><line x1="128" y1="56" x2="138" y2="56" class="sa3" stroke-width="2"/><rect x="130" y="52" width="2" height="8" class="fa3"/><rect x="132" y="53" width="2" height="6" class="fa3"/><rect x="134" y="54" width="2" height="4" class="fa3"/><rect x="136" y="55" width="2" height="2" class="fa3"/><rect x="140" y="24" width="112" height="64" class="f1 sa3" stroke-width="2"/><rect x="139" y="23" width="2" height="2" class="f0"/><rect x="251" y="23" width="2" height="2" class="f0"/><rect x="139" y="87" width="2" height="2" class="f0"/><rect x="251" y="87" width="2" height="2" class="f0"/><text x="196" y="52" class="sv-tit fa3" text-anchor="middle" font-size="16">PUNTAJE</text><text x="196" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">(q + 128) / 256</text><line x1="252" y1="56" x2="262" y2="56" class="sa3" stroke-width="2"/><rect x="254" y="52" width="2" height="8" class="fa3"/><rect x="256" y="53" width="2" height="6" class="fa3"/><rect x="258" y="54" width="2" height="4" class="fa3"/><rect x="260" y="55" width="2" height="2" class="fa3"/><rect x="264" y="24" width="112" height="64" class="f1 sc3" stroke-width="2"/><rect x="263" y="23" width="2" height="2" class="f0"/><rect x="375" y="23" width="2" height="2" class="f0"/><rect x="263" y="87" width="2" height="2" class="f0"/><rect x="375" y="87" width="2" height="2" class="f0"/><text x="320" y="52" class="sv-tit fc3" text-anchor="middle" font-size="16">HISTÉRESIS</text><text x="320" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">0,7 sube; 0,5 baja</text><line x1="376" y1="56" x2="386" y2="56" class="sa3" stroke-width="2"/><rect x="378" y="52" width="2" height="8" class="fa3"/><rect x="380" y="53" width="2" height="6" class="fa3"/><rect x="382" y="54" width="2" height="4" class="fa3"/><rect x="384" y="55" width="2" height="2" class="fa3"/><rect x="388" y="24" width="112" height="64" class="f1 sc3" stroke-width="2"/><rect x="387" y="23" width="2" height="2" class="f0"/><rect x="499" y="23" width="2" height="2" class="f0"/><rect x="387" y="87" width="2" height="2" class="f0"/><rect x="499" y="87" width="2" height="2" class="f0"/><text x="444" y="52" class="sv-tit fc3" text-anchor="middle" font-size="16">VOTOS</text><text x="444" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">3 de 5 cuadros</text><line x1="500" y1="56" x2="510" y2="56" class="sa3" stroke-width="2"/><rect x="502" y="52" width="2" height="8" class="fa3"/><rect x="504" y="53" width="2" height="6" class="fa3"/><rect x="506" y="54" width="2" height="4" class="fa3"/><rect x="508" y="55" width="2" height="2" class="fa3"/><rect x="512" y="24" width="112" height="64" class="f1 sd3" stroke-width="2"/><rect x="511" y="23" width="2" height="2" class="f0"/><rect x="623" y="23" width="2" height="2" class="f0"/><rect x="511" y="87" width="2" height="2" class="f0"/><rect x="623" y="87" width="2" height="2" class="f0"/><text x="568" y="52" class="sv-tit fd3" text-anchor="middle" font-size="16">ACCIÓN</text><text x="568" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">GPIO o aviso</text><text x="16" y="120" class="sv-lbl f4" text-anchor="start" font-size="16">cada cuadro: un puntaje; la decisión cambia solo si el cambio se sostiene</text></svg>
+  <figcaption><b>fig 6.1</b>La salida se pasa a puntaje (naranja); la histéresis y los votos (verde) filtran; recién entonces se actúa (magenta).</figcaption>
+</figure>
+
+<h2>Adentro: puntaje, umbrales y votos</h2>
+
+<p>La última capa del detector es un <strong>softmax</strong>: reparte una unidad entre las dos clases, así que los dos puntajes suman 1. En int8, la especificación de LiteRT fija su escala en 1/256 y su punto cero en −128. Entonces el <strong>puntaje</strong> es (q + 128) / 256: el byte 59 vale 0,73.</p>
+
+<p>El <strong>umbral</strong> es el puntaje a partir del cual se decide "hay persona". El ejemplo de Espressif usa 60 %. Con un solo umbral, un puntaje que oscila cerca de 0,6 cambia la decisión en cada cuadro.</p>
+
+<p>La <strong>histéresis</strong> usa dos umbrales: para pasar a "hay persona" el puntaje tiene que superar 0,7, y para volver, bajar de 0,5. Entre los dos, la decisión se queda como estaba. Así una oscilación chica no la mueve.</p>
+
+<p>Los <strong>votos</strong> agregan memoria: el cambio se acepta solo si 3 de los últimos 5 cuadros lo piden. Un cuadro raro, por una sombra o un reflejo, pierde la votación.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el Schmitt trigger y el antirrebote</h4>
+  <p>La histéresis es un Schmitt trigger: dos umbrales para que una señal ruidosa no haga conmutar la salida en cada cruce. Los votos son el antirrebote de un pulsador: el estado cambia solo si la entrada se mantiene varias muestras seguidas.</p>
+</div>
+
+<h2>Recorrido: diez cuadros</h2>
+
+<p>Seguimos diez cuadros con puntajes 0,8; 0,2; 0,9; 0,6; 0,85; 0,6; 0,4; 0,3; 0,65 y 0,2. El estado empieza en "no hay persona".</p>
+
+<figure class="diagrama" data-titulo="fig-6.2">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Diez cuadros con su puntaje: 0,8; 0,2; 0,9; 0,6; 0,85; 0,6; 0,4; 0,3; 0,65 y 0,2. El umbral para subir es 0,7 y el para bajar 0,5. El estado pasa a hay persona en el cuadro 5, cuando 3 de los últimos 5 superan 0,7, y vuelve a no hay persona en el cuadro 10, cuando 3 de los últimos 5 quedan bajo 0,5."><text x="16" y="32" class="sv-lbl f4" text-anchor="start" font-size="16">1</text><text x="16" y="184" class="sv-lbl f4" text-anchor="start" font-size="16">0</text><text x="16" y="108" class="sv-lbl fa3" text-anchor="start" font-size="16">puntaje</text><rect x="104" y="56" width="32" height="128" class="fa1 sa3" stroke-width="2"/><rect x="152" y="152" width="32" height="32" class="fd1 sd3" stroke-width="2"/><rect x="200" y="40" width="32" height="144" class="fa1 sa3" stroke-width="2"/><rect x="248" y="88" width="32" height="96" class="f2 s3" stroke-width="2"/><rect x="296" y="48" width="32" height="136" class="fa1 sa3" stroke-width="2"/><rect x="344" y="88" width="32" height="96" class="f2 s3" stroke-width="2"/><rect x="392" y="120" width="32" height="64" class="fd1 sd3" stroke-width="2"/><rect x="440" y="136" width="32" height="48" class="fd1 sd3" stroke-width="2"/><rect x="488" y="80" width="32" height="104" class="f2 s3" stroke-width="2"/><rect x="536" y="152" width="32" height="32" class="fd1 sd3" stroke-width="2"/><line x1="96" y1="72" x2="576" y2="72" class="sa3" stroke-width="2" stroke-dasharray="4 4"/><text x="580" y="77" class="sv-lbl fa3" text-anchor="start" font-size="16">0,7 sube</text><line x1="96" y1="104" x2="576" y2="104" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="580" y="109" class="sv-lbl fd3" text-anchor="start" font-size="16">0,5 baja</text><text x="16" y="230" class="sv-lbl fc3" text-anchor="start" font-size="16">estado</text><polyline points="96,240 144,240 144,240 192,240 192,240 240,240 240,240 288,240 288,212 336,212 336,212 384,212 384,212 432,212 432,212 480,212 480,212 528,212 528,240 576,240" class="fn sc3" stroke-width="2"/><text x="292" y="206" class="sv-lbl fc3" text-anchor="start" font-size="16">hay persona</text><text x="120" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">1</text><text x="168" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">2</text><text x="216" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">3</text><text x="264" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">4</text><text x="312" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">5</text><text x="360" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">6</text><text x="408" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">7</text><text x="456" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">8</text><text x="504" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">9</text><text x="552" y="268" class="sv-lbl f4" text-anchor="middle" font-size="16">10</text><text x="96" y="292" class="sv-lbl f4" text-anchor="start" font-size="16">cuadro</text></svg>
+  <figcaption><b>fig 6.2</b>Barras naranjas: superan 0,7. Barras magenta: bajo 0,5. Grises: en la zona del medio. El estado (verde) sube en el cuadro 5 y baja en el 10.</figcaption>
+</figure>
+
+<ol>
+  <li><strong>Cuadros 1 a 4.</strong> Superan 0,7 el 1 y el 3: son 2 de 5. No alcanza, y el estado sigue en "no hay". Con un solo umbral de 0,6, la luz ya habría prendido y apagado dos veces.</li>
+  <li><strong>Cuadro 5.</strong> Con 0,85 ya son 3 de los últimos 5 sobre 0,7. El estado pasa a "hay persona" y se actúa.</li>
+  <li><strong>Cuadros 6 a 9.</strong> Los puntajes bajan, pero en ninguna ventana de 5 hay 3 bajo 0,5. El estado se mantiene.</li>
+  <li><strong>Cuadro 10.</strong> Con 0,2, los cuadros 7, 8 y 10 están bajo 0,5. El estado vuelve a "no hay persona".</li>
+</ol>
+
+<p>El costo es la demora: hacen falta al menos 3 cuadros para cambiar. A 47 ms por cuadro, la decisión llega unos 140 ms después que el primer cuadro con la persona.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">El estado es "hay persona" y llega un cuadro con 0,6. ¿Qué hace la histéresis?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="0,6 no baja de 0,5, el umbral para volver: la histéresis no cambia el estado.">Pasa a "no hay persona" porque 0,6 es menor que 0,7.</button>
+    <button type="button" data-por-que="0,6 está entre los dos umbrales, 0,5 y 0,7: la decisión se queda como estaba.">Nada: 0,6 está entre los dos umbrales.</button>
+    <button type="button" data-por-que="La histéresis no reinicia nada; solo compara con dos umbrales distintos según el estado.">Reinicia la cuenta de votos.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadena: aciertos, errores y el lugar real</h2>
+
+<p>Ningún umbral elimina los errores; solo elige cuáles se prefieren. Una <strong>matriz de confusión</strong> cuenta los cuatro casos: personas detectadas, personas que se escapan, falsas alarmas y vacíos bien reconocidos.</p>
+
+<figure class="diagrama" data-titulo="fig-6.3">
+  <svg viewBox="0 0 640 248" role="img" aria-label="Matriz de confusión supuesta para 1000 imágenes, 500 con persona. La red acierta 430 con persona y 430 sin persona, se le escapan 70 personas y da 70 falsas alarmas. El recall es 430 sobre 500, 86 por ciento, y la precisión también 86 por ciento."><text x="256" y="24" class="sv-lbl f6" text-anchor="middle" font-size="16">la red dice</text><text x="176" y="48" class="sv-lbl f4" text-anchor="middle" font-size="16">persona</text><text x="336" y="48" class="sv-lbl f4" text-anchor="middle" font-size="16">nada</text><text x="16" y="92" class="sv-lbl f6" text-anchor="start" font-size="16">hay persona</text><text x="16" y="172" class="sv-lbl f6" text-anchor="start" font-size="16">no hay</text><rect x="96" y="56" width="156" height="72" class="fa1 sa3" stroke-width="2"/><rect x="95" y="55" width="2" height="2" class="f0"/><rect x="251" y="55" width="2" height="2" class="f0"/><rect x="95" y="127" width="2" height="2" class="f0"/><rect x="251" y="127" width="2" height="2" class="f0"/><text x="174" y="88" class="sv-tit fa3" text-anchor="middle" font-size="16">430</text><text x="174" y="106" class="sv-lbl f4" text-anchor="middle" font-size="16">aciertos</text><rect x="256" y="56" width="156" height="72" class="fd1 sd3" stroke-width="2"/><rect x="255" y="55" width="2" height="2" class="f0"/><rect x="411" y="55" width="2" height="2" class="f0"/><rect x="255" y="127" width="2" height="2" class="f0"/><rect x="411" y="127" width="2" height="2" class="f0"/><text x="334" y="88" class="sv-tit fd3" text-anchor="middle" font-size="16">70</text><text x="334" y="106" class="sv-lbl f4" text-anchor="middle" font-size="16">se le escapan</text><rect x="96" y="136" width="156" height="72" class="fd1 sd3" stroke-width="2"/><rect x="95" y="135" width="2" height="2" class="f0"/><rect x="251" y="135" width="2" height="2" class="f0"/><rect x="95" y="207" width="2" height="2" class="f0"/><rect x="251" y="207" width="2" height="2" class="f0"/><text x="174" y="168" class="sv-tit fd3" text-anchor="middle" font-size="16">70</text><text x="174" y="186" class="sv-lbl f4" text-anchor="middle" font-size="16">falsas alarmas</text><rect x="256" y="136" width="156" height="72" class="fa1 sa3" stroke-width="2"/><rect x="255" y="135" width="2" height="2" class="f0"/><rect x="411" y="135" width="2" height="2" class="f0"/><rect x="255" y="207" width="2" height="2" class="f0"/><rect x="411" y="207" width="2" height="2" class="f0"/><text x="334" y="168" class="sv-tit fa3" text-anchor="middle" font-size="16">430</text><text x="334" y="186" class="sv-lbl f4" text-anchor="middle" font-size="16">aciertos</text><text x="432" y="92" class="sv-lbl fc3" text-anchor="start" font-size="16">recall: 430 / 500</text><text x="432" y="116" class="sv-lbl fc3" text-anchor="start" font-size="16">= 86 %</text><text x="432" y="172" class="sv-lbl fc3" text-anchor="start" font-size="16">precisión: 430 / 500</text><text x="432" y="196" class="sv-lbl fc3" text-anchor="start" font-size="16">= 86 %</text><text x="16" y="236" class="sv-lbl f4" text-anchor="start" font-size="16">1000 imágenes, 500 con persona (supuesto con la exactitud de 86 % del detector)</text></svg>
+  <figcaption><b>fig 6.3</b>Una matriz supuesta con la exactitud del detector: aciertos en naranja y errores en magenta. Con estos números, precisión y recall dan 86 %.</figcaption>
+</figure>
+
+<p>El <strong>recall</strong> responde cuántas de las personas reales se detectaron. La <strong>precisión</strong> responde cuántas de las alarmas eran personas. Subir el umbral baja las falsas alarmas y sube la precisión, pero se escapan más personas y baja el recall. Una alarma de intrusos prefiere recall; un contador de visitas, precisión.</p>
+
+<p>El 86 % de MLPerf Tiny se midió con imágenes de COCO reducidas a 96×96, donde cuenta como persona solo quien ocupa más del 2,5 % de la imagen. Una cámara en un pasillo oscuro, con otro ángulo o con gente lejos, ve otra cosa. Por eso la exactitud se vuelve a medir con imágenes del lugar, y el umbral se ajusta con ellas.</p>
+
+<h2>Detectores de objetos: una caja por objeto</h2>
+
+<p>El detector de personas es un <strong>clasificador</strong>: responde sí o no para toda la imagen. Un <strong>detector de objetos</strong>, como YOLO, devuelve muchas <strong>cajas</strong>, cada una con su posición y su puntaje. El mismo objeto suele aparecer en varias cajas casi iguales.</p>
+
+<p>Para comparar dos cajas se usa el <strong>IoU</strong> (<em>intersection over union</em>): el área común dividida por el área que cubren entre las dos. Vale 1 si coinciden y 0 si no se tocan. La <strong>supresión de no máximos</strong> (NMS) ordena las cajas por puntaje, se queda con la mejor y apaga las que se le superponen más que un umbral; después repite con las que quedan.</p>
+
+<figure class="diagrama" data-titulo="fig-6.4">
+  <svg viewBox="0 0 640 288" role="img" aria-label="Supresión de no máximos. Antes: dos cajas casi iguales sobre la misma persona, con puntajes 0,90 y 0,95, y una tercera aparte con 0,60. Su IoU es del orden de 0,68, mayor que el umbral 0,5, así que gana la de 0,95 y la de 0,90 se apaga. La de 0,60 queda."><text x="16" y="24" class="sv-lbl f6" text-anchor="start" font-size="16">antes</text><text x="336" y="24" class="sv-lbl f6" text-anchor="start" font-size="16">después de NMS (umbral 0,5)</text><rect x="32" y="48" width="160" height="160" class="fn sb3" stroke-width="2"/><text x="36" y="42" class="sv-lbl fb3" text-anchor="start" font-size="16">0,90</text><rect x="48" y="64" width="160" height="160" class="fn sa3" stroke-width="2"/><text x="52" y="82" class="sv-lbl fa3" text-anchor="start" font-size="16">0,95</text><rect x="232" y="120" width="64" height="88" class="fn sc3" stroke-width="2"/><text x="236" y="138" class="sv-lbl fc3" text-anchor="start" font-size="16">0,60</text><rect x="352" y="48" width="160" height="160" class="fn s2" stroke-width="2" stroke-dasharray="4 4"/><rect x="368" y="64" width="160" height="160" class="fn sa3" stroke-width="2"/><text x="372" y="82" class="sv-lbl fa3" text-anchor="start" font-size="16">0,95</text><rect x="552" y="120" width="64" height="88" class="fn sc3" stroke-width="2"/><text x="556" y="138" class="sv-lbl fc3" text-anchor="start" font-size="16">0,60</text><text x="16" y="248" class="sv-lbl f4" text-anchor="start" font-size="16">dos cajas sobre la misma persona: IoU ≈ 0,68 > 0,5, gana la de 0,95</text><text x="16" y="272" class="sv-lbl f4" text-anchor="start" font-size="16">la de 0,60 no se toca con ninguna: queda</text></svg>
+  <figcaption><b>fig 6.4</b>Dos cajas sobre la misma persona se superponen con IoU de 0,68: gana la de 0,95 (naranja). La caja de 0,60 (verde) no se toca con ninguna y queda.</figcaption>
+</figure>
+
+<h2>Implementaciones reales: clasificador o detector</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>Clasificador: detector de personas</th><th>Detector de objetos: YOLO11n</th></tr></thead>
+  <tbody>
+    <tr><td><b>Entrada</b></td><td>96×96 en gris</td><td>192×192 en color</td></tr>
+    <tr><td><b>Salida</b></td><td>2 puntajes</td><td>cajas con posición, clase y puntaje (80 clases)</td></tr>
+    <tr><td><b>Decisión</b></td><td>umbral, histéresis y votos</td><td>umbral por caja y NMS</td></tr>
+    <tr><td><b>Inferencia en ESP32-S3</b></td><td>47 a 54 ms</td><td>1253 ms con un núcleo; 1053 ms con dos</td></tr>
+    <tr><td><b>Inferencia en ESP32-P4</b></td><td>73 ms (360 MHz)</td><td>620 ms con un núcleo; 417 ms con dos (400 MHz)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>En todas las arquitecturas la decisión corre en la CPU, aun con una NPU: el Ethos-U55 calcula la red, pero el umbral y la NMS son lazos con comparaciones y saltos, que hace mejor el procesador. En el detector de personas ese trabajo es despreciable; con cientos de cajas, la NMS ya se nota.</p>
+
+<div class="caja dato">
+  <h4>dato: estándares de evaluación</h4>
+  <ul>
+    <li>La evaluación de COCO mide los detectores con el <strong>mAP</strong>, que promedia la precisión para umbrales de IoU de 0,5 a 0,95.</li>
+    <li><strong>MLPerf Tiny</strong> fija el conjunto de prueba y la exactitud mínima: 80 % para el detector de personas.</li>
+  </ul>
+</div>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>La acción final es un pin o un mensaje: el pin del <a href="../mundo/01-pin.html">Microcontroladores, Tomo 2, nivel 1</a> o una transmisión por radio, que cuesta energía (<a href="07-energia.html">nivel 7</a>). La tarea que decide comparte la CPU con la inferencia, así que su tiempo entra en la cuenta del <a href="04-medir.html">nivel 4</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: del byte al puntaje</h4>
+  <p class="formula"><var>p</var> = (<var>q</var> − <var>z</var>) · <var>s</var></p>
+  <dl>
+    <dt>q</dt><dd>59, el byte de "hay persona"</dd>
+    <dt>z</dt><dd>−128, punto cero de softmax en int8</dd>
+    <dt>s</dt><dd>1/256, escala de softmax en int8</dd>
+  </dl>
+  <p class="resultado">p = (59 + 128) / 256 ≈ 0,73; el otro puntaje vale 1 − 0,73 = 0,27</p>
+  <p>Con el umbral de 60 % del ejemplo, este cuadro cuenta como "hay persona".</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: cuánto filtran los votos</h4>
+  <p class="formula"><var>P</var> = 10 · <var>e</var>³ · (1 − <var>e</var>)² + 5 · <var>e</var>⁴ · (1 − <var>e</var>) + <var>e</var>⁵</p>
+  <dl>
+    <dt>e</dt><dd>1 % de cuadros vacíos con puntaje alto (supuesto)</dd>
+    <dt>supuesto</dt><dd>los errores de cuadros distintos son independientes</dd>
+  </dl>
+  <p class="resultado">P = 10 · 10⁻⁶ · 0,98 + 5 · 10⁻⁸ · 0,99 + 10⁻¹⁰ ≈ 9,9 · 10⁻⁶ ≈ 0,001 %</p>
+  <p>La votación baja la falsa alarma de 1 % por cuadro a del orden de 0,001 % por ventana. En la práctica los cuadros vecinos se parecen, los errores no son independientes y la mejora es menor.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: el IoU de dos cajas</h4>
+  <p class="formula">IoU = <var>A</var><sub>común</sub> / (<var>A</var><sub>1</sub> + <var>A</var><sub>2</sub> − <var>A</var><sub>común</sub>)</p>
+  <dl>
+    <dt>caja 1</dt><dd>de (10, 10) a (50, 50): 1600 px²</dd>
+    <dt>caja 2</dt><dd>de (30, 30) a (70, 70): 1600 px²</dd>
+    <dt>común</dt><dd>de (30, 30) a (50, 50): 400 px²</dd>
+  </dl>
+  <p class="resultado">IoU = 400 / (1600 + 1600 − 400) = 400 / 2800 ≈ 0,14</p>
+  <p>Con un umbral de 0,5 las dos cajas sobreviven: la NMS las considera objetos distintos.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>Los umbrales de 0,7 y 0,5 y la ventana de 5 cuadros son ejemplos: se ajustan con datos del lugar. La matriz de confusión es supuesta, armada con la exactitud publicada. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>la exactitud del detector en un lugar concreto, que hay que medir con imágenes propias;</li>
+  <li>la tasa de falsas alarmas por cuadro, que fija cuánto ayudan los votos;</li>
+  <li>cuánto tarda la NMS en el ESP32-S3 con muchas cajas.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>El puntaje sale del byte con la escala y el punto cero de softmax: (q + 128) / 256.</li>
+    <li>La histéresis usa dos umbrales y los votos piden que el cambio se sostenga: la decisión deja de parpadear a cambio de unos 140 ms de demora.</li>
+    <li>Recall: cuántas personas se detectaron. Precisión: cuántas alarmas eran personas. El umbral cambia una por la otra.</li>
+    <li>El 86 % vale para el conjunto de prueba: en el lugar real hay que volver a medir.</li>
+    <li>Un detector de objetos devuelve muchas cajas; la NMS deja una por objeto usando el IoU.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">Una alarma de intrusos no puede dejar pasar a nadie. ¿Qué hacés con el umbral?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Con un umbral más bajo la red marca persona con menos evidencia: se escapan menos personas (sube el recall) a costa de más falsas alarmas.">Lo bajás: sube el recall, aunque haya más falsas alarmas.</button>
+    <button type="button" data-por-que="Subir el umbral reduce falsas alarmas pero deja escapar más personas: baja el recall.">Lo subís: baja el recall.</button>
+    <button type="button" data-por-que="El umbral sí cambia el reparto entre los dos errores; por eso se elige según la aplicación.">No importa: el umbral no cambia los errores.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · decidir en C</h4>
+  <p>Cuatro piezas del nivel: el puntaje a partir del byte, el filtro con histéresis y votos de la figura 6.2, el IoU y la NMS. Los votos guardan los últimos 5 cuadros como 5 bits.</p>
+  <p>Lo probé con los diez cuadros de la figura 6.2 (el estado sube en el cuadro 5 y baja en el 10), con las cajas del cálculo (IoU de 0,14) y con las tres cajas de la figura 6.4.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>#include &lt;stdint.h&gt;
+
+/* De la salida de la red a una decisión. */
+
+/* Softmax int8: escala 1/256 y punto cero -128 (LiteRT). */
+float puntaje(int8_t q)
+{
+    return (q + 128) / 256.0f;
+}
+
+/* Histéresis y votos: "hay persona" sube si 3 de los
+   últimos 5 cuadros pasan 0,7 y baja si 3 de 5 quedan
+   bajo 0,5. Entre los dos umbrales no cambia nada. */
+typedef struct {
+    uint8_t altos, bajos;   /* últimos 5, un bit c/u */
+    int hay_persona;
+} Filtro;
+
+static int unos(uint8_t b)
+{
+    int n = 0;
+    for (; b; b &gt;&gt;= 1)
+        n += b &amp; 1;
+    return n;
+}
+
+int filtrar(Filtro *f, float p)
+{
+    f-&gt;altos = ((f-&gt;altos &lt;&lt; 1) | (p &gt; 0.7f)) &amp; 0x1F;
+    f-&gt;bajos = ((f-&gt;bajos &lt;&lt; 1) | (p &lt; 0.5f)) &amp; 0x1F;
+    if (!f-&gt;hay_persona &amp;&amp; unos(f-&gt;altos) &gt;= 3)
+        f-&gt;hay_persona = 1;
+    else if (f-&gt;hay_persona &amp;&amp; unos(f-&gt;bajos) &gt;= 3)
+        f-&gt;hay_persona = 0;
+    return f-&gt;hay_persona;
+}
+
+/* Cajas de un detector de objetos: esquinas y puntaje. */
+typedef struct { float x1, y1, x2, y2, p; int viva; } Caja;
+
+static float area(const Caja *c)
+{
+    return (c-&gt;x2 - c-&gt;x1) * (c-&gt;y2 - c-&gt;y1);
+}
+
+/* IoU: área común sobre área total de las dos cajas. */
+float iou(const Caja *a, const Caja *b)
+{
+    float w = (a-&gt;x2 &lt; b-&gt;x2 ? a-&gt;x2 : b-&gt;x2) -
+              (a-&gt;x1 &gt; b-&gt;x1 ? a-&gt;x1 : b-&gt;x1);
+    float h = (a-&gt;y2 &lt; b-&gt;y2 ? a-&gt;y2 : b-&gt;y2) -
+              (a-&gt;y1 &gt; b-&gt;y1 ? a-&gt;y1 : b-&gt;y1);
+    if (w &lt;= 0 || h &lt;= 0)
+        return 0;
+    float comun = w * h;
+    return comun / (area(a) + area(b) - comun);
+}
+
+/* NMS: la caja con más puntaje gana y apaga a las que
+   se le superponen más que el umbral. */
+void nms(Caja *c, int n, float umbral)
+{
+    for (int i = 0; i &lt; n; i++)
+        c[i].viva = 1;
+    for (;;) {
+        int m = -1;
+        for (int i = 0; i &lt; n; i++)
+            if (c[i].viva == 1 &amp;&amp; (m &lt; 0 || c[i].p &gt; c[m].p))
+                m = i;
+        if (m &lt; 0)
+            return;
+        c[m].viva = 2;                 /* elegida */
+        for (int i = 0; i &lt; n; i++)
+            if (c[i].viva == 1 &amp;&amp; iou(&amp;c[m], &amp;c[i]) &gt; umbral)
+                c[i].viva = 0;         /* suprimida */
+    }
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>, ejemplo de detección de personas: lectura y descuantización de la salida, umbral de 60 %. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Google. <em>LiteRT 8-bit quantization specification</em> (SOFTMAX: escala 1/256, punto cero −128). <a href="https://ai.google.dev/edge/litert/models/quantization_spec">ai.google.dev/edge/litert/models/quantization_spec</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, sección 4.1 (Visual Wake Words). <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+    <li>Chowdhery, A. et al. <em>Visual Wake Words Dataset</em>. arXiv:1906.05721. <a href="https://arxiv.org/abs/1906.05721">arxiv.org/abs/1906.05721</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README: YOLO11n en ESP32-S3 y ESP32-P4. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>COCO Consortium. <em>Detection evaluation</em>. <a href="https://cocodataset.org/#detection-eval">cocodataset.org/#detection-eval</a></li>
+    <li>Espressif Systems. <em>ESP-DL</em>: modelos de detección y su postproceso. <a href="https://github.com/espressif/esp-dl">github.com/espressif/esp-dl</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. La matriz de confusión, la tasa de error por cuadro y los umbrales de la histéresis son supuestos declarados.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-06</footer>
+</body>
+</html>

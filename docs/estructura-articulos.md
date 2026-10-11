@@ -18,6 +18,10 @@ Guía para escribir y convertir los artículos del curso. Se aplica junto con la
 - El sitio no muestra código. La implementación en firmware irá en un bloque aparte, más adelante.
   Cada artículo deja este comentario antes de las fuentes:
   `<!-- firmware: aquí irá el bloque que enlaza a la implementación en código de cada sección -->`
+- Excepción: el tomo *Inteligencia en el borde* (`temas/borde/`) ya usa ese lugar. Lleva una caja
+  `div.caja.firmware` con una explicación corta y el código de referencia (C) plegado en `<details>`, ligado a
+  los pasos del recorrido, con líneas de hasta 60 caracteres y probado con los números de las figuras.
+  El resto del artículo sigue sin código.
 
 ## Orden de cada artículo
 

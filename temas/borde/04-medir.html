@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 4: Medir cada capa</title>
+<meta name="description" content="Cómo se mide cuánto tarda y cuánta energía gasta una inferencia en el ESP32-S3: el contador de ciclos, las trampas de la caché fría y las interrupciones, y el método de MLPerf Tiny.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 4: Medir cada capa">
+<meta property="og:description" content="Cómo se mide cuánto tarda y cuánta energía gasta una inferencia en el ESP32-S3: el contador de ciclos, las trampas de la caché fría y las interrupciones, y el método de MLPerf Tiny.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="4">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="04">nivel 04, 15 min de lectura</span>
+  <h1>Medir cada capa</h1>
+  <p class="bajada">Cómo se mide cuánto tarda y cuánta energía gasta una inferencia en el ESP32-S3: el contador de ciclos, las trampas de la caché fría y las interrupciones, y el método de MLPerf Tiny.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Elegir entre el contador de ciclos y el temporizador del sistema para medir una capa.</li>
+    <li>Explicar por qué se descarta la primera inferencia y se usa la mediana.</li>
+    <li>Explicar por qué la tarea que se mide va fijada a un núcleo.</li>
+    <li>Armar una medición de energía con shunt, monitor y un pin que marca la ventana.</li>
+    <li>Estimar la energía por inferencia con datos del datasheet.</li>
+  </ul>
+</div>
+
+<h2>El problema: ¿cuánto tarda cada capa?</h2>
+
+<p>Espressif publica que el detector de personas tarda 47 ms en el ESP32-S3, con la arena en SRAM. Es un solo número para toda la red. Para mejorar un modelo hace falta saber qué capa se lleva el tiempo, y para alimentarlo con batería, cuánta energía gasta cada imagen.</p>
+
+<p>Medir parece fácil: leer un reloj antes y después. Pero en un micro con caché, interrupciones y dos núcleos, una medición ingenua puede dar el doble de lo real o mezclar los relojes de dos núcleos. La respuesta corta: contar ciclos con el contador del núcleo, en una tarea fijada a ese núcleo, descartar la primera inferencia y tomar la mediana de muchas.</p>
+
+<h2>Los instrumentos vistos desde afuera</h2>
+
+<p>Hay dos preguntas y dos clases de instrumentos. El <strong>tiempo</strong> se mide adentro del micro, con contadores que el programa lee. La <strong>energía</strong> se mide afuera, con un instrumento en la alimentación, porque el micro no conoce su propia corriente.</p>
+
+<figure class="diagrama" data-titulo="fig-4.1">
+  <svg viewBox="0 0 640 352" role="img" aria-label="Instrumentos para medir una inferencia. La fuente de 3,3 V alimenta el ESP32-S3 a través de un shunt de 0,1 ohm, cuya caída llega a un monitor de energía. Dentro del micro, el contador de ciclos CCOUNT y el temporizador esp_timer miden tiempo; un GPIO en alto marca al monitor la ventana de la inferencia."><rect x="16" y="16" width="192" height="48" class="f1 sb3" stroke-width="2"/><rect x="15" y="15" width="2" height="2" class="f0"/><rect x="207" y="15" width="2" height="2" class="f0"/><rect x="15" y="63" width="2" height="2" class="f0"/><rect x="207" y="63" width="2" height="2" class="f0"/><text x="112" y="45" class="sv-tit fb3" text-anchor="middle" font-size="16">FUENTE 3,3 V</text><rect x="16" y="112" width="192" height="48" class="f1 sd3" stroke-width="2"/><rect x="15" y="111" width="2" height="2" class="f0"/><rect x="207" y="111" width="2" height="2" class="f0"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="207" y="159" width="2" height="2" class="f0"/><text x="112" y="132" class="sv-tit fd3" text-anchor="middle" font-size="16">SHUNT 0,1 Ω</text><text x="112" y="150" class="sv-lbl f4" text-anchor="middle" font-size="16">caída ∝ corriente</text><line x1="112" y1="64" x2="112" y2="104" class="sb3" stroke-width="2"/><rect x="108" y="96" width="8" height="2" class="fb3"/><rect x="109" y="98" width="6" height="2" class="fb3"/><rect x="110" y="100" width="4" height="2" class="fb3"/><rect x="111" y="102" width="2" height="2" class="fb3"/><rect x="16" y="208" width="608" height="112" class="f1 s3" stroke-width="2"/><rect x="15" y="207" width="2" height="2" class="f0"/><rect x="623" y="207" width="2" height="2" class="f0"/><rect x="15" y="319" width="2" height="2" class="f0"/><rect x="623" y="319" width="2" height="2" class="f0"/><text x="32" y="232" class="sv-lbl f6" text-anchor="start" font-size="16">ESP32-S3</text><rect x="32" y="248" width="176" height="56" class="fa1 sa3" stroke-width="2"/><rect x="31" y="247" width="2" height="2" class="f0"/><rect x="207" y="247" width="2" height="2" class="f0"/><rect x="31" y="303" width="2" height="2" class="f0"/><rect x="207" y="303" width="2" height="2" class="f0"/><text x="120" y="272" class="sv-tit f6" text-anchor="middle" font-size="16">CCOUNT</text><text x="120" y="290" class="sv-lbl f4" text-anchor="middle" font-size="16">1 ciclo, 32 bits</text><rect x="224" y="248" width="176" height="56" class="f1 sa3" stroke-width="2"/><rect x="223" y="247" width="2" height="2" class="f0"/><rect x="399" y="247" width="2" height="2" class="f0"/><rect x="223" y="303" width="2" height="2" class="f0"/><rect x="399" y="303" width="2" height="2" class="f0"/><text x="312" y="272" class="sv-tit fa3" text-anchor="middle" font-size="16">esp_timer</text><text x="312" y="290" class="sv-lbl f4" text-anchor="middle" font-size="16">1 µs, 64 bits</text><rect x="416" y="248" width="192" height="56" class="f1 sc3" stroke-width="2"/><rect x="415" y="247" width="2" height="2" class="f0"/><rect x="607" y="247" width="2" height="2" class="f0"/><rect x="415" y="303" width="2" height="2" class="f0"/><rect x="607" y="303" width="2" height="2" class="f0"/><text x="512" y="272" class="sv-tit fc3" text-anchor="middle" font-size="16">GPIO</text><text x="512" y="290" class="sv-lbl f4" text-anchor="middle" font-size="16">alto al inferir</text><line x1="112" y1="160" x2="112" y2="200" class="sb3" stroke-width="2"/><rect x="108" y="192" width="8" height="2" class="fb3"/><rect x="109" y="194" width="6" height="2" class="fb3"/><rect x="110" y="196" width="4" height="2" class="fb3"/><rect x="111" y="198" width="2" height="2" class="fb3"/><rect x="416" y="16" width="208" height="72" class="f1 sd3" stroke-width="2"/><rect x="415" y="15" width="2" height="2" class="f0"/><rect x="623" y="15" width="2" height="2" class="f0"/><rect x="415" y="87" width="2" height="2" class="f0"/><rect x="623" y="87" width="2" height="2" class="f0"/><text x="520" y="48" class="sv-tit fd3" text-anchor="middle" font-size="16">MONITOR DE ENERGÍA</text><text x="520" y="66" class="sv-lbl f4" text-anchor="middle" font-size="16">integra V · I</text><line x1="208" y1="136" x2="300" y2="136" class="sd3" stroke-width="2"/><line x1="300" y1="136" x2="300" y2="52" class="sd3" stroke-width="2"/><line x1="300" y1="52" x2="408" y2="52" class="sd3" stroke-width="2"/><rect x="400" y="48" width="2" height="8" class="fd3"/><rect x="402" y="49" width="2" height="6" class="fd3"/><rect x="404" y="50" width="2" height="4" class="fd3"/><rect x="406" y="51" width="2" height="2" class="fd3"/><line x1="512" y1="248" x2="512" y2="96" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><rect x="508" y="102" width="8" height="2" class="fc3"/><rect x="509" y="100" width="6" height="2" class="fc3"/><rect x="510" y="98" width="4" height="2" class="fc3"/><rect x="511" y="96" width="2" height="2" class="fc3"/><text x="520" y="176" class="sv-lbl fc3" text-anchor="start" font-size="16">marca la ventana</text><text x="32" y="340" class="sv-lbl f4" text-anchor="start" font-size="16">adentro: cuánto tarda; afuera: cuánta energía</text></svg>
+  <figcaption><b>fig 4.1</b>Adentro, el contador de ciclos (naranja) y el temporizador del sistema miden tiempo. Afuera, el shunt y el monitor (magenta) miden la corriente; un pin (verde) les marca cuándo empieza y termina la inferencia.</figcaption>
+</figure>
+
+<h2>Adentro: contador de ciclos y temporizador</h2>
+
+<p>El <strong>contador de ciclos</strong> es un registro del núcleo que suma 1 en cada ciclo de reloj. En Xtensa se llama <strong>CCOUNT</strong> y tiene 32 bits. A 240 MHz cada cuenta vale 4,17 ns, y leerlo cuesta un par de instrucciones. Es el instrumento para medir una capa o un lazo.</p>
+
+<p>Cada núcleo tiene su propio contador, y no están sincronizados. Además, el contador cuenta ciclos, no tiempo: si el reloj de la CPU cambia, la conversión a segundos cambia. Por eso se mide con la frecuencia fija.</p>
+
+<p>El <strong>temporizador del sistema</strong> (esp_timer en ESP-IDF) es un periférico de 64 bits que cuenta microsegundos con un reloj fijo, igual para los dos núcleos. Sirve para medir la inferencia entera o tiempos largos. Leerlo cuesta más, porque pasa por el bus de periféricos.</p>
+
+<p>Los frameworks agregan un tercer instrumento: el <strong>perfilador</strong>. LiteRT Micro tiene un punto donde el intérprete puede anotar el tiempo antes y después de cada nodo. Los kernels de esp-tflite-micro, además, acumulan el tiempo de sus convoluciones con el temporizador del sistema.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el analizador lógico</h4>
+  <p>Medir capa por capa es como mirar un bus con un analizador lógico que decodifica el protocolo: no ves solo que la transferencia duró 47 ms, ves cuánto tardó cada trama. El perfilador pone las marcas entre tramas.</p>
+</div>
+
+<h2>Recorrido: medir el detector sin engañarse</h2>
+
+<ol>
+  <li><strong>Fijar la tarea a un núcleo.</strong> Si la tarea que mide cambia de núcleo entre las dos lecturas, resta contadores de núcleos distintos y el número no significa nada. Fijarla al núcleo 1 evita eso y la aleja del Wi-Fi, que ESP-IDF ubica por defecto en el núcleo 0.</li>
+  <li><strong>Calentar.</strong> En la primera inferencia, ni el código de los kernels ni los pesos están en la caché: cada acceso trae una línea desde la flash. Esa inferencia es más lenta y no representa el régimen normal, así que se corren algunas sin medir.</li>
+  <li><strong>Leer el contador antes y después.</strong> Para una capa, se lee el contador justo antes y justo después del kernel. La resta, en ciclos, se divide por la frecuencia para obtener tiempo.</li>
+  <li><strong>Repetir y tomar la mediana.</strong> Si una interrupción entra en medio de la capa, el contador sigue contando y esa muestra sale inflada. Con muchas muestras, la <strong>mediana</strong>, el valor del medio al ordenarlas, ignora las pocas infladas; el promedio no.</li>
+  <li><strong>Marcar la ventana para la energía.</strong> Un pin sube justo antes de la inferencia y baja al terminar. El monitor de energía integra solo dentro de ese pulso.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-4.2">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Cronograma de una medición. El GPIO sube durante cada inferencia y el monitor integra la corriente solo dentro del pulso. La primera inferencia, con la caché fría, dura más; la segunda dura 47 ms. Durante la inferencia la corriente es del orden de 72 mA y en espera del orden de 33 mA."><text x="16" y="46" class="sv-lbl fc3" text-anchor="start" font-size="16">GPIO</text><text x="16" y="126" class="sv-lbl fd3" text-anchor="start" font-size="16">corriente</text><polyline points="96,56 136,56 136,32 312,32 312,56 360,56 360,32 480,32 480,56 616,56" class="fn sc3" stroke-width="2"/><polygon points="96,160 96,134 136,134 136,104 312,104 312,134 360,134 360,104 480,104 480,134 616,134 616,160" class="fd1" stroke-width="0"/><polyline points="96,134 136,134 136,104 312,104 312,134 360,134 360,104 480,104 480,134 616,134" class="fn sd3" stroke-width="2"/><text x="224" y="128" class="sv-lbl fd3" text-anchor="middle" font-size="16">≈ 72 mA</text><text x="420" y="128" class="sv-lbl fd3" text-anchor="middle" font-size="16">≈ 72 mA</text><text x="556" y="126" class="sv-lbl f4" text-anchor="middle" font-size="16">≈ 33 mA</text><text x="224" y="24" class="sv-lbl f4" text-anchor="middle" font-size="16">1.ª: caché fría</text><text x="420" y="24" class="sv-lbl fa3" text-anchor="middle" font-size="16">2.ª: 47 ms</text><line x1="96" y1="160" x2="616" y2="160" class="s4" stroke-width="2"/><text x="88" y="165" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><text x="96" y="192" class="sv-lbl f4" text-anchor="start" font-size="16">energía = 3,3 V × área bajo la corriente, solo dentro del pulso</text><text x="96" y="216" class="sv-lbl f4" text-anchor="start" font-size="16">se descarta la primera y se toma la mediana de muchas</text></svg>
+  <figcaption><b>fig 4.2</b>El pin (verde) marca cada inferencia y el monitor integra la corriente (magenta) solo adentro. La primera, con la caché fría, dura más y se descarta. Corrientes del orden de las del datasheet del S3.</figcaption>
+</figure>
+
+<figure class="diagrama" data-titulo="fig-4.3">
+  <svg viewBox="0 0 640 140" role="img" aria-label="Una capa medida con el contador de ciclos. A mitad de la capa entra una rutina de interrupción, y la resta del contador al final incluye su duración: la capa parece más lenta de lo que es."><text x="16" y="30" class="sv-lbl fa3" text-anchor="start" font-size="16">capa k</text><rect x="96" y="16" width="208" height="24" class="fa1 sa3" stroke-width="2"/><rect x="304" y="16" width="96" height="24" class="fd1 sd3" stroke-width="2"/><text x="352" y="33" class="sv-lbl fd3" text-anchor="middle" font-size="16">ISR</text><rect x="400" y="16" width="112" height="24" class="fa1 sa3" stroke-width="2"/><line x1="96" y1="64" x2="512" y2="64" class="sb3" stroke-width="2"/><line x1="96" y1="56" x2="96" y2="72" class="sb3" stroke-width="2"/><line x1="512" y1="56" x2="512" y2="72" class="sb3" stroke-width="2"/><text x="304" y="92" class="sv-lbl fb3" text-anchor="middle" font-size="16">CCOUNT fin − inicio: cuenta también la ISR</text><text x="16" y="128" class="sv-lbl f4" text-anchor="start" font-size="16">el contador no se detiene: la capa parece más lenta</text></svg>
+  <figcaption><b>fig 4.3</b>Una interrupción (magenta) a mitad de la capa: el contador sigue y la resta incluye su duración. La mediana de muchas muestras la deja afuera.</figcaption>
+</figure>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Medís 100 veces una capa: 97 muestras dan 1,38 ms y 3 dan 1,9 ms. ¿Qué número reportás?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El promedio mezcla las 3 muestras infladas por interrupciones: da un valor que no ocurre nunca.">El promedio, 1,40 ms.</button>
+    <button type="button" data-por-que="El máximo es el peor caso con una interrupción. Sirve para otra pregunta, no para el tiempo de la capa.">El máximo, 1,9 ms.</button>
+    <button type="button" data-por-que="La mediana es el valor del medio al ordenarlas; las pocas muestras infladas no la mueven.">La mediana, 1,38 ms.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadena: la energía, según MLPerf Tiny</h2>
+
+<p>Para que dos fabricantes puedan comparar, MLPerf Tiny fija el procedimiento. La latencia se mide corriendo inferencias durante al menos 10 segundos y 10 iteraciones, cinco veces, y se reporta la mediana. La energía se mide igual, pero además se integra en esa ventana y se divide por la cantidad de inferencias.</p>
+
+<p>El micro bajo prueba queda aislado eléctricamente: un adaptador con desplazadores de nivel le pasa los comandos, y un monitor de energía le da la única alimentación. El monitor alimenta y mide al mismo tiempo, y lo que consumen los desplazadores no se cuenta.</p>
+
+<p>Con un instrumento propio, la medición se arma con un <strong>shunt</strong>: una resistencia chica en serie con la alimentación. La caída en el shunt es proporcional a la corriente; multiplicada por la tensión e integrada en el tiempo, da la energía.</p>
+
+<h2>Implementaciones reales: contadores en cada arquitectura</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32 y ESP32-S3</th><th>ESP32-P4 y C3</th><th>Cortex-M55</th><th>Ethos-U55</th></tr></thead>
+  <tbody>
+    <tr><td><b>Contador de ciclos</b></td><td>CCOUNT de Xtensa, 32 bits, uno por núcleo</td><td>contador de rendimiento propio de Espressif</td><td>CYCCNT del bloque DWT, 32 bits</td><td>contadores propios de la NPU (PMU)</td></tr>
+    <tr><td><b>En ESP-IDF o CMSIS</b></td><td>una función de ESP-IDF lo lee</td><td>la misma función de ESP-IDF</td><td>registro estándar de Armv7-M y Armv8-M</td><td>los lee el driver de la NPU</td></tr>
+    <tr><td><b>Qué mide</b></td><td>la CPU, que hace la inferencia</td><td>la CPU, que hace la inferencia</td><td>la CPU</td><td>la NPU, mientras la CPU hace otra cosa</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>ESP-IDF esconde la diferencia: la misma función lee CCOUNT en Xtensa y el contador equivalente en los RISC-V de Espressif. En el ESP32-S31, según el README de esp-nn, el PIE existe solo en el núcleo 1, y ESP-IDF mueve allí las tareas que usan los kernels optimizados.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>Las interrupciones que inflan una medición son las del <a href="../micro/05-tiempo-real.html">Microcontroladores, Tomo 1, nivel 5</a>, y el tick del planificador es una de ellas. Los modos de consumo que se ven entre inferencias son los del <a href="../micro/06-energia.html">Tomo 1, nivel 6</a>. El costo de la caché fría depende de la caché del <a href="../buses/03-cache.html">Tomo 5, nivel 3</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: resolución y vuelta del contador</h4>
+  <p class="formula"><var>Δt</var> = 1 / <var>f</var>; <var>t</var><sub>vuelta</sub> = 2<sup>32</sup> / <var>f</var></p>
+  <dl>
+    <dt>f</dt><dd>240 MHz</dd>
+    <dt>2³²</dt><dd>4 294 967 296 cuentas (32 bits)</dd>
+  </dl>
+  <p class="resultado">Δt ≈ 4,17 ns; t_vuelta ≈ 17,9 s</p>
+  <p>Una capa o una inferencia entran de sobra. Para tiempos de más de 17,9 s, el contador da la vuelta y conviene el temporizador de 64 bits.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: energía por inferencia</h4>
+  <p class="formula"><var>E</var> = <var>V</var> · <var>I</var> · <var>t</var></p>
+  <dl>
+    <dt>V</dt><dd>3,3 V</dd>
+    <dt>I</dt><dd>72,4 mA: un núcleo a 240 MHz con accesos de 128 bits y el otro en espera (datasheet del S3, tabla 5-9; supuesto: representa la inferencia)</dd>
+    <dt>t</dt><dd>47 ms</dd>
+  </dl>
+  <p class="resultado">E = 3,3 V · 0,0724 A · 0,047 s ≈ 11,2 mJ (con los relojes de periféricos encendidos, 87,9 mA: ≈ 13,6 mJ)</p>
+  <p>Es una estimación del orden de 11 a 14 mJ por imagen. El número real sale de medir, como en la figura 4.2.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: cuánto cae el shunt</h4>
+  <p class="formula"><var>ΔV</var> = <var>I</var><sub>pico</sub> · <var>R</var></p>
+  <dl>
+    <dt>I_pico</dt><dd>340 mA: transmisión Wi-Fi 802.11b a 21 dBm (datasheet del S3, tabla 5-7)</dd>
+    <dt>R</dt><dd>1 Ω o 0,1 Ω</dd>
+    <dt>mínimo</dt><dd>3,0 V de alimentación recomendada (tabla 5-2)</dd>
+  </dl>
+  <p class="resultado">1 Ω: ΔV = 0,34 V, quedan 2,96 V; 0,1 Ω: ΔV = 34 mV, quedan 3,27 V</p>
+  <p>Un shunt de 1 Ω deja al micro bajo su tensión mínima en un pico de radio. Por eso se usan del orden de 0,1 Ω con un amplificador.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>Este nivel describe el método, no un perfil medido: Espressif no publica el tiempo del detector capa por capa. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>el reparto de los 47 ms entre capas, que hay que medir en una placa;</li>
+  <li>cuánto más tarda la primera inferencia con la caché fría;</li>
+  <li>la corriente real del S3 durante la inferencia, que la tabla del datasheet solo aproxima;</li>
+  <li>si FreeRTOS de ESP-IDF guarda los registros del PIE en cada cambio de tarea o solo cuando otra tarea los usa.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>El tiempo se mide adentro, con el contador de ciclos del núcleo; la energía, afuera, con un shunt y un monitor.</li>
+    <li>Cada núcleo tiene su contador: la tarea que mide va fijada a un núcleo.</li>
+    <li>Se descarta la primera inferencia, con la caché fría, y se toma la mediana para dejar afuera las interrupciones.</li>
+    <li>Un pin marca la ventana de la inferencia, como en MLPerf Tiny, para integrar la energía solo ahí.</li>
+    <li>Con el datasheet, el detector gasta del orden de 11 a 14 mJ por imagen en el ESP32-S3.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Una tarea mide una capa, y entre las dos lecturas del contador el planificador la mueve del núcleo 0 al 1. ¿Qué pasa?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Los contadores no se sincronizan solos; cada uno cuenta en su núcleo desde su propio arranque.">Nada: los dos contadores marcan lo mismo.</button>
+    <button type="button" data-por-que="La resta mezcla dos contadores que no están sincronizados, así que el resultado no mide la capa. Por eso se fija la tarea a un núcleo.">La resta mezcla dos contadores distintos y no sirve.</button>
+    <button type="button" data-por-que="El contador no se detiene por el cambio de núcleo; el problema es que son dos contadores diferentes.">El contador se detiene y la capa parece más rápida.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · medir con el contador de ciclos</h4>
+  <p>Este código hace los pasos 2 a 4 del recorrido: calienta la caché, mide cada repetición con el contador y devuelve la mediana. La resta sin signo sigue bien aunque el contador de 32 bits dé una vuelta.</p>
+  <p>Lo probé con un contador simulado que arranca cerca de la vuelta, una primera corrida lenta y una muestra inflada por una interrupción: la mediana da el valor normal.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+
+/* Medir un tramo de código con el contador de ciclos.
+   En el ESP32-S3, leer_ciclos() lee el registro CCOUNT
+   del núcleo (en ESP-IDF, esp_cpu_get_cycle_count()). */
+extern uint32_t leer_ciclos(void);
+
+static int comparar(const void *a, const void *b)
+{
+    uint32_t x = *(const uint32_t *)a;
+    uint32_t y = *(const uint32_t *)b;
+    return (x &gt; y) - (x &lt; y);
+}
+
+/* Corre f() 'calentar' veces sin medir, para llenar la
+   caché, y 'n' veces midiendo. Devuelve la mediana en
+   ciclos: una interrupción infla una muestra, no a todas. */
+uint32_t medir(void (*f)(void), int calentar, int n,
+               uint32_t *muestras)
+{
+    for (int i = 0; i &lt; calentar; i++)
+        f();
+    for (int i = 0; i &lt; n; i++) {
+        uint32_t t0 = leer_ciclos();
+        f();
+        /* La resta sin signo sigue bien aunque el
+           contador de 32 bits dé una vuelta. */
+        muestras[i] = leer_ciclos() - t0;
+    }
+    qsort(muestras, n, sizeof muestras[0], comparar);
+    return muestras[n / 2];
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> v2.2, tablas 5-2 (condiciones de operación), 5-7 (Wi-Fi) y 5-9 (modem-sleep). <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, esp_cpu.h: contador de ciclos por núcleo. <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_hw_support/include/esp_cpu.h">github.com/espressif/esp-idf/…/esp_cpu.h</a></li>
+    <li>Espressif Systems. <em>ESP-IDF</em>, Kconfig de esp_wifi: la tarea del Wi-Fi va al núcleo 0 por defecto. <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/Kconfig">github.com/espressif/esp-idf/…/esp_wifi/Kconfig</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: High Resolution Timer (esp_timer)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/esp_timer.html">docs.espressif.com/…/esp_timer.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Maximizing Execution Speed</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/speed.html">docs.espressif.com/…/performance/speed.html</a></li>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>, kernel de convolución con medición de tiempo. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README (ESP32-S31: PIE solo en el núcleo 1). <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, sección 4 y apéndice (procedimiento de latencia y energía). <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+    <li>Google. <em>LiteRT Micro</em>, micro_profiler.h. <a href="https://github.com/tensorflow/tflite-micro">github.com/tensorflow/tflite-micro</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. La energía por inferencia es una estimación con datos del datasheet, no una medición.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-04</footer>
+</body>
+</html>

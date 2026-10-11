@@ -316,7 +316,7 @@
 
 <div class="caja ojo">
   <h4>ojo: "núcleo dedicado" no es "núcleo sin interrupciones"</h4>
-  <p>Cuando en el <a href="../borde/02-pipeline.html">IA en el borde, Tomo 2, nivel 2</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
+  <p>Cuando en el <a href="../borde/05-camara-al-tensor.html">IA en el borde, Tomo 2, nivel 5</a> dedicamos el núcleo 1 a la inferencia, no queda aislado: <strong>sigue recibiendo su tick</strong> y las interrupciones que le asignes. Lo que gana es que <strong>el Wi-Fi y el Bluetooth no le meten carga</strong>, porque viven en el núcleo 0.</p>
 </div>
 
 <h2>Cómo se hablan las tareas</h2>
@@ -414,7 +414,7 @@
 
 <h2>Cierre: el doble buffer del pipeline</h2>
 
-<p>Todo lo anterior se junta en el pipeline del <a href="../borde/02-pipeline.html">IA en el borde, Tomo 2, nivel 2</a>: captura, preparación, inferencia y decisión. La <strong>cámara con DMA</strong> llena un buffer sin CPU y, al terminar el cuadro, levanta una <strong>interrupción</strong>. La rutina (corta, en IRAM) solo <strong>avisa</strong> a una tarea con una notificación. La tarea de inferencia, anclada al núcleo 1, corre sus 54 ms sin que el Wi-Fi la moleste.</p>
+<p>Todo lo anterior se junta en la cadena de visión del <a href="../borde/05-camara-al-tensor.html">IA en el borde, Tomo 2, nivel 5</a>: captura, preparación, inferencia y decisión. La <strong>cámara con DMA</strong> llena un buffer sin CPU y, al terminar el cuadro, levanta una <strong>interrupción</strong>. La rutina (corta, en IRAM) solo <strong>avisa</strong> a una tarea con una notificación. La tarea de inferencia, anclada al núcleo 1, corre sus 54 ms sin que el Wi-Fi la moleste.</p>
 
 <p>El <strong>doble buffer</strong> es lo que evita que cámara e inferencia se pisen: mientras el DMA llena el A, la IA procesa el B. Se sincronizan con dos colas de punteros (libres y llenas), como en la fig 5.5. Así el dueño del buffer es siempre uno solo, sin mutex y sin copiar la imagen.</p>
 
@@ -462,6 +462,7 @@
     <li>Espressif Systems. <em>ESP-IDF, configuración de Wi-Fi</em> (núcleo del controlador). <a href="https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/Kconfig">github.com/espressif/esp-idf/…/components/esp_wifi/Kconfig</a></li>
     <li>Real Time Engineers. <em>Mastering the FreeRTOS Real Time Kernel</em> (tareas y tick, colas, temporizadores, interrupciones, recursos, notificaciones). <a href="https://github.com/FreeRTOS/FreeRTOS-Kernel-Book">github.com/FreeRTOS/FreeRTOS-Kernel-Book</a></li>
     <li>Usuarios de foros. <em>Interrupt latency on ESP32</em> (medición no oficial de unos 2 µs). <a href="https://www.eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/">eevblog.com/forum/microcontrollers/interrupt-latency-on-esp32/</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: High Priority Interrupts</em> (ESP32-S3). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/hlinterrupts.html">docs.espressif.com/…/hlinterrupts.html</a></li>
   </ol>
   <p class="nota">Las latencias de interrupción y de cambio de contexto son del orden de lo reportado por usuarios, sin cifra oficial. Las prioridades de las tareas del sistema dependen de la versión de ESP-IDF.</p>
 </section>

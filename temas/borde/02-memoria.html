@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: El presupuesto de memoria</title>
+<meta name="description" content="Dónde vive cada dato de la red en el ESP32-S3, cómo el planificador hace entrar 235 KiB de tensores en 54 KiB, y cuánto cuesta poner la arena en PSRAM.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 2: El presupuesto de memoria">
+<meta property="og:description" content="Dónde vive cada dato de la red en el ESP32-S3, cómo el planificador hace entrar 235 KiB de tensores en 54 KiB, y cuánto cuesta poner la arena en PSRAM.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 16 min de lectura</span>
+  <h1>El presupuesto de memoria</h1>
+  <p class="bajada">Dónde vive cada dato de la red en el ESP32-S3, cómo el planificador hace entrar 235 KiB de tensores en 54 KiB, y cuánto cuesta poner la arena en PSRAM.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Ubicar pesos, activaciones y memoria de trabajo en flash, SRAM o PSRAM, y decir por qué.</li>
+    <li>Explicar cómo la arena separa lo que vive una inferencia de lo que vive todo el programa.</li>
+    <li>Seguir al planificador mientras acomoda los tensores del detector y calcular el pico.</li>
+    <li>Estimar si un doble buffer de cámara entra en la SRAM.</li>
+    <li>Interpretar por qué la arena en PSRAM cuesta 15 % y no varias veces más.</li>
+  </ul>
+</div>
+
+<h2>El problema: 512 KB para todo</h2>
+
+<p>El ESP32-S3 tiene 512 KB de <strong>SRAM</strong> interna: memoria rápida dentro del chip, que se lee y se escribe en un ciclo. Ahí tienen que entrar el programa que corre desde RAM, las pilas de las tareas, el Wi-Fi si se usa, la imagen de la cámara y la red neuronal.</p>
+
+<p>La red tiene dos clases de datos (<a href="../micro/04-memoria.html">Microcontroladores, Tomo 1, nivel 4</a>). Los <strong>pesos</strong> son constantes: 214 KiB en el detector. Las <strong>activaciones</strong> son los resultados de cada capa: se escriben y se leen en cada imagen. Si cada capa guardara su salida aparte, el detector necesitaría 235 KiB solo para ellas.</p>
+
+<p>La respuesta corta: los pesos se quedan en la flash y se leen a través de la caché. Las activaciones van a la <strong>arena</strong>, un bloque fijo donde un planificador reutiliza las direcciones: el detector necesita 54 KiB en el peor momento. Con la arena en SRAM tarda 47 ms; en PSRAM, 54 ms.</p>
+
+<h2>La memoria vista desde afuera</h2>
+
+<p>Para la red, el micro ofrece tres memorias. La <strong>SRAM interna</strong> es chica y rápida. La <strong>flash</strong> es un chip aparte de varios MB que guarda el programa y el modelo; en la práctica solo se lee mientras corre la red. La <strong>PSRAM</strong> es otro chip opcional de varios MB, más lento que la SRAM, que se lee y se escribe.</p>
+
+<figure class="diagrama" data-titulo="fig-2.1">
+  <svg viewBox="0 0 640 328" role="img" aria-label="Mapa de memoria del ESP32-S3 para la red. El núcleo con el PIE lee la SRAM interna de 512 KB directamente. La flash, con el modelo de 294 KiB, y la PSRAM opcional están afuera del chip: comparten un solo bus MSPI y el núcleo las lee a través de la caché, compartida por los dos núcleos."><rect x="16" y="16" width="176" height="72" class="fa1 sa3" stroke-width="2"/><rect x="15" y="15" width="2" height="2" class="f0"/><rect x="191" y="15" width="2" height="2" class="f0"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="191" y="87" width="2" height="2" class="f0"/><text x="104" y="48" class="sv-tit f6" text-anchor="middle" font-size="16">NÚCLEO + PIE</text><text x="104" y="66" class="sv-lbl f4" text-anchor="middle" font-size="16">carga 16 B</text><rect x="272" y="16" width="352" height="72" class="f1 sa3" stroke-width="2"/><rect x="271" y="15" width="2" height="2" class="f0"/><rect x="623" y="15" width="2" height="2" class="f0"/><rect x="271" y="87" width="2" height="2" class="f0"/><rect x="623" y="87" width="2" height="2" class="f0"/><text x="448" y="48" class="sv-tit fa3" text-anchor="middle" font-size="16">SRAM INTERNA: 512 KB</text><text x="448" y="66" class="sv-lbl f4" text-anchor="middle" font-size="16">en el chip, sin caché</text><line x1="192" y1="52" x2="264" y2="52" class="sa3" stroke-width="2"/><rect x="256" y="48" width="2" height="8" class="fa3"/><rect x="258" y="49" width="2" height="6" class="fa3"/><rect x="260" y="50" width="2" height="4" class="fa3"/><rect x="262" y="51" width="2" height="2" class="fa3"/><line x1="264" y1="60" x2="200" y2="60" class="sa3" stroke-width="2"/><rect x="206" y="56" width="2" height="8" class="fa3"/><rect x="204" y="57" width="2" height="6" class="fa3"/><rect x="202" y="58" width="2" height="4" class="fa3"/><rect x="200" y="59" width="2" height="2" class="fa3"/><text x="228" y="44" class="sv-lbl fa3" text-anchor="middle" font-size="16">directo</text><rect x="16" y="136" width="176" height="48" class="f1 sc3" stroke-width="2"/><rect x="15" y="135" width="2" height="2" class="f0"/><rect x="191" y="135" width="2" height="2" class="f0"/><rect x="15" y="183" width="2" height="2" class="f0"/><rect x="191" y="183" width="2" height="2" class="f0"/><text x="104" y="156" class="sv-tit fc3" text-anchor="middle" font-size="16">CACHÉ</text><text x="104" y="174" class="sv-lbl f4" text-anchor="middle" font-size="16">compartida</text><line x1="104" y1="88" x2="104" y2="128" class="sc3" stroke-width="2"/><rect x="100" y="120" width="8" height="2" class="fc3"/><rect x="101" y="122" width="6" height="2" class="fc3"/><rect x="102" y="124" width="4" height="2" class="fc3"/><rect x="103" y="126" width="2" height="2" class="fc3"/><rect x="16" y="232" width="176" height="48" class="f1 s3" stroke-width="2"/><rect x="15" y="231" width="2" height="2" class="f0"/><rect x="191" y="231" width="2" height="2" class="f0"/><rect x="15" y="279" width="2" height="2" class="f0"/><rect x="191" y="279" width="2" height="2" class="f0"/><text x="104" y="252" class="sv-tit f6" text-anchor="middle" font-size="16">BUS MSPI</text><text x="104" y="270" class="sv-lbl f4" text-anchor="middle" font-size="16">un solo camino</text><line x1="104" y1="184" x2="104" y2="224" class="sc3" stroke-width="2"/><rect x="100" y="216" width="8" height="2" class="fc3"/><rect x="101" y="218" width="6" height="2" class="fc3"/><rect x="102" y="220" width="4" height="2" class="fc3"/><rect x="103" y="222" width="2" height="2" class="fc3"/><rect x="272" y="208" width="160" height="72" class="f1 sb3" stroke-width="2"/><rect x="271" y="207" width="2" height="2" class="f0"/><rect x="431" y="207" width="2" height="2" class="f0"/><rect x="271" y="279" width="2" height="2" class="f0"/><rect x="431" y="279" width="2" height="2" class="f0"/><text x="352" y="240" class="sv-tit fb3" text-anchor="middle" font-size="16">FLASH</text><text x="352" y="258" class="sv-lbl f4" text-anchor="middle" font-size="16">el modelo: 294 KiB</text><rect x="464" y="208" width="160" height="72" class="f1 sd3" stroke-width="2"/><rect x="463" y="207" width="2" height="2" class="f0"/><rect x="623" y="207" width="2" height="2" class="f0"/><rect x="463" y="279" width="2" height="2" class="f0"/><rect x="623" y="279" width="2" height="2" class="f0"/><text x="544" y="240" class="sv-tit fd3" text-anchor="middle" font-size="16">PSRAM</text><text x="544" y="258" class="sv-lbl f4" text-anchor="middle" font-size="16">opcional: MB</text><line x1="192" y1="256" x2="264" y2="256" class="sb3" stroke-width="2"/><rect x="256" y="252" width="2" height="8" class="fb3"/><rect x="258" y="253" width="2" height="6" class="fb3"/><rect x="260" y="254" width="2" height="4" class="fb3"/><rect x="262" y="255" width="2" height="2" class="fb3"/><line x1="228" y1="256" x2="228" y2="296" class="sd3" stroke-width="2"/><line x1="228" y1="296" x2="544" y2="296" class="sd3" stroke-width="2"/><line x1="544" y1="296" x2="544" y2="288" class="sd3" stroke-width="2"/><rect x="540" y="294" width="8" height="2" class="fd3"/><rect x="541" y="292" width="6" height="2" class="fd3"/><rect x="542" y="290" width="4" height="2" class="fd3"/><rect x="543" y="288" width="2" height="2" class="fd3"/><text x="16" y="316" class="sv-lbl f4" text-anchor="start" font-size="16">flash y PSRAM comparten bus y reloj; el núcleo las ve a través de la caché</text></svg>
+  <figcaption><b>fig 2.1</b>El núcleo lee la SRAM interna directo. La flash (azul) y la PSRAM (magenta) quedan afuera del chip, comparten un solo bus y se leen a través de la caché (verde).</figcaption>
+</figure>
+
+<p>La flash y la PSRAM no se leen directo: el núcleo pide una dirección y la <strong>caché</strong>, una memoria chica dentro del chip, le entrega una copia (<a href="../buses/03-cache.html">Microcontroladores, Tomo 5, nivel 3</a>). Si no la tiene, la trae por el bus MSPI, que la flash y la PSRAM comparten, igual que su reloj.</p>
+
+<h2>Adentro: qué es cada dato y dónde conviene</h2>
+
+<p>Cada dato de la red tiene un patrón de uso, y el patrón decide su lugar.</p>
+
+<ul>
+  <li><strong>Pesos y bias:</strong> no cambian y se leen en orden, filtro por filtro. Quedan en la flash, dentro del archivo del modelo, porque la caché aprovecha bien una lectura ordenada.</li>
+  <li><strong>Activaciones:</strong> cada capa escribe su salida y la capa siguiente la lee. Viven poco: desde que se calculan hasta que las usa el último que las necesita.</li>
+  <li><strong>Memoria de trabajo de los kernels:</strong> algunos kernels de ESP-NN piden un espacio temporal, por ejemplo para reordenar datos antes de multiplicar. Vive lo que dura la capa.</li>
+  <li><strong>Datos del intérprete:</strong> la descripción de cada tensor (forma, escala, dirección) se arma al preparar y vive todo el programa.</li>
+</ul>
+
+<p>Los tres últimos van a la arena. La arena es un solo bloque de bytes que el programa reserva al arrancar. Así no se pide memoria suelta durante la inferencia, que podría fallar por fragmentación o tardar distinto cada vez.</p>
+
+<p>LiteRT Micro organiza la arena como dos pilas que crecen una hacia la otra. La <strong>cabeza</strong>, desde abajo, guarda lo que vive una inferencia: activaciones y memoria de trabajo. La <strong>cola</strong>, desde arriba, guarda lo que vive todo el programa. Si al preparar se tocan, la arena es chica y el programa avisa.</p>
+
+<div class="caja analogia">
+  <h4>analogía: la mesa del taller</h4>
+  <p>La cola es la morsa atornillada a la mesa: está siempre en el mismo lugar. La cabeza es el espacio libre de la mesa, donde apoyás la pieza que estás haciendo y, cuando la terminás, ponés la siguiente en el mismo lugar.</p>
+</div>
+
+<h2>Recorrido: el planificador acomoda el detector</h2>
+
+<p>Antes de la primera inferencia, el <strong>planificador</strong> decide la dirección de cada activación dentro de la cabeza. Conoce dos datos de cada tensor: su tamaño en bytes y su <strong>vida</strong>, el rango de nodos del grafo durante el que tiene que conservarse.</p>
+
+<ol>
+  <li><strong>Listar los tensores.</strong> El detector tiene 32 tensores de activación. Por ejemplo, la salida de la primera capa 1×1 mide 48×48×16 = 36 864 bytes y vive desde el nodo 2, que la escribe, hasta el nodo 3, que la lee.</li>
+  <li><strong>Ordenar de mayor a menor.</strong> Los tensores grandes son los más difíciles de ubicar, así que van primero. Es la regla <em>first-fit decreasing</em> que describen los autores de LiteRT Micro.</li>
+  <li><strong>Ubicar cada uno en el primer hueco.</strong> Para cada tensor, el planificador prueba desde la dirección 0 y sube hasta encontrar un hueco donde no pise a ningún tensor que viva al mismo tiempo. Los que no conviven pueden usar las mismas direcciones.</li>
+  <li><strong>Medir el pico.</strong> La dirección más alta ocupada es el tamaño que necesita la cabeza. En el detector son 55 296 bytes: la salida de 36 KiB de esa capa 1×1 más su entrada de 18 KiB.</li>
+</ol>
+
+<figure class="diagrama" data-titulo="fig-2.2">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Ocho tensores de las primeras capas del detector acomodados en la arena. El eje horizontal es el nodo del grafo y el vertical la dirección. Cada tensor ocupa direcciones solo mientras vive, y los que no conviven en el tiempo comparten direcciones. El más grande, la salida de la primera capa uno por uno, de 36 KiB, junto con su entrada fija el pico de 54 KiB."><text x="16" y="32" class="sv-lbl f4" text-anchor="start" font-size="16">54 KiB</text><text x="16" y="216" class="sv-lbl f4" text-anchor="start" font-size="16">0</text><line x1="88" y1="24" x2="608" y2="24" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="612" y="29" class="sv-lbl fd3" text-anchor="start" font-size="16">pico</text><rect x="98" y="120" width="60" height="32" class="fa1 sa3" stroke-width="2"/><text x="128" y="142" class="sv-lbl fa3" text-anchor="middle" font-size="16">entrada</text><rect x="98" y="152" width="124" height="64" class="fb1 sb3" stroke-width="2"/><text x="160" y="190" class="sv-lbl fb3" text-anchor="middle" font-size="16">conv</text><rect x="162" y="24" width="124" height="64" class="fc1 sc3" stroke-width="2"/><text x="224" y="62" class="sv-lbl fc3" text-anchor="middle" font-size="16">dw</text><rect x="226" y="88" width="124" height="128" class="fa1 sa3" stroke-width="2"/><text x="288" y="158" class="sv-lbl fa3" text-anchor="middle" font-size="16">pw 1×1</text><rect x="290" y="56" width="124" height="32" class="fb1 sb3" stroke-width="2"/><text x="352" y="78" class="sv-lbl fb3" text-anchor="middle" font-size="16">dw</text><rect x="354" y="152" width="124" height="64" class="fc1 sc3" stroke-width="2"/><text x="416" y="190" class="sv-lbl fc3" text-anchor="middle" font-size="16">pw</text><rect x="418" y="88" width="124" height="64" class="fa1 sa3" stroke-width="2"/><text x="480" y="126" class="sv-lbl fa3" text-anchor="middle" font-size="16">dw</text><rect x="482" y="152" width="124" height="64" class="fb1 sb3" stroke-width="2"/><text x="544" y="190" class="sv-lbl fb3" text-anchor="middle" font-size="16">pw</text><line x1="88" y1="216" x2="608" y2="216" class="s4" stroke-width="2"/><text x="128" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">0</text><text x="192" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">1</text><text x="256" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">2</text><text x="320" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">3</text><text x="384" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">4</text><text x="448" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">5</text><text x="512" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">6</text><text x="576" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">7</text><text x="96" y="264" class="sv-lbl f4" text-anchor="start" font-size="16">nodo del grafo (tiempo) →</text><text x="16" y="288" class="sv-lbl f4" text-anchor="start" font-size="16">dirección en la arena ↑; cada caja es un tensor mientras vive</text></svg>
+  <figcaption><b>fig 2.2</b>Los primeros ocho tensores del detector en la arena. Cada caja ocupa direcciones solo mientras vive; las que no se tocan en el tiempo se apilan en las mismas direcciones. El pico (magenta) lo fijan la salida de 36 KiB y su entrada.</figcaption>
+</figure>
+
+<p>El ejemplo de Espressif reserva 100 KiB para la cabeza y la cola, y 60 KiB más de memoria de trabajo para ESP-NN: 160 KiB en total. Los 54 KiB de activaciones entran con margen; el resto se reparte entre la cola y los huecos que deja el planificador.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué la salida de la capa 1 y la de la capa 3 pueden usar la misma dirección?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El tamaño no importa para compartir: importa si viven al mismo tiempo.">Porque tienen el mismo tamaño.</button>
+    <button type="button" data-por-que="La salida de la capa 1 ya se leyó cuando se escribe la de la capa 3: no conviven, así que pueden ocupar las mismas direcciones.">Porque la primera ya se usó cuando se calcula la segunda.</button>
+    <button type="button" data-por-que="La flash no se escribe durante la inferencia. Las dos activaciones están en la arena.">Porque una de las dos queda en la flash.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadena: la imagen y la caché</h2>
+
+<p>La arena no es lo único que necesita SRAM. La cámara escribe cada cuadro por DMA en un <strong>buffer</strong>, y con un <strong>doble buffer</strong> hay dos: la cámara llena uno mientras la red procesa el otro (<a href="05-camara-al-tensor.html">nivel 5</a>). Con imágenes de 96×96 en gris son 18 KiB, pero con QVGA en color son 300 KiB.</p>
+
+<p>Si la arena se muda a la PSRAM, cada activación pasa por la caché. Sin embargo, Espressif mide apenas 7 ms más en el detector. Una explicación probable: el pico de activaciones, 54 KiB, cabe en la caché de datos del S3, configurable hasta 64 KB, y casi todo se lee y se escribe sin salir del chip (por confirmar).</p>
+
+<figure class="diagrama" data-titulo="fig-2.3">
+  <svg viewBox="0 0 640 152" role="img" aria-label="Dos barras: el detector tarda 47 ms con la arena en SRAM interna y 54 ms con la arena en PSRAM, en el mismo ESP32-S3 a 240 MHz, según Espressif."><text x="176" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">arena en SRAM</text><rect x="192" y="24" width="329" height="32" class="fa1 sa3" stroke-width="2"/><text x="529" y="46" class="sv-lbl fa3" text-anchor="start" font-size="16">47 ms</text><text x="176" y="94" class="sv-lbl f6" text-anchor="end" font-size="16">arena en PSRAM</text><rect x="192" y="72" width="378" height="32" class="fd1 sd3" stroke-width="2"/><text x="578" y="94" class="sv-lbl fd3" text-anchor="start" font-size="16">54 ms</text><text x="192" y="140" class="sv-lbl f4" text-anchor="start" font-size="16">mismo detector, mismo ESP32-S3 a 240 MHz (Espressif)</text></svg>
+  <figcaption><b>fig 2.3</b>El mismo detector con la arena en SRAM (naranja) y en PSRAM (magenta). La diferencia es de 7 ms, del orden del 15 %.</figcaption>
+</figure>
+
+<div class="caja ojo">
+  <h4>ojo: el 15 % vale para este detector</h4>
+  <p>Una red con activaciones más grandes que la caché sí sufre con la arena en PSRAM: cada fallo trae una línea por el bus que también usa la flash. La cifra de 15 % no se puede llevar a otra red sin medir.</p>
+</div>
+
+<h2>Implementaciones reales: ESP32, S3, P4 y Arm</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>ESP32-P4</th><th>Cortex-M55 + Ethos-U55</th></tr></thead>
+  <tbody>
+    <tr><td><b>SRAM interna</b></td><td>520 KB</td><td>512 KB</td><td>768 KB (L2MEM)</td><td>según el fabricante, más memorias TCM</td></tr>
+    <tr><td><b>PSRAM</b></td><td>Quad SPI, opcional</td><td>Octal DDR hasta 80 MHz (120 MHz experimental)</td><td>Hex, 200 MHz en las pruebas de esp-nn</td><td>según el fabricante</td></tr>
+    <tr><td><b>Camino a la memoria externa</b></td><td>caché, compartida con la flash</td><td>caché compartida por los dos núcleos</td><td>caché L2 de 128 KB en las pruebas de esp-nn</td><td>la NPU lee por su propio puerto AXI</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>En un Cortex-M las memorias <strong>TCM</strong> (<em>tightly coupled</em>) cumplen el papel de la SRAM interna del S3: responden en un ciclo y no pasan por la caché. Con una NPU Ethos-U, el compilador Vela decide de antemano qué tensores van a la SRAM y cuáles a la memoria externa, y la NPU los mueve sola.</p>
+
+<div class="caja dato">
+  <h4>dato: estándares</h4>
+  <ul>
+    <li><strong>AXI</strong> y <strong>AHB</strong> son buses de la familia AMBA de Arm; la NPU Ethos-U se conecta por AXI para leer pesos y activaciones sin la CPU.</li>
+    <li>La PSRAM del S3 sigue la interfaz <strong>Octal SPI</strong> con doble flanco (DDR): 8 líneas de datos que transfieren en los dos flancos del reloj.</li>
+  </ul>
+</div>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>La flash se ve en el mapa de memoria gracias a la MMU, que traduce direcciones de 64 KB en 64 KB (<a href="../buses/01-mapa-memoria.html">Microcontroladores, Tomo 5, nivel 1</a>). El DMA de la cámara escribe en SRAM o PSRAM sin la CPU (<a href="../datos/04-dma.html">Microcontroladores, Tomo 3, nivel 4</a>). Los kernels que usan la arena son los del <a href="03-convolucion-pie.html">nivel 3</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: el pico de activaciones</h4>
+  <p class="formula"><var>P</var> = máx (<var>entrada</var><sub>k</sub> + <var>salida</var><sub>k</sub>)</p>
+  <dl>
+    <dt>entrada</dt><dd>48·48·8 = 18 432 bytes (salida de la capa anterior)</dd>
+    <dt>salida</dt><dd>48·48·16 = 36 864 bytes (primera capa 1×1)</dd>
+    <dt>sin reutilizar</dt><dd>241 030 bytes: la suma de los 32 tensores</dd>
+  </dl>
+  <p class="resultado">P = 18 432 + 36 864 = 55 296 bytes ≈ 54 KiB; 241 030 / 55 296 ≈ 4,4 veces menos</p>
+  <p>En una red en cadena, el pico lo fija la capa con más entrada más salida, no la red entera. Las cuentas salen de la arquitectura publicada.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: el doble buffer de la cámara</h4>
+  <p class="formula"><var>B</var> = 2 · <var>ancho</var> · <var>alto</var> · <var>bytes por píxel</var></p>
+  <dl>
+    <dt>gris</dt><dd>96·96 píxeles, 1 byte</dd>
+    <dt>QVGA color</dt><dd>320·240 píxeles, 2 bytes (RGB565)</dd>
+    <dt>SRAM</dt><dd>512 KB = 524 288 bytes</dd>
+  </dl>
+  <p class="resultado">gris: 2 · 9216 = 18 432 bytes (3,5 % de la SRAM); QVGA: 2 · 153 600 = 307 200 bytes (58,6 %)</p>
+  <p>Con la arena de 160 KiB, el doble buffer QVGA llevaría la SRAM al 90 % sin contar programa ni Wi-Fi: en color, los cuadros van a la PSRAM.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: SRAM contra PSRAM</h4>
+  <p class="formula"><var>BW</var> = <var>bytes por transferencia</var> · <var>transferencias por segundo</var></p>
+  <dl>
+    <dt>SRAM</dt><dd>16 bytes por ciclo a 240 MHz (supuesto: una carga del PIE por ciclo)</dd>
+    <dt>PSRAM</dt><dd>1 byte por flanco, 2 flancos por ciclo, a 80 MHz (Octal DDR, sin contar comandos)</dd>
+  </dl>
+  <p class="resultado">SRAM: 16 · 240 · 10⁶ = 3,84 GB/s; PSRAM: 2 · 80 · 10⁶ = 160 MB/s; cociente ≈ 24</p>
+  <p>La PSRAM es del orden de 24 veces más lenta en el mejor caso. Que el detector pierda solo 15 % muestra cuánto trabajo hace la caché.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>El planificador real de LiteRT Micro tiene más detalles que el de este nivel, como alinear cada tensor a 16 bytes. Las cuentas del detector salen de su arquitectura, no del archivo. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>que el pico entre en la caché de datos sea la causa de la pérdida chica en PSRAM;</li>
+  <li>cuánta SRAM queda libre con Wi-Fi activo en una configuración concreta de ESP-IDF;</li>
+  <li>cuánto de los 60 KiB de trabajo usa realmente cada kernel del detector;</li>
+  <li>la cifra de "varias veces más lenta" con PSRAM que circula en algunos textos, incluido el Tomo 1: para este detector Espressif mide 15 %.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Pesos en la flash, leídos por la caché; activaciones, memoria de trabajo y datos del intérprete en la arena.</li>
+    <li>La arena tiene dos pilas: la cabeza para lo que vive una inferencia y la cola para lo que vive todo el programa.</li>
+    <li>El planificador ordena los tensores de mayor a menor y los ubica en el primer hueco: el detector pasa de 235 KiB a 54 KiB.</li>
+    <li>Un doble buffer en color no entra en la SRAM del S3; en gris ocupa 18 KiB.</li>
+    <li>La arena en PSRAM cuesta 15 % en el detector porque la caché absorbe casi todo; en otra red hay que medir.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">Una red tiene una capa con 40 KiB de entrada y 80 KiB de salida, y las demás son más chicas. ¿Cuánto necesita, como mínimo, la cabeza de la arena?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Entrada y salida de esa capa conviven mientras se calcula, así que la cabeza necesita al menos 40 + 80 = 120 KiB.">120 KiB, la entrada más la salida de esa capa.</button>
+    <button type="button" data-por-que="La salida no puede pisar a la entrada mientras se calcula: las dos viven al mismo tiempo.">80 KiB, solo la salida más grande.</button>
+    <button type="button" data-por-que="El planificador reutiliza direcciones: la suma de todos los tensores es lo que se necesitaría sin reutilizar.">La suma de todos los tensores de la red.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · el planificador en C</h4>
+  <p>Este código sigue el recorrido: ordena los tensores de mayor a menor y sube a cada uno hasta un hueco donde no pise a otro que viva al mismo tiempo. Devuelve el pico, el tamaño que necesita la cabeza.</p>
+  <p>Con los ocho tensores de la figura 2.2 da las mismas direcciones y un pico de 55 296 bytes.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>/* Planificador "first-fit decreasing", como el que describe
+   el artículo de LiteRT Micro: ordenar los tensores de mayor
+   a menor y poner cada uno en la dirección más baja que no
+   choque con otro vivo al mismo tiempo. */
+#define MAX_T 64
+
+typedef struct {
+    int tam;      /* bytes                         */
+    int nace;     /* primer nodo que lo usa        */
+    int muere;    /* último nodo que lo usa        */
+    int dir;      /* resultado: dirección en arena */
+} Tensor;
+
+/* ¿Comparten algún nodo? Si no, pueden pisarse. */
+static int vivos_juntos(const Tensor *a, const Tensor *b)
+{
+    return !(a-&gt;muere &lt; b-&gt;nace || b-&gt;muere &lt; a-&gt;nace);
+}
+
+/* Devuelve el pico: los bytes que necesita la arena. */
+int planificar(Tensor *t, int n)
+{
+    int orden[MAX_T], pico = 0;
+    for (int i = 0; i &lt; n; i++)
+        orden[i] = i;
+    /* Ordenar de mayor a menor (inserción). */
+    for (int i = 1; i &lt; n; i++)
+        for (int j = i; j &gt; 0 &amp;&amp;
+             t[orden[j]].tam &gt; t[orden[j-1]].tam; j--) {
+            int x = orden[j];
+            orden[j] = orden[j-1];
+            orden[j-1] = x;
+        }
+    for (int k = 0; k &lt; n; k++) {
+        Tensor *a = &amp;t[orden[k]];
+        int dir = 0, movido = 1;
+        /* Subir mientras pise a un tensor vivo. */
+        while (movido) {
+            movido = 0;
+            for (int m = 0; m &lt; k; m++) {
+                Tensor *b = &amp;t[orden[m]];
+                int pisa = dir &lt; b-&gt;dir + b-&gt;tam &amp;&amp;
+                           b-&gt;dir &lt; dir + a-&gt;tam;
+                if (vivos_juntos(a, b) &amp;&amp; pisa) {
+                    dir = b-&gt;dir + b-&gt;tam;
+                    movido = 1;
+                }
+            }
+        }
+        a-&gt;dir = dir;
+        if (dir + a-&gt;tam &gt; pico)
+            pico = dir + a-&gt;tam;
+    }
+    return pico;
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>David, R. et al. <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. arXiv:2010.08678, secciones 4.4.1 y 4.4.2 (arena de dos pilas y planificador). <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README: detector de personas con arena en PSRAM (54 ms) y en RAM interna (47 ms); configuración del ESP32-P4. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>, ejemplo de detección de personas: arena de 100 KiB más 60 KiB de trabajo. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: SPI Flash and External SPI RAM Configuration</em> (ESP32-S3). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/flash_psram_config.html">docs.espressif.com/…/flash_psram_config.html</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> y <em>Technical Reference Manual</em> v1.8, capítulos de memoria y caché. <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-P4</em>, página del producto (memoria interna). <a href="https://www.espressif.com/en/products/socs/esp32-p4">espressif.com/en/products/socs/esp32-p4</a></li>
+    <li>Arm. <em>Ethos-U55</em>, página del producto. <a href="https://www.arm.com/products/silicon-ip-cpu/ethos/ethos-u55">arm.com/products/silicon-ip-cpu/ethos/ethos-u55</a></li>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet</em> v5.3 (520 KB de SRAM). <a href="https://documentation.espressif.com/esp32_datasheet_en.pdf">documentation.espressif.com/esp32_datasheet_en.pdf</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. Los tamaños de los tensores y el pico son cuentas propias sobre la arquitectura publicada.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-02</footer>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 9: Sentir vibraciones</title>
+<meta name="description" content="Detectar que una máquina suena o vibra distinto sin haber visto nunca una falla: ventanas de señal, rasgos, un autoencoder que solo aprende lo sano y un umbral sobre su error.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 9: Sentir vibraciones">
+<meta property="og:description" content="Detectar que una máquina suena o vibra distinto sin haber visto nunca una falla: ventanas de señal, rasgos, un autoencoder que solo aprende lo sano y un umbral sobre su error.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="9">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="09">nivel 09, 15 min de lectura</span>
+  <h1>Sentir vibraciones</h1>
+  <p class="bajada">Detectar que una máquina suena o vibra distinto sin haber visto nunca una falla: ventanas de señal, rasgos, un autoencoder que solo aprende lo sano y un umbral sobre su error.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar por qué una falla rara no se puede aprender con ejemplos y qué se hace en cambio.</li>
+    <li>Describir un autoencoder: codificador, cuello y decodificador.</li>
+    <li>Usar el error de reconstrucción y un umbral para detectar una anomalía.</li>
+    <li>Explicar qué mide el AUC y por qué no depende del umbral.</li>
+    <li>Estimar si una red así entra en un micro sin PIE, como el ESP32-C6.</li>
+  </ul>
+</div>
+
+<h2>El problema: fallas que nunca se vieron</h2>
+
+<p>Un motor, una bomba o un ventilador cambian su sonido y su vibración antes de romperse. Detectarlo a tiempo ahorra la rotura. Pero para entrenar un clasificador como el detector de personas harían falta muchos ejemplos de cada falla, y las fallas son raras y variadas.</p>
+
+<p>La respuesta corta: se entrena una red solo con la máquina sana, para que aprenda a copiar su señal. Cuando la máquina se aparta de lo normal, la red no sabe copiarla y el error de la copia crece. Un umbral sobre ese error da la alarma. El ejemplo conductor es el detector de anomalías de MLPerf Tiny, que escucha autitos de juguete.</p>
+
+<h2>El detector visto desde afuera</h2>
+
+<p>Entra una señal de un sensor: el sonido de un micrófono o la aceleración de un acelerómetro pegado a la máquina. Sale un <strong>puntaje de anomalía</strong>, un número que crece cuanto más se aparta la señal de lo normal, y una decisión cuando el puntaje pasa un umbral.</p>
+
+<figure class="diagrama" data-titulo="fig-9.1">
+  <svg viewBox="0 0 640 132" role="img" aria-label="Cadena de detección de anomalías: el sensor, un micrófono o un acelerómetro, da la señal; se toma una ventana de 5 tramas; se calculan rasgos log-Mel; el autoencoder intenta copiarlos; se mide el error cuadrático medio; un umbral decide si es anomalía."><rect x="16" y="24" width="92" height="64" class="f1 sd3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="107" y="23" width="2" height="2" class="f0"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="107" y="87" width="2" height="2" class="f0"/><text x="62" y="52" class="sv-tit fd3" text-anchor="middle" font-size="16">SENSOR</text><text x="62" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">micrófono o acel.</text><line x1="108" y1="56" x2="118" y2="56" class="sa3" stroke-width="2"/><rect x="110" y="52" width="2" height="8" class="fa3"/><rect x="112" y="53" width="2" height="6" class="fa3"/><rect x="114" y="54" width="2" height="4" class="fa3"/><rect x="116" y="55" width="2" height="2" class="fa3"/><rect x="120" y="24" width="92" height="64" class="f1 sb3" stroke-width="2"/><rect x="119" y="23" width="2" height="2" class="f0"/><rect x="211" y="23" width="2" height="2" class="f0"/><rect x="119" y="87" width="2" height="2" class="f0"/><rect x="211" y="87" width="2" height="2" class="f0"/><text x="166" y="52" class="sv-tit fb3" text-anchor="middle" font-size="16">VENTANA</text><text x="166" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">5 tramas</text><line x1="212" y1="56" x2="222" y2="56" class="sa3" stroke-width="2"/><rect x="214" y="52" width="2" height="8" class="fa3"/><rect x="216" y="53" width="2" height="6" class="fa3"/><rect x="218" y="54" width="2" height="4" class="fa3"/><rect x="220" y="55" width="2" height="2" class="fa3"/><rect x="224" y="24" width="92" height="64" class="f1 sb3" stroke-width="2"/><rect x="223" y="23" width="2" height="2" class="f0"/><rect x="315" y="23" width="2" height="2" class="f0"/><rect x="223" y="87" width="2" height="2" class="f0"/><rect x="315" y="87" width="2" height="2" class="f0"/><text x="270" y="52" class="sv-tit fb3" text-anchor="middle" font-size="16">RASGOS</text><text x="270" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">log-Mel</text><line x1="316" y1="56" x2="326" y2="56" class="sa3" stroke-width="2"/><rect x="318" y="52" width="2" height="8" class="fa3"/><rect x="320" y="53" width="2" height="6" class="fa3"/><rect x="322" y="54" width="2" height="4" class="fa3"/><rect x="324" y="55" width="2" height="2" class="fa3"/><rect x="328" y="24" width="92" height="64" class="f1 sa3" stroke-width="2"/><rect x="327" y="23" width="2" height="2" class="f0"/><rect x="419" y="23" width="2" height="2" class="f0"/><rect x="327" y="87" width="2" height="2" class="f0"/><rect x="419" y="87" width="2" height="2" class="f0"/><text x="374" y="52" class="sv-tit fa3" text-anchor="middle" font-size="16">AUTOENCODER</text><text x="374" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">copia</text><line x1="420" y1="56" x2="430" y2="56" class="sa3" stroke-width="2"/><rect x="422" y="52" width="2" height="8" class="fa3"/><rect x="424" y="53" width="2" height="6" class="fa3"/><rect x="426" y="54" width="2" height="4" class="fa3"/><rect x="428" y="55" width="2" height="2" class="fa3"/><rect x="432" y="24" width="92" height="64" class="f1 sa3" stroke-width="2"/><rect x="431" y="23" width="2" height="2" class="f0"/><rect x="523" y="23" width="2" height="2" class="f0"/><rect x="431" y="87" width="2" height="2" class="f0"/><rect x="523" y="87" width="2" height="2" class="f0"/><text x="478" y="52" class="sv-tit fa3" text-anchor="middle" font-size="16">ERROR</text><text x="478" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">MSE</text><line x1="524" y1="56" x2="534" y2="56" class="sa3" stroke-width="2"/><rect x="526" y="52" width="2" height="8" class="fa3"/><rect x="528" y="53" width="2" height="6" class="fa3"/><rect x="530" y="54" width="2" height="4" class="fa3"/><rect x="532" y="55" width="2" height="2" class="fa3"/><rect x="536" y="24" width="92" height="64" class="f1 sc3" stroke-width="2"/><rect x="535" y="23" width="2" height="2" class="f0"/><rect x="627" y="23" width="2" height="2" class="f0"/><rect x="535" y="87" width="2" height="2" class="f0"/><rect x="627" y="87" width="2" height="2" class="f0"/><text x="582" y="52" class="sv-tit fc3" text-anchor="middle" font-size="16">UMBRAL</text><text x="582" y="70" class="sv-lbl f4" text-anchor="middle" font-size="16">¿anomalía?</text><text x="16" y="120" class="sv-lbl f4" text-anchor="start" font-size="16">la red se entrena solo con la máquina sana; lo raro no se copia bien</text></svg>
+  <figcaption><b>fig 9.1</b>La señal (magenta) se corta en ventanas y se pasa a rasgos (azul); el autoencoder la copia y se mide el error (naranja); el umbral (verde) decide.</figcaption>
+</figure>
+
+<h2>Adentro: rasgos y un autoencoder</h2>
+
+<p>Las señales de una máquina son <strong>1D</strong>: un valor por instante, no una imagen. Igual que con la voz del <a href="08-palabra-clave.html">nivel 8</a>, primero se cortan en tramas y se pasan a <strong>rasgos</strong>, números que resumen cada trama. En el ejemplo de MLPerf Tiny son 128 bandas log-Mel por trama de 32 ms. Con un acelerómetro se usan también la energía (RMS) y el espectro de la FFT.</p>
+
+<p>Un <strong>autoencoder</strong> es una red con forma de reloj de arena. El <strong>codificador</strong> achica la entrada capa por capa hasta un <strong>cuello</strong> de pocos números. El <strong>decodificador</strong> intenta reconstruir la entrada a partir de ese cuello. Se entrena para que la salida se parezca a la entrada.</p>
+
+<figure class="diagrama" data-titulo="fig-9.2">
+  <svg viewBox="0 0 640 252" role="img" aria-label="El autoencoder de MLPerf Tiny: una entrada de 640 valores, 5 tramas por 128 bandas, pasa por cuatro capas de 128 hasta un cuello de 8 y vuelve a crecer por cuatro capas de 128 hasta 640, la copia de la entrada."><rect x="40" y="77" width="24" height="102" class="fb1 sb3" stroke-width="2"/><text x="52" y="199" class="sv-lbl fb3" text-anchor="middle" font-size="16">640</text><rect x="96" y="118" width="24" height="20" class="fb1 sb3" stroke-width="2"/><text x="108" y="158" class="sv-lbl fb3" text-anchor="middle" font-size="16">128</text><rect x="152" y="118" width="24" height="20" class="fb1 sb3" stroke-width="2"/><text x="164" y="158" class="sv-lbl fb3" text-anchor="middle" font-size="16">128</text><rect x="208" y="118" width="24" height="20" class="fb1 sb3" stroke-width="2"/><text x="220" y="158" class="sv-lbl fb3" text-anchor="middle" font-size="16">128</text><rect x="264" y="118" width="24" height="20" class="fb1 sb3" stroke-width="2"/><text x="276" y="158" class="sv-lbl fb3" text-anchor="middle" font-size="16">128</text><rect x="320" y="126" width="24" height="4" class="fa1 sa3" stroke-width="2"/><text x="332" y="152" class="sv-lbl fa3" text-anchor="middle" font-size="16">8</text><rect x="376" y="118" width="24" height="20" class="fc1 sc3" stroke-width="2"/><text x="388" y="158" class="sv-lbl fc3" text-anchor="middle" font-size="16">128</text><rect x="432" y="118" width="24" height="20" class="fc1 sc3" stroke-width="2"/><text x="444" y="158" class="sv-lbl fc3" text-anchor="middle" font-size="16">128</text><rect x="488" y="118" width="24" height="20" class="fc1 sc3" stroke-width="2"/><text x="500" y="158" class="sv-lbl fc3" text-anchor="middle" font-size="16">128</text><rect x="544" y="118" width="24" height="20" class="fc1 sc3" stroke-width="2"/><text x="556" y="158" class="sv-lbl fc3" text-anchor="middle" font-size="16">128</text><rect x="600" y="77" width="24" height="102" class="fc1 sc3" stroke-width="2"/><text x="612" y="199" class="sv-lbl fc3" text-anchor="middle" font-size="16">640</text><text x="152" y="28" class="sv-lbl fb3" text-anchor="middle" font-size="16">codificador</text><text x="488" y="28" class="sv-lbl fc3" text-anchor="middle" font-size="16">decodificador</text><text x="332" y="112" class="sv-lbl fa3" text-anchor="middle" font-size="16">cuello</text><text x="16" y="240" class="sv-lbl f4" text-anchor="start" font-size="16">entrada: 5 tramas × 128 bandas = 640; salida: la copia de esa entrada</text></svg>
+  <figcaption><b>fig 9.2</b>El autoencoder de MLPerf Tiny: 640 valores entran, el codificador (azul) los lleva a un cuello de 8 (naranja) y el decodificador (verde) vuelve a 640.</figcaption>
+</figure>
+
+<p>El cuello es la clave. Con 8 números no se puede guardar cualquier señal de 640: solo entra lo que se repite en los datos de entrenamiento, el "sonido típico" de la máquina sana. Una señal distinta no cabe en esos 8 números, y la copia sale mal.</p>
+
+<div class="caja analogia">
+  <h4>analogía: un filtro adaptado</h4>
+  <p>El autoencoder se comporta como un filtro adaptado a la señal sana: deja pasar casi intacto lo que se parece a lo que aprendió y rechaza lo demás. El error entre entrada y salida es lo que el filtro rechazó.</p>
+</div>
+
+<h2>Recorrido: un clip de sonido</h2>
+
+<p>Seguimos el modelo de referencia de MLPerf Tiny con un clip de 10 s de un autito de juguete.</p>
+
+<ol>
+  <li><strong>Rasgos.</strong> El audio se pasa a un espectrograma log-Mel de 128 bandas, con tramas de 32 ms.</li>
+  <li><strong>Ventana.</strong> Se juntan 5 tramas seguidas: 5 · 128 = 640 valores, unos 160 ms de sonido. Es la entrada de la red.</li>
+  <li><strong>Copiar.</strong> El autoencoder pasa la ventana por cuatro capas densas de 128, el cuello de 8 y otras cuatro de 128, y devuelve 640 valores.</li>
+  <li><strong>Medir el error.</strong> Se calcula el <strong>error cuadrático medio</strong> (MSE): el promedio de las diferencias al cuadrado entre entrada y copia.</li>
+  <li><strong>Deslizar.</strong> La ventana avanza una trama y se repite. El puntaje del clip es el promedio de los errores en sus 6,4 s centrales.</li>
+  <li><strong>Decidir.</strong> Si el puntaje pasa el umbral, el clip se marca como anomalía.</li>
+</ol>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué el autoencoder copia mal una señal con falla?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Solo aprendió lo típico de la máquina sana; una señal distinta no cabe en los 8 números del cuello y la reconstrucción sale con error.">Porque solo aprendió lo típico de la máquina sana, y lo distinto no entra en el cuello.</button>
+    <button type="button" data-por-que="El autoencoder nunca vio fallas: se entrena solo con la máquina sana.">Porque se entrenó con ejemplos de cada falla.</button>
+    <button type="button" data-por-que="El tamaño de la entrada es fijo, 640 valores, sana o no.">Porque la señal con falla tiene más valores.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadena: el umbral y el AUC</h2>
+
+<p>El umbral se fija con datos sanos: se miden los errores de la máquina funcionando bien y se elige un valor que pocos superan, por ejemplo el que supera solo el 1 %, el <strong>percentil 99</strong>. Así, con la máquina sana, la alarma salta en del orden del 1 % de las ventanas.</p>
+
+<figure class="diagrama" data-titulo="fig-9.3">
+  <svg viewBox="0 0 640 236" role="img" aria-label="Distribuciones ilustrativas del error de reconstrucción. La máquina sana da errores chicos; la máquina con falla, errores más grandes. Un umbral entre las dos separa: a la derecha hay alarma, y donde las curvas se superponen hay falsas alarmas o fallas no detectadas."><polygon points="48,176 48,176 53,176 59,176 64,176 70,175 76,174 81,173 87,172 92,170 98,167 104,164 109,159 115,154 120,147 126,139 132,130 137,120 143,110 148,99 154,88 160,77 165,68 171,60 176,54 182,50 188,48 193,50 199,54 204,60 210,68 216,77 221,88 227,99 232,110 238,120 244,130 249,139 255,147 260,154 266,159 272,164 277,167 283,170 288,172 294,173 300,174 305,175 311,176 316,176 322,176 328,176 333,176 339,176 344,176 350,176 356,176 361,176 367,176 372,176 378,176 384,176 389,176 395,176 400,176 406,176 412,176 417,176 423,176 428,176 434,176 440,176 445,176 451,176 456,176 462,176 468,176 473,176 479,176 484,176 490,176 496,176 501,176 507,176 512,176 518,176 524,176 529,176 535,176 540,176 546,176 552,176 557,176 563,176 568,176 574,176 580,176 585,176 591,176 596,176 602,176 608,176 608,176" class="fb1" stroke-width="0"/><polyline points="48,176 53,176 59,176 64,176 70,175 76,174 81,173 87,172 92,170 98,167 104,164 109,159 115,154 120,147 126,139 132,130 137,120 143,110 148,99 154,88 160,77 165,68 171,60 176,54 182,50 188,48 193,50 199,54 204,60 210,68 216,77 221,88 227,99 232,110 238,120 244,130 249,139 255,147 260,154 266,159 272,164 277,167 283,170 288,172 294,173 300,174 305,175 311,176 316,176 322,176 328,176 333,176 339,176 344,176 350,176 356,176 361,176 367,176 372,176 378,176 384,176 389,176 395,176 400,176 406,176 412,176 417,176 423,176 428,176 434,176 440,176 445,176 451,176 456,176 462,176 468,176 473,176 479,176 484,176 490,176 496,176 501,176 507,176 512,176 518,176 524,176 529,176 535,176 540,176 546,176 552,176 557,176 563,176 568,176 574,176 580,176 585,176 591,176 596,176 602,176 608,176" class="fn sb3" stroke-width="2"/><polygon points="48,176 48,176 53,176 59,176 64,176 70,176 76,176 81,176 87,176 92,176 98,176 104,176 109,176 115,176 120,176 126,176 132,176 137,176 143,176 148,176 154,176 160,176 165,176 171,176 176,176 182,176 188,176 193,176 199,176 204,176 210,176 216,176 221,176 227,176 232,175 238,175 244,175 249,174 255,173 260,173 266,172 272,170 277,169 283,167 288,165 294,163 300,160 305,157 311,154 316,150 322,146 328,142 333,138 339,134 344,130 350,125 356,121 361,118 367,114 372,112 378,109 384,107 389,106 395,106 400,106 406,107 412,109 417,112 423,114 428,118 434,121 440,125 445,130 451,134 456,138 462,142 468,146 473,150 479,154 484,157 490,160 496,163 501,165 507,167 512,169 518,170 524,172 529,173 535,173 540,174 546,175 552,175 557,175 563,176 568,176 574,176 580,176 585,176 591,176 596,176 602,176 608,176 608,176" class="fd1" stroke-width="0"/><polyline points="48,176 53,176 59,176 64,176 70,176 76,176 81,176 87,176 92,176 98,176 104,176 109,176 115,176 120,176 126,176 132,176 137,176 143,176 148,176 154,176 160,176 165,176 171,176 176,176 182,176 188,176 193,176 199,176 204,176 210,176 216,176 221,176 227,176 232,175 238,175 244,175 249,174 255,173 260,173 266,172 272,170 277,169 283,167 288,165 294,163 300,160 305,157 311,154 316,150 322,146 328,142 333,138 339,134 344,130 350,125 356,121 361,118 367,114 372,112 378,109 384,107 389,106 395,106 400,106 406,107 412,109 417,112 423,114 428,118 434,121 440,125 445,130 451,134 456,138 462,142 468,146 473,150 479,154 484,157 490,160 496,163 501,165 507,167 512,169 518,170 524,172 529,173 535,173 540,174 546,175 552,175 557,175 563,176 568,176 574,176 580,176 585,176 591,176 596,176 602,176 608,176" class="fn sd3" stroke-width="2"/><line x1="283" y1="40" x2="283" y2="176" class="sc3" stroke-width="2" stroke-dasharray="4 4"/><text x="289" y="48" class="sv-lbl fc3" text-anchor="start" font-size="16">umbral</text><text x="188" y="40" class="sv-lbl fb3" text-anchor="middle" font-size="16">máquina sana</text><text x="417" y="94" class="sv-lbl fd3" text-anchor="middle" font-size="16">con falla</text><line x1="48" y1="176" x2="608" y2="176" class="s4" stroke-width="2"/><text x="48" y="200" class="sv-lbl f4" text-anchor="start" font-size="16">error de reconstrucción →</text><text x="48" y="224" class="sv-lbl f4" text-anchor="start" font-size="16">a la derecha del umbral: alarma; donde las curvas se pisan, errores</text></svg>
+  <figcaption><b>fig 9.3</b>Errores de la máquina sana (azul) y con falla (magenta), ilustrativos. A la derecha del umbral (verde) hay alarma; donde las curvas se pisan, hay errores en los dos sentidos.</figcaption>
+</figure>
+
+<p>Para comparar modelos sin elegir un umbral, MLPerf Tiny usa el <strong>AUC</strong> (área bajo la curva ROC). Mide la probabilidad de que un clip con falla reciba un puntaje mayor que un clip sano tomado al azar. Vale 1 si separa siempre y 0,5 si adivina. El modelo de referencia da 0,88 en float32 y 0,86 cuantizado a int8; el mínimo exigido es 0,85.</p>
+
+<h2>Implementaciones reales: ¿hace falta el PIE?</h2>
+
+<p>Esta red es chica. Tiene 264 mil MAC por ventana, del orden del 4 % del detector de personas, y son capas densas. Por eso un micro sin unidad vectorial, como el ESP32-C6 (RISC-V de 160 MHz), alcanza para una ventana por segundo.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32-C6</th><th>ESP32-S3</th><th>Cortex-M con NPU</th></tr></thead>
+  <tbody>
+    <tr><td><b>Procesador</b></td><td>RISC-V a 160 MHz, sin PIE</td><td>Xtensa LX7 a 240 MHz, con PIE</td><td>Cortex-M y Ethos-U</td></tr>
+    <tr><td><b>Corriente activa</b></td><td>27 mA a 160 MHz</td><td>51 a 72 mA a 240 MHz, un núcleo</td><td>según el fabricante</td></tr>
+    <tr><td><b>Reposo con el sensor trabajando</b></td><td>35 µA en light-sleep</td><td>240 µA en light-sleep</td><td>según el fabricante</td></tr>
+    <tr><td><b>Cuándo conviene</b></td><td>redes chicas y batería</td><td>redes más grandes o varias señales</td><td>redes grandes con poca energía</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Muchos acelerómetros tienen una <strong>FIFO</strong>: guardan cientos de muestras solos mientras el micro duerme, y lo despiertan cuando está llena. Así el micro procesa la ventana de una vez y vuelve a dormir, igual que el nodo del <a href="07-energia.html">nivel 7</a>.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>El acelerómetro se lee por SPI o I2C (<a href="../datos/02-spi-i2c.html">Microcontroladores, Tomo 3, nivel 2</a>), y su aviso de FIFO llena entra por un GPIO de despertar. Las capas densas usan los mismos kernels de ESP-NN del <a href="01-del-modelo-al-micro.html">nivel 1</a>. El umbral y los votos siguen las ideas del <a href="06-decidir.html">nivel 6</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: tamaño y cuentas del autoencoder</h4>
+  <p class="formula"><var>N</var> = Σ <var>n</var><sub>k</sub> · <var>n</var><sub>k+1</sub></p>
+  <dl>
+    <dt>capas</dt><dd>640, 128, 128, 128, 128, 8, 128, 128, 128, 128, 640</dd>
+  </dl>
+  <p class="resultado">N = 81 920 + 3 · 16 384 + 1024 + 1024 + 3 · 16 384 + 81 920 = 264 192 pesos y MAC por ventana</p>
+  <p>En int8 los pesos ocupan unos 258 KiB, parecido al detector de personas, pero cada ventana cuesta 27 veces menos cuentas.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: tiempo en un micro sin PIE</h4>
+  <p class="formula"><var>t</var> = <var>N</var><sub>MAC</sub> · <var>t</var><sub>MAC</sub></p>
+  <dl>
+    <dt>t_MAC</dt><dd>426 ms / 7,16 · 10⁶ MAC ≈ 59 ns: el detector en el ESP32-C3 a 160 MHz con ESP-NN (supuesto: el C6 rinde parecido)</dd>
+    <dt>N_MAC</dt><dd>264 192</dd>
+  </dl>
+  <p class="resultado">t ≈ 264 192 · 59 ns ≈ 15,6 ms por ventana</p>
+  <p>Una ventana por segundo ocupa del orden del 1,6 % de la CPU. Las capas densas y las convolucionales no rinden igual, así que es una estimación.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: autonomía de un nodo de vibración</h4>
+  <p class="formula"><var>I</var><sub>m</sub> = <var>I</var><sub>act</sub> · <var>d</var> + <var>I</var><sub>dormido</sub> · (1 − <var>d</var>)</p>
+  <dl>
+    <dt>I_act</dt><dd>27 mA, C6 a 160 MHz (datasheet)</dd>
+    <dt>d</dt><dd>2 %: 20 ms activo por segundo (supuesto)</dd>
+    <dt>I_dormido</dt><dd>35 µA de light-sleep más 10 µA del acelerómetro con FIFO (supuesto)</dd>
+  </dl>
+  <p class="resultado">I_m = 27 · 0,02 + 0,045 · 0,98 ≈ 0,58 mA; con 2000 mAh, ≈ 3430 h ≈ 143 días</p>
+  <p>Del orden de 5 meses revisando la máquina cada segundo. Mirar cada 10 s la llevaría a unos 2 años, sin contar la autodescarga.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>El ejemplo de MLPerf Tiny usa sonido de autitos de juguete; una máquina real necesita sus propios datos sanos. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>el tiempo real del autoencoder en el ESP32-C6 con ESP-NN;</li>
+  <li>la corriente de un acelerómetro concreto con su FIFO activa;</li>
+  <li>cuántos datos sanos hacen falta para fijar un umbral estable;</li>
+  <li>cómo cambia el error normal con la carga, la temperatura y el desgaste, que también hay que aprender.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Las fallas son raras y variadas: se aprende solo lo sano y se detecta lo que no se parece.</li>
+    <li>Un autoencoder copia su entrada pasando por un cuello chico; lo distinto no cabe y la copia sale mal.</li>
+    <li>El error de reconstrucción es el puntaje; el umbral se fija con el percentil de los errores sanos.</li>
+    <li>El AUC compara modelos sin elegir umbral: el de referencia de MLPerf Tiny da 0,86 en int8.</li>
+    <li>La red tiene 264 mil MAC por ventana: un micro sin PIE como el ESP32-C6 alcanza.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Fijaste el umbral en el percentil 99 de los errores sanos. ¿Qué esperás con la máquina sana?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El percentil 99 deja afuera al 1 % de los errores sanos: alguna alarma va a haber.">Ninguna alarma.</button>
+    <button type="button" data-por-que="El 99 % de las ventanas sanas quedan bajo el umbral, no sobre él.">Alarma en el 99 % de las ventanas.</button>
+    <button type="button" data-por-que="Por definición, el 1 % de los errores sanos supera el percentil 99: del orden de una ventana de cada cien da alarma.">Alarma en del orden del 1 % de las ventanas.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · error y umbral en C</h4>
+  <p>El error cuadrático medio entre la entrada y la copia, el umbral como percentil de los errores medidos con la máquina sana, y la decisión.</p>
+  <p>Lo probé con un caso de error conocido (MSE de 1) y con cien errores sanos entre 0 y 0,495: el percentil 99 queda en 0,49, un error de 0,8 da alarma y uno de 0,2 no.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>#include &lt;stdlib.h&gt;
+
+/* Detección de anomalías con un autoencoder: la red
+   intenta copiar su entrada pasando por un cuello chico.
+   Si la máquina suena como al entrenar, la copia sale
+   bien; si no, el error crece. */
+
+/* Error cuadrático medio entre entrada y reconstrucción. */
+float error_mse(const float *x, const float *y, int n)
+{
+    float s = 0;
+    for (int i = 0; i &lt; n; i++) {
+        float d = x[i] - y[i];
+        s += d * d;
+    }
+    return s / n;
+}
+
+static int comparar(const void *a, const void *b)
+{
+    float x = *(const float *)a, y = *(const float *)b;
+    return (x &gt; y) - (x &lt; y);
+}
+
+/* Umbral a partir de errores medidos con la máquina sana:
+   el percentil p (por ejemplo 0,99) de esos errores.
+   Ordena el arreglo que recibe. */
+float umbral(float *errores_sanos, int n, float p)
+{
+    qsort(errores_sanos, n, sizeof(float), comparar);
+    int k = (int)(p * (n - 1) + 0.5f);
+    return errores_sanos[k];
+}
+
+/* 1 si el error supera el umbral: posible anomalía. */
+int es_anomalia(float error, float u)
+{
+    return error &gt; u;
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, sección 4.4 (detección de anomalías: autoencoder, log-Mel, AUC). <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+    <li>Koizumi, Y. et al. <em>Description and Discussion on DCASE2020 Challenge Task2</em>. arXiv:2006.05822. <a href="https://arxiv.org/abs/2006.05822">arxiv.org/abs/2006.05822</a></li>
+    <li>Espressif Systems. <em>ESP32-C6 Series Datasheet</em> v1.5, tablas 5-10 y 5-11. <a href="https://documentation.espressif.com/esp32-c6_datasheet_en.pdf">documentation.espressif.com/esp32-c6_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> v2.2, tablas 5-9 y 5-10. <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README: detector de personas en el ESP32-C3. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>Fawcett, T. <em>An introduction to ROC analysis</em>. Pattern Recognition Letters 27 (2006). <a href="https://doi.org/10.1016/j.patrec.2005.10.010">doi.org/10.1016/j.patrec.2005.10.010</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. Las distribuciones de la figura 9.3, el tiempo en el C6 y la corriente del acelerómetro son ilustrativos o supuestos declarados.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-09</footer>
+</body>
+</html>
