@@ -107,7 +107,7 @@
 </table>
 </div>
 
-<p>Si las activaciones se van a la PSRAM, cada escritura puede obligar a la caché a expulsar una línea modificada y mandarla por el bus, y encima compiten con la lectura de pesos por el mismo camino. El resultado es una inferencia <strong>varias veces más lenta</strong>. Por eso la pregunta que decide si un modelo sirve casi nunca es “¿cuántos parámetros tiene?” sino “<strong>¿cuánto ocupa su capa más grande?</strong>”.</p>
+<p>Si las activaciones se van a la PSRAM, cada escritura puede obligar a la caché a expulsar una línea modificada y mandarla por el bus, y encima compiten con la lectura de pesos por el mismo camino. El resultado es una inferencia <strong>más lenta</strong>: en el detector de personas de Espressif, 54 ms con la arena en PSRAM contra 47 ms en SRAM, del orden de 15 % (<a href="../borde/02-memoria.html">IA en el borde, Tomo 2, nivel 2</a>). Con activaciones que no caben en la caché, la pérdida crece. Por eso la pregunta que decide si un modelo sirve casi nunca es “¿cuántos parámetros tiene?” sino “<strong>¿cuánto ocupa su capa más grande?</strong>”.</p>
 
 <div class="caja analogia">
   <h4>analogía: tuercas por correo</h4>
@@ -155,7 +155,7 @@
 <h3>Dos configuraciones típicas</h3>
 <ul>
   <li><strong>S3 sin PSRAM</strong> (por ejemplo, 8 MB de flash y nada más). Los pesos se leen desde flash vía caché; el arena vive en SRAM con del orden de 100 a 200 KB. Imagen de entrada chica: 96 × 96 en escala de grises son apenas 9 KB. Alcanza para detectar personas, clasificar audio o leer medidores con redes compactas.</li>
-  <li><strong>S3 con 8 MB de PSRAM octal.</strong> Entran modelos de varios MB y cuadros VGA en color (640 × 480 × 2 bytes ≈ 600 KB). Si el arena entero tiene que ir a PSRAM, se gana capacidad pero se paga en tiempo: la inferencia se vuelve varias veces más lenta. Las bibliotecas optimizadas intentan mantener en SRAM al menos las partes más calientes.</li>
+  <li><strong>S3 con 8 MB de PSRAM octal.</strong> Entran modelos de varios MB y cuadros VGA en color (640 × 480 × 2 bytes ≈ 600 KB). Si el arena entero tiene que ir a PSRAM, se gana capacidad pero se paga en tiempo: en el detector de personas, del orden de 15 % más; con activaciones más grandes que la caché, bastante más. Las bibliotecas optimizadas intentan mantener en SRAM al menos las partes más calientes.</li>
 </ul>
 
 <div class="caja clave">
@@ -182,12 +182,13 @@
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
-    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (System and Memory; Cache y MMU). <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> (System and Memory; Cache y MMU). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP-IDF: Memory Types</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/memory-types.html">docs.espressif.com/…/api-guides/memory-types.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF: Minimizing RAM Usage</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/performance/ram-usage.html">docs.espressif.com/…/performance/ram-usage.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF: Support for External RAM</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/flash_psram_config.html">docs.espressif.com/…/api-guides/flash_psram_config.html</a></li>
     <li>David, R. et al. (2021). <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. MLSys. <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
     <li>TensorFlow. <em>tflite-micro: GreedyMemoryPlanner</em>. <a href="https://github.com/tensorflow/tflite-micro/blob/main/tensorflow/lite/micro/memory_planner/greedy_memory_planner.h">github.com/tensorflow/tflite-micro/…/greedy_memory_planner.h</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README: detector de personas con la arena en PSRAM (54 ms) y en RAM interna (47 ms). <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
   </ol>
   <p class="nota">Las latencias y los consumos de memoria de las radios son aproximados; varían con la versión y la configuración de ESP-IDF.</p>
 </section>
