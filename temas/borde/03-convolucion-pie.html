@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 3: La convolución en el PIE</title>
+<meta name="description" content="Cómo el ESP32-S3 calcula una capa de la red con 16 multiplicaciones por instrucción, por qué hay que reescalar y ordenar los datos, y por qué el detector de personas tarda 47 ms y no 2 ms.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 3: La convolución en el PIE">
+<meta property="og:description" content="Cómo el ESP32-S3 calcula una capa de la red con 16 multiplicaciones por instrucción, por qué hay que reescalar y ordenar los datos, y por qué el detector de personas tarda 47 ms y no 2 ms.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="3">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="03">nivel 03, 18 min de lectura</span>
+  <h1>La convolución en el PIE</h1>
+  <p class="bajada">Cómo el ESP32-S3 calcula una capa de la red con 16 multiplicaciones por instrucción, por qué hay que reescalar y ordenar los datos, y por qué el detector de personas tarda 47 ms y no 2 ms.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Calcular a mano un canal de salida de una capa 1×1 con un ejemplo chico.</li>
+    <li>Explicar qué hace una MAC vectorial y por qué hay un acumulador con bits de más.</li>
+    <li>Explicar por qué el resultado se reescala y se satura antes de pasar a la capa siguiente.</li>
+    <li>Explicar por qué el orden de los datos en memoria decide si el PIE sirve o no.</li>
+    <li>Comparar el piso teórico de la red con la latencia medida y decir dónde se va el tiempo.</li>
+  </ul>
+</div>
+
+<h2>El problema: 7 millones de cuentas en 47 ms</h2>
+
+<p>El ejemplo conductor del tomo es el <strong>detector de personas</strong> de LiteRT Micro. Es una red neuronal chica, una MobileNetV1 reducida, que recibe una imagen gris de 96×96 píxeles y responde si hay alguien. Pasar una imagen por la red se llama <strong>inferencia</strong>.</p>
+
+<p>Casi todo el trabajo de una inferencia es una sola operación repetida: la <strong>MAC</strong> (multiplicar y acumular), que multiplica dos números y suma el producto a un total. Contando capa por capa, el detector hace unos 7,16 millones de MAC por imagen.</p>
+
+<p>En el ESP32-S3 a 240 MHz, el código genérico en C tarda 2300 ms por imagen. Con la biblioteca ESP-NN, que usa la unidad vectorial <strong>PIE</strong> del micro, tarda 47 ms. Sin embargo, el PIE hace 16 MAC por ciclo, y a ese ritmo alcanzarían 1,86 ms.</p>
+
+<p>Este nivel responde dos preguntas. Primero, cómo consigue el PIE hacer 16 cuentas a la vez. Segundo, por qué la red real queda tan lejos de ese techo: preparar los datos y devolver cada resultado a 8 bits cuesta más que multiplicar.</p>
+
+<h2>Qué calcula una capa 1×1</h2>
+
+<p>Una red de visión transforma la imagen capa por capa. Cada capa entrega varios <strong>canales</strong>: mapas del mismo tamaño que la imagen, donde cada uno resalta un rasgo distinto, como bordes o manchas (<a href="../redes/01-cnn.html">Tomo 1, nivel 1</a>). En cada píxel hay entonces un número por canal.</p>
+
+<p>Una <strong>capa 1×1</strong> mira un solo píxel por vez y mezcla sus canales. Para producir un canal de salida, multiplica cada canal de entrada por un <strong>peso</strong> y suma todo. Los pesos de ese canal de salida forman un <strong>filtro</strong>, y se aprendieron al entrenar la red.</p>
+
+<p>Un ejemplo chico, con 4 canales. El píxel tiene las activaciones 12, −3, 40 y 7, y el filtro tiene los pesos 2, 5, −1 y 3. El canal de salida vale 12·2 + (−3)·5 + 40·(−1) + 7·3 = 24 − 15 − 40 + 21 = −10. Son 4 MAC.</p>
+
+<p>En el detector, las capas 1×1 tienen hasta 256 canales; una típica tiene 64 de entrada y 64 de salida. Cada canal de salida suma 64 productos, y hay 64 canales por píxel. Estas capas hacen el 86,5 % de las MAC del detector, según la cuenta sobre la arquitectura publicada.</p>
+
+<p>El resto son sobre todo capas <strong>depthwise</strong> 3×3: filtran cada canal por separado con una ventana de 3×3 píxeles, sin mezclar canales, y hacen el 11,2 % de las MAC. La rutina que calcula una capa completa se llama <strong>kernel</strong>; ESP-NN es la colección de kernels que Espressif escribió para el PIE.</p>
+
+<h2>El PIE: 16 multiplicaciones por instrucción</h2>
+
+<p>Un procesador común multiplica un par de números por instrucción. El PIE agrega al núcleo registros de 128 bits, llamados <strong>registros Q</strong>. Como cada activación y cada peso ocupan 8 bits, en un registro Q entran 128 / 8 = 16 números. El hardware se explica en detalle en <a href="../datos/05-pie.html">Microcontroladores, Tomo 3, nivel 5</a>.</p>
+
+<p>Cada una de esas 16 posiciones es un <strong>carril</strong>, y cada carril tiene su propio multiplicador. La <strong>MAC vectorial</strong> es una instrucción que toma dos registros Q, multiplica los 16 pares a la vez, uno por carril, y suma los productos.</p>
+
+<figure class="diagrama" data-titulo="fig-3.1">
+  <svg viewBox="0 0 640 328" role="img" aria-label="Una MAC vectorial con números. El registro q0 tiene 16 activaciones y el q1, 16 pesos. Cada carril multiplica su par: por ejemplo 12 por 2 da 24 y 40 por menos 1 da menos 40. Los 16 productos suman -147 y esa suma va al acumulador."><text x="64" y="20" class="sv-lbl f4" text-anchor="start" font-size="16">carril 0</text><text x="606" y="20" class="sv-lbl f4" text-anchor="end" font-size="16">carril 15</text><text x="16" y="54" class="sv-lbl fa3" text-anchor="start" font-size="16">q0</text><rect x="64" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="80" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">12</text><rect x="98" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="114" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">−3</text><rect x="132" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="148" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">40</text><rect x="166" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="182" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">7</text><rect x="200" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="216" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">25</text><rect x="234" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="250" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">−18</text><rect x="268" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="284" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">9</text><rect x="302" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="318" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">33</text><rect x="336" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="352" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">−7</text><rect x="370" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="386" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">15</text><rect x="404" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="420" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">4</text><rect x="438" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="454" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">−22</text><rect x="472" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="488" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">30</text><rect x="506" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="522" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">11</text><rect x="540" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="556" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">−5</text><rect x="574" y="32" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="590" y="54" class="sv-lbl fa3" text-anchor="middle" font-size="16">19</text><text x="16" y="102" class="sv-lbl fb3" text-anchor="start" font-size="16">q1</text><rect x="64" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="80" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">2</text><rect x="98" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="114" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">5</text><rect x="132" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="148" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">−1</text><rect x="166" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="182" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">3</text><rect x="200" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="216" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">−4</text><rect x="234" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="250" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">1</text><rect x="268" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="284" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">6</text><rect x="302" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="318" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">−2</text><rect x="336" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="352" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">3</text><rect x="370" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="386" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">2</text><rect x="404" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="420" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">−5</text><rect x="438" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="454" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">1</text><rect x="472" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="488" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">2</text><rect x="506" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="522" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">−3</text><rect x="540" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="556" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">4</text><rect x="574" y="80" width="32" height="32" class="f1 sb3" stroke-width="2"/><text x="590" y="102" class="sv-lbl fb3" text-anchor="middle" font-size="16">1</text><text x="80" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="114" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="148" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="182" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="216" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="250" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="284" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="318" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="352" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="386" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="420" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="454" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="488" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="522" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="556" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="590" y="132" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><text x="16" y="166" class="sv-lbl f6" text-anchor="start" font-size="16">prod</text><rect x="64" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="80" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">24</text><rect x="98" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="114" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−15</text><rect x="132" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="148" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−40</text><rect x="166" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="182" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">21</text><rect x="200" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="216" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−100</text><rect x="234" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="250" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−18</text><rect x="268" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="284" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">54</text><rect x="302" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="318" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−66</text><rect x="336" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="352" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−21</text><rect x="370" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="386" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">30</text><rect x="404" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="420" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−20</text><rect x="438" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="454" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−22</text><rect x="472" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="488" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">60</text><rect x="506" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="522" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−33</text><rect x="540" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="556" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">−20</text><rect x="574" y="144" width="32" height="32" class="f1 s3" stroke-width="2"/><text x="590" y="166" class="sv-lbl f6" text-anchor="middle" font-size="16">19</text><line x1="64" y1="184" x2="64" y2="200" class="sa3" stroke-width="2"/><line x1="64" y1="200" x2="608" y2="200" class="sa3" stroke-width="2"/><line x1="608" y1="200" x2="608" y2="184" class="sa3" stroke-width="2"/><line x1="336" y1="200" x2="336" y2="224" class="sa3" stroke-width="2"/><rect x="332" y="216" width="8" height="2" class="fa3"/><rect x="333" y="218" width="6" height="2" class="fa3"/><rect x="334" y="220" width="4" height="2" class="fa3"/><rect x="335" y="222" width="2" height="2" class="fa3"/><rect x="224" y="232" width="224" height="48" class="fa1 sa3" stroke-width="2"/><rect x="223" y="231" width="2" height="2" class="f0"/><rect x="447" y="231" width="2" height="2" class="f0"/><rect x="223" y="279" width="2" height="2" class="f0"/><rect x="447" y="279" width="2" height="2" class="f0"/><text x="336" y="252" class="sv-tit f6" text-anchor="middle" font-size="16">SUMA DE LOS 16</text><text x="336" y="270" class="sv-lbl fa3" text-anchor="middle" font-size="16">−147, al acumulador</text><text x="16" y="312" class="sv-lbl f4" text-anchor="start" font-size="16">una instrucción: 16 productos y su suma</text></svg>
+  <figcaption><b>fig 3.1</b>Una sola instrucción: q0 trae 16 activaciones (naranja) y q1, 16 pesos (azul). Cada carril multiplica su par, por ejemplo 12 · 2 = 24, y los 16 productos se suman al acumulador.</figcaption>
+</figure>
+
+<p>La suma va a un <strong>acumulador</strong>: un registro que guarda el total parcial mientras llegan más productos. Un producto de dos números de 8 bits puede ocupar 16 bits, y la suma de muchos crece todavía más. Por eso el acumulador tiene bits de sobra, llamados <strong>bits de guarda</strong>, para no desbordarse.</p>
+
+<p>El PIE tiene dos clases de acumulador. <strong>QACC</strong> son 16 acumuladores de 20 bits, uno por carril, que suman por separado. <strong>ACCX</strong> es uno solo de 40 bits, que junta los 16 carriles en un total. Para un canal de salida de una capa 1×1 sirve el segundo, porque necesitamos una única suma.</p>
+
+<div class="caja analogia">
+  <h4>analogía: 16 puestos y un alimentador</h4>
+  <p>Los 16 carriles son 16 puestos de una línea de montaje que trabajan al mismo tiempo. Un alimentador les trae una bandeja de 16 piezas por golpe. Si la bandeja llega tarde, o viene con piezas que no sirven, los puestos esperan aunque sean rápidos.</p>
+</div>
+
+<h2>Recorrido: un canal de salida, paso a paso</h2>
+
+<p>Volvemos a la capa 1×1 con 64 canales de entrada y seguimos el canal de salida k de un píxel. Necesita 64 productos y la MAC vectorial hace 16 por instrucción, así que el trabajo se parte en 4 grupos de 16 canales.</p>
+
+<figure class="diagrama" data-titulo="fig-3.2">
+  <svg viewBox="0 0 640 352" role="img" aria-label="Animación en seis pasos. Un marco recorre los cuatro grupos de 16 canales de las activaciones y los pesos del filtro k; en cada paso el acumulador suma 16 productos: 1210, 2870, 4090 y 5230. En el paso 5 se suma el bias, se reescala y se recorta, y en el paso 6 se guarda el valor 100 como canal k de la salida."><text x="64" y="28" class="sv-lbl f6" text-anchor="start" font-size="16">un píxel con 64 canales y el filtro k</text><text x="16" y="64" class="sv-lbl fa3" text-anchor="start" font-size="16">act.</text><text x="16" y="164" class="sv-lbl fb3" text-anchor="start" font-size="16">pesos</text><rect x="64" y="40" width="128" height="36" class="fa1 sa3" stroke-width="2"/><rect x="63" y="39" width="2" height="2" class="f0"/><rect x="191" y="39" width="2" height="2" class="f0"/><rect x="63" y="75" width="2" height="2" class="f0"/><rect x="191" y="75" width="2" height="2" class="f0"/><text x="128" y="63" class="sv-tit fa3" text-anchor="middle" font-size="16">canales 0–15</text><text x="128" y="98" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><rect x="192" y="40" width="128" height="36" class="fa1 sa3" stroke-width="2"/><rect x="191" y="39" width="2" height="2" class="f0"/><rect x="319" y="39" width="2" height="2" class="f0"/><rect x="191" y="75" width="2" height="2" class="f0"/><rect x="319" y="75" width="2" height="2" class="f0"/><text x="256" y="63" class="sv-tit fa3" text-anchor="middle" font-size="16">canales 16–31</text><text x="256" y="98" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><rect x="320" y="40" width="128" height="36" class="fa1 sa3" stroke-width="2"/><rect x="319" y="39" width="2" height="2" class="f0"/><rect x="447" y="39" width="2" height="2" class="f0"/><rect x="319" y="75" width="2" height="2" class="f0"/><rect x="447" y="75" width="2" height="2" class="f0"/><text x="384" y="63" class="sv-tit fa3" text-anchor="middle" font-size="16">canales 32–47</text><text x="384" y="98" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><rect x="448" y="40" width="128" height="36" class="fa1 sa3" stroke-width="2"/><rect x="447" y="39" width="2" height="2" class="f0"/><rect x="575" y="39" width="2" height="2" class="f0"/><rect x="447" y="75" width="2" height="2" class="f0"/><rect x="575" y="75" width="2" height="2" class="f0"/><text x="512" y="63" class="sv-tit fa3" text-anchor="middle" font-size="16">canales 48–63</text><text x="512" y="98" class="sv-lbl f4" text-anchor="middle" font-size="16">×</text><rect x="64" y="140" width="128" height="36" class="f1 sb3" stroke-width="2"/><rect x="63" y="139" width="2" height="2" class="f0"/><rect x="191" y="139" width="2" height="2" class="f0"/><rect x="63" y="175" width="2" height="2" class="f0"/><rect x="191" y="175" width="2" height="2" class="f0"/><text x="128" y="163" class="sv-tit fb3" text-anchor="middle" font-size="16">pesos 0–15</text><rect x="192" y="140" width="128" height="36" class="f1 sb3" stroke-width="2"/><rect x="191" y="139" width="2" height="2" class="f0"/><rect x="319" y="139" width="2" height="2" class="f0"/><rect x="191" y="175" width="2" height="2" class="f0"/><rect x="319" y="175" width="2" height="2" class="f0"/><text x="256" y="163" class="sv-tit fb3" text-anchor="middle" font-size="16">pesos 16–31</text><rect x="320" y="140" width="128" height="36" class="f1 sb3" stroke-width="2"/><rect x="319" y="139" width="2" height="2" class="f0"/><rect x="447" y="139" width="2" height="2" class="f0"/><rect x="319" y="175" width="2" height="2" class="f0"/><rect x="447" y="175" width="2" height="2" class="f0"/><text x="384" y="163" class="sv-tit fb3" text-anchor="middle" font-size="16">pesos 32–47</text><rect x="448" y="140" width="128" height="36" class="f1 sb3" stroke-width="2"/><rect x="447" y="139" width="2" height="2" class="f0"/><rect x="575" y="139" width="2" height="2" class="f0"/><rect x="447" y="175" width="2" height="2" class="f0"/><rect x="575" y="175" width="2" height="2" class="f0"/><text x="512" y="163" class="sv-tit fb3" text-anchor="middle" font-size="16">pesos 48–63</text><rect x="62" y="36" width="132" height="144" class="fn sa4" stroke-width="4"><animate attributeName="x" values="62;190;318;446;446;446" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="opacity" values="1;1;1;1;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><rect x="64" y="216" width="224" height="48" class="f1 s3" stroke-width="2"/><rect x="63" y="215" width="2" height="2" class="f0"/><rect x="287" y="215" width="2" height="2" class="f0"/><rect x="63" y="263" width="2" height="2" class="f0"/><rect x="287" y="263" width="2" height="2" class="f0"/><text x="176" y="236" class="sv-lbl f6" text-anchor="middle" font-size="16">acumulador</text><text x="176" y="256" class="sv-lbl fa3" text-anchor="middle" font-size="16">1 210<animate attributeName="opacity" values="1;0;0;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="176" y="256" class="sv-lbl fa3" text-anchor="middle" font-size="16">2 870<animate attributeName="opacity" values="0;1;0;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="176" y="256" class="sv-lbl fa3" text-anchor="middle" font-size="16">4 090<animate attributeName="opacity" values="0;0;1;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="176" y="256" class="sv-lbl fa3" text-anchor="middle" font-size="16">5 230<animate attributeName="opacity" values="0;0;0;1;1;1" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><rect x="336" y="216" width="240" height="48" class="fc1" opacity="0"><animate attributeName="opacity" values="0;0;0;0;1;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><rect x="336" y="216" width="240" height="48" class="fn sc3" stroke-width="2"/><rect x="335" y="215" width="2" height="2" class="f0"/><rect x="575" y="215" width="2" height="2" class="f0"/><rect x="335" y="263" width="2" height="2" class="f0"/><rect x="575" y="263" width="2" height="2" class="f0"/><text x="456" y="245" class="sv-tit fc3" text-anchor="middle" font-size="16">REESCALAR Y SATURAR</text><line x1="288" y1="240" x2="328" y2="240" class="sa3" stroke-width="2"/><rect x="320" y="236" width="2" height="8" class="fa3"/><rect x="322" y="237" width="2" height="6" class="fa3"/><rect x="324" y="238" width="2" height="4" class="fa3"/><rect x="326" y="239" width="2" height="2" class="fa3"/><rect x="336" y="296" width="240" height="40" class="fd1" opacity="0"><animate attributeName="opacity" values="0;0;0;0;0;1" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></rect><rect x="336" y="296" width="240" height="40" class="fn sd3" stroke-width="2"/><rect x="335" y="295" width="2" height="2" class="f0"/><rect x="575" y="295" width="2" height="2" class="f0"/><rect x="335" y="335" width="2" height="2" class="f0"/><rect x="575" y="335" width="2" height="2" class="f0"/><text x="456" y="321" class="sv-tit fd3" text-anchor="middle" font-size="16">SALIDA: CANAL k = 100</text><line x1="456" y1="264" x2="456" y2="288" class="sd3" stroke-width="2"/><rect x="452" y="280" width="8" height="2" class="fd3"/><rect x="453" y="282" width="6" height="2" class="fd3"/><rect x="454" y="284" width="4" height="2" class="fd3"/><rect x="455" y="286" width="2" height="2" class="fd3"/><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 1: suma 16 productos<animate attributeName="opacity" values="1;0;0;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 2: 16 más (32)<animate attributeName="opacity" values="0;1;0;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 3: 16 más (48)<animate attributeName="opacity" values="0;0;1;0;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 4: los últimos 16 (64)<animate attributeName="opacity" values="0;0;0;1;0;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 5: +bias, escala, recorte<animate attributeName="opacity" values="0;0;0;0;1;0" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text><text x="64" y="312" class="sv-lbl f6" font-size="16">paso 6: guarda 1 byte<animate attributeName="opacity" values="0;0;0;0;0;1" dur="12s" begin="0s" calcMode="discrete" repeatCount="indefinite"/></text></svg>
+  <figcaption><b>fig 3.2</b>El marco toma 16 activaciones y los 16 pesos que les corresponden; cada paso suma 16 productos al acumulador. Después de 4 pasos hay 64; el paso 5 lo devuelve a 8 bits y el paso 6 lo guarda. Los valores del acumulador son ilustrativos.</figcaption>
+</figure>
+
+<ol>
+  <li><strong>Cargar las activaciones.</strong> Una <strong>carga</strong> es la instrucción que copia datos de la memoria a un registro. Una carga de 128 bits trae a q0 los canales 0 a 15 del píxel. En la misma instrucción el puntero, la dirección de lectura, avanza 16 bytes: así el lazo no gasta otra instrucción en calcular la dirección siguiente.</li>
+  <li><strong>Cargar los pesos.</strong> Otra carga trae a q1 los pesos 0 a 15 del filtro k. Tienen que quedar en los mismos carriles que sus activaciones, porque cada carril multiplica solo su par. Según Espressif, el PIE puede mover el próximo vector mientras multiplica el actual.</li>
+  <li><strong>Multiplicar y acumular.</strong> La MAC vectorial multiplica los 16 pares y suma los productos al acumulador, como en la figura 3.1. Ya están 16 de los 64 productos.</li>
+  <li><strong>Repetir.</strong> Los pasos 1 a 3 se repiten con los canales 16 a 31, 32 a 47 y 48 a 63. Xtensa tiene <strong>lazos por hardware</strong>: el núcleo repite el bloque solo, sin una instrucción de salto en cada vuelta (<a href="../procesador/03-lazos-ventanas.html">Microcontroladores, Tomo 4, nivel 3</a>).</li>
+  <li><strong>Reescalar y saturar.</strong> El acumulador tiene la suma de 64 productos, pero la capa siguiente espera un número de 8 bits. La sección siguiente explica esta conversión.</li>
+  <li><strong>Guardar.</strong> El resultado ocupa un byte. El kernel junta 16 resultados en un registro Q y los escribe en memoria con un solo <strong>guardado</strong> de 128 bits, que es la carga al revés.</li>
+</ol>
+
+<p>El canal k costó 4 MAC vectoriales. Los otros 63 canales de salida repiten el recorrido con sus filtros, y después el kernel pasa al píxel siguiente. La secuencia exacta de instrucciones de cada kernel de ESP-NN no está publicada (por confirmar).</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Cuántas MAC vectoriales necesita un canal de salida con 64 canales de entrada?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="64 sería una MAC por producto, como en un núcleo común. Cada MAC del PIE hace 16 productos.">64, una por canal de entrada.</button>
+    <button type="button" data-por-que="Cada MAC vectorial hace 16 productos, así que 64 canales necesitan 64 / 16 = 4.">4, porque cada una hace 16 productos.</button>
+    <button type="button" data-por-que="Un registro Q tiene 16 carriles, no 64. Hacen falta cuatro pasadas.">1, porque los 64 productos entran juntos.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Volver a 8 bits: reescalar y saturar</h2>
+
+<p>La red trabaja con números de 8 bits, int8, que van de −128 a 127. Cada int8 representa un valor real multiplicado por una <strong>escala</strong>, fijada al cuantizar la red (<a href="../redes/02-cuantizacion.html">Tomo 1, nivel 2</a>). Las activaciones, los pesos y la salida tienen escalas distintas.</p>
+
+<p>El acumulador queda en la escala de las activaciones por la de los pesos, y con valores de miles. Para que la capa siguiente lo entienda hay que pasarlo a la escala de la salida: multiplicarlo por un número chico, del orden de 0,02, que la cuantización calculó para cada canal.</p>
+
+<p>Antes se suma el <strong>bias</strong>, un entero de 32 bits por canal que corre el resultado, como un offset. El micro no usa decimales en esta cuenta: multiplica por un entero y después desplaza a la derecha, que equivale a dividir por una potencia de 2. Por ejemplo, × 19 y desplazar 10 bits es × 19 / 1024 ≈ × 0,0186.</p>
+
+<figure class="diagrama" data-titulo="fig-3.3">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Dos ejemplos de reescalado. Arriba, 5380 por 19 da 102220; desplazado 10 bits, o sea dividido por 1024, da unos 100, que entra en int8. Abajo, 13000 da 247000 y unos 241, que no entra y se satura en 127."><rect x="16" y="16" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="15" y="15" width="2" height="2" class="f0"/><rect x="151" y="15" width="2" height="2" class="f0"/><rect x="15" y="71" width="2" height="2" class="f0"/><rect x="151" y="71" width="2" height="2" class="f0"/><text x="84" y="40" class="sv-tit f6" text-anchor="middle" font-size="16">acumulador + bias</text><text x="84" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="16">5 380</text><line x1="152" y1="44" x2="166" y2="44" class="sa3" stroke-width="2"/><rect x="158" y="40" width="2" height="8" class="fa3"/><rect x="160" y="41" width="2" height="6" class="fa3"/><rect x="162" y="42" width="2" height="4" class="fa3"/><rect x="164" y="43" width="2" height="2" class="fa3"/><rect x="168" y="16" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="167" y="15" width="2" height="2" class="f0"/><rect x="303" y="15" width="2" height="2" class="f0"/><rect x="167" y="71" width="2" height="2" class="f0"/><rect x="303" y="71" width="2" height="2" class="f0"/><text x="236" y="40" class="sv-tit f6" text-anchor="middle" font-size="16">× 19</text><text x="236" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="16">102 220</text><line x1="304" y1="44" x2="318" y2="44" class="sa3" stroke-width="2"/><rect x="310" y="40" width="2" height="8" class="fa3"/><rect x="312" y="41" width="2" height="6" class="fa3"/><rect x="314" y="42" width="2" height="4" class="fa3"/><rect x="316" y="43" width="2" height="2" class="fa3"/><rect x="320" y="16" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="319" y="15" width="2" height="2" class="f0"/><rect x="455" y="15" width="2" height="2" class="f0"/><rect x="319" y="71" width="2" height="2" class="f0"/><rect x="455" y="71" width="2" height="2" class="f0"/><text x="388" y="40" class="sv-tit f6" text-anchor="middle" font-size="16">≫ 10 (÷ 1024)</text><text x="388" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="16">≈ 100</text><line x1="456" y1="44" x2="470" y2="44" class="sa3" stroke-width="2"/><rect x="462" y="40" width="2" height="8" class="fa3"/><rect x="464" y="41" width="2" height="6" class="fa3"/><rect x="466" y="42" width="2" height="4" class="fa3"/><rect x="468" y="43" width="2" height="2" class="fa3"/><rect x="472" y="16" width="136" height="56" class="fa1 sa3" stroke-width="2"/><rect x="471" y="15" width="2" height="2" class="f0"/><rect x="607" y="15" width="2" height="2" class="f0"/><rect x="471" y="71" width="2" height="2" class="f0"/><rect x="607" y="71" width="2" height="2" class="f0"/><text x="540" y="40" class="sv-tit f6" text-anchor="middle" font-size="16">int8</text><text x="540" y="58" class="sv-lbl fa3" text-anchor="middle" font-size="16">100</text><rect x="16" y="104" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="151" y="103" width="2" height="2" class="f0"/><rect x="15" y="159" width="2" height="2" class="f0"/><rect x="151" y="159" width="2" height="2" class="f0"/><text x="84" y="128" class="sv-tit f6" text-anchor="middle" font-size="16">acumulador + bias</text><text x="84" y="146" class="sv-lbl fd3" text-anchor="middle" font-size="16">13 000</text><line x1="152" y1="132" x2="166" y2="132" class="sd3" stroke-width="2"/><rect x="158" y="128" width="2" height="8" class="fd3"/><rect x="160" y="129" width="2" height="6" class="fd3"/><rect x="162" y="130" width="2" height="4" class="fd3"/><rect x="164" y="131" width="2" height="2" class="fd3"/><rect x="168" y="104" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="167" y="103" width="2" height="2" class="f0"/><rect x="303" y="103" width="2" height="2" class="f0"/><rect x="167" y="159" width="2" height="2" class="f0"/><rect x="303" y="159" width="2" height="2" class="f0"/><text x="236" y="128" class="sv-tit f6" text-anchor="middle" font-size="16">× 19</text><text x="236" y="146" class="sv-lbl fd3" text-anchor="middle" font-size="16">247 000</text><line x1="304" y1="132" x2="318" y2="132" class="sd3" stroke-width="2"/><rect x="310" y="128" width="2" height="8" class="fd3"/><rect x="312" y="129" width="2" height="6" class="fd3"/><rect x="314" y="130" width="2" height="4" class="fd3"/><rect x="316" y="131" width="2" height="2" class="fd3"/><rect x="320" y="104" width="136" height="56" class="f1 s3" stroke-width="2"/><rect x="319" y="103" width="2" height="2" class="f0"/><rect x="455" y="103" width="2" height="2" class="f0"/><rect x="319" y="159" width="2" height="2" class="f0"/><rect x="455" y="159" width="2" height="2" class="f0"/><text x="388" y="128" class="sv-tit f6" text-anchor="middle" font-size="16">≫ 10 (÷ 1024)</text><text x="388" y="146" class="sv-lbl fd3" text-anchor="middle" font-size="16">≈ 241</text><line x1="456" y1="132" x2="470" y2="132" class="sd3" stroke-width="2"/><rect x="462" y="128" width="2" height="8" class="fd3"/><rect x="464" y="129" width="2" height="6" class="fd3"/><rect x="466" y="130" width="2" height="4" class="fd3"/><rect x="468" y="131" width="2" height="2" class="fd3"/><rect x="472" y="104" width="136" height="56" class="fd1 sd3" stroke-width="2"/><rect x="471" y="103" width="2" height="2" class="f0"/><rect x="607" y="103" width="2" height="2" class="f0"/><rect x="471" y="159" width="2" height="2" class="f0"/><rect x="607" y="159" width="2" height="2" class="f0"/><text x="540" y="128" class="sv-tit f6" text-anchor="middle" font-size="16">int8</text><text x="540" y="146" class="sv-lbl fd3" text-anchor="middle" font-size="16">127</text><text x="608" y="180" class="sv-lbl fd3" text-anchor="end" font-size="16">saturado</text><text x="16" y="196" class="sv-lbl f4" text-anchor="start" font-size="16">× 19 y ≫ 10 equivalen a multiplicar por 0,0186</text><text x="16" y="220" class="sv-lbl f4" text-anchor="start" font-size="16">rango de int8: de −128 a 127</text></svg>
+  <figcaption><b>fig 3.3</b>Arriba, el acumulador más el bias vale 5 380; por 19 y dividido por 1024 da unos 100, que entra en int8. Abajo, 13 000 da unos 241, que no entra y se recorta a 127.</figcaption>
+</figure>
+
+<p>La <strong>saturación</strong> es ese recorte. Si el resultado pasa de 127 queda en 127, y si baja de −128 queda en −128. Sin ella, un 128 guardado en 8 bits se leería como −128: el signo se invierte y la capa siguiente recibe basura. El PIE desplaza y satura en la misma instrucción que empaqueta los resultados.</p>
+
+<p>El recorte también hace de <strong>activación</strong>, la función que la red aplica a cada salida. ReLU6, por ejemplo, deja pasar valores entre 0 y 6: una vez cuantizada, es un recorte a un rango de enteros, y el mismo paso lo resuelve.</p>
+
+<h2>Cómo se encadena: el orden de los datos en memoria</h2>
+
+<p>El recorrido funciona solo si los 16 bytes de una carga son justo los que la MAC tiene que sumar. Las cargas traen bytes consecutivos, así que todo depende de cómo están ordenados los datos en memoria.</p>
+
+<p>LiteRT Micro y ESP-NN usan el orden <strong>HWC</strong>: alto, ancho y canales, con los canales al final. Eso significa que los canales de un mismo píxel quedan en bytes consecutivos. El orden opuesto, <strong>CHW</strong>, guarda primero el canal 0 de todos los píxeles, después el canal 1, y así.</p>
+
+<figure class="diagrama" data-titulo="fig-3.4">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Dos tiras de 12 bytes con 3 píxeles de 4 canales. En HWC los primeros 4 bytes son los canales 0 a 3 del píxel 0, y una carga trae exactamente lo que suma la MAC. En CHW los primeros 4 bytes son el canal 0 de los tres píxeles y el canal 1 del píxel 0: mezcla píxeles y no sirve."><text x="16" y="28" class="sv-lbl f6" text-anchor="start" font-size="16">HWC: los canales de cada píxel, juntos</text><rect x="32" y="40" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="55" y="64" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c0</text><rect x="80" y="40" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="103" y="64" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c1</text><rect x="128" y="40" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="151" y="64" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c2</text><rect x="176" y="40" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="199" y="64" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c3</text><rect x="224" y="40" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="247" y="64" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c0</text><rect x="272" y="40" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="295" y="64" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c1</text><rect x="320" y="40" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="343" y="64" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c2</text><rect x="368" y="40" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="391" y="64" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c3</text><rect x="416" y="40" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="439" y="64" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c0</text><rect x="464" y="40" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="487" y="64" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c1</text><rect x="512" y="40" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="535" y="64" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c2</text><rect x="560" y="40" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="583" y="64" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c3</text><rect x="28" y="36" width="198" height="44" class="fn s6" stroke-width="4"/><text x="32" y="102" class="sv-lbl fa3" text-anchor="start" font-size="16">una carga trae c0 a c3 del píxel 0: lo que suma la MAC</text><text x="16" y="148" class="sv-lbl f6" text-anchor="start" font-size="16">CHW: cada canal de todos los píxeles, junto</text><rect x="32" y="160" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="55" y="184" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c0</text><rect x="80" y="160" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="103" y="184" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c0</text><rect x="128" y="160" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="151" y="184" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c0</text><rect x="176" y="160" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="199" y="184" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c1</text><rect x="224" y="160" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="247" y="184" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c1</text><rect x="272" y="160" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="295" y="184" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c1</text><rect x="320" y="160" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="343" y="184" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c2</text><rect x="368" y="160" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="391" y="184" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c2</text><rect x="416" y="160" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="439" y="184" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c2</text><rect x="464" y="160" width="46" height="36" class="fa1 sa3" stroke-width="2"/><text x="487" y="184" class="sv-lbl fa3" text-anchor="middle" font-size="16">p0·c3</text><rect x="512" y="160" width="46" height="36" class="fb1 sb3" stroke-width="2"/><text x="535" y="184" class="sv-lbl fb3" text-anchor="middle" font-size="16">p1·c3</text><rect x="560" y="160" width="46" height="36" class="fc1 sc3" stroke-width="2"/><text x="583" y="184" class="sv-lbl fc3" text-anchor="middle" font-size="16">p2·c3</text><rect x="28" y="156" width="198" height="44" class="fn s6" stroke-width="4"/><text x="32" y="222" class="sv-lbl fd3" text-anchor="start" font-size="16">una carga mezcla píxeles y canales: no sirve</text><text x="16" y="264" class="sv-lbl f4" text-anchor="start" font-size="16">p = píxel, c = canal; color = píxel; marco = una carga</text><text x="16" y="288" class="sv-lbl f4" text-anchor="start" font-size="16">(acá, 4 canales y cargas de 4; en el S3, 64 y 16)</text></svg>
+  <figcaption><b>fig 3.4</b>Tres píxeles de cuatro canales, con cargas de cuatro bytes para que se lea. En HWC la carga trae los cuatro canales del píxel 0 (un solo color). En CHW mezcla píxeles, y el kernel tendría que reordenar antes de multiplicar.</figcaption>
+</figure>
+
+<p>La segunda condición es la <strong>alineación</strong>: que el vector empiece en una dirección múltiplo de 16. La memoria entrega bloques de 16 bytes que empiezan en esas direcciones. Un vector alineado ocupa un bloque; uno corrido ocupa dos, y el PIE tiene que leer ambos y reacomodar los bytes.</p>
+
+<p>La tercera condición es llenar los 16 carriles. Con 64 canales el lazo hace 4 pasadas completas. La primera capa del detector recibe la imagen gris, con 1 canal, y una carga de 16 bytes no trae 16 canales útiles. Ese kernel tiene que organizar la cuenta de otra manera y aprovecha menos el PIE.</p>
+
+<p>Las capas <em>depthwise</em> llenan los carriles con 16 canales del mismo píxel, y cada carril acumula su ventana de 3×3 en QACC. Pero cada byte cargado participa en pocas cuentas, porque no se mezcla con otros canales. Entonces la memoria trabaja casi tanto como los multiplicadores.</p>
+
+<figure class="diagrama" data-titulo="fig-3.5">
+  <svg viewBox="0 0 640 256" role="img" aria-label="Barras de aceleración de ESP-NN frente al código genérico en el ESP32-S3: convolución 1 por 1 con 64 canales, 14,2 veces; con 16 canales, 8,0; convolución 3 por 3 con 3 canales de entrada, 5,6; depthwise 3 por 3 con 16 canales, 6,3; capa densa con 3 canales, 5,5."><text x="216" y="37" class="sv-lbl f6" text-anchor="end" font-size="16">conv 1×1, 64 canales</text><rect x="232" y="16" width="342" height="28" class="fa1 sa3" stroke-width="2"/><text x="582" y="37" class="sv-lbl fa3" text-anchor="start" font-size="16">14,2×</text><text x="216" y="77" class="sv-lbl f6" text-anchor="end" font-size="16">conv 1×1, 16 canales</text><rect x="232" y="56" width="192" height="28" class="fa1 sa3" stroke-width="2"/><text x="432" y="77" class="sv-lbl fa3" text-anchor="start" font-size="16">8,0×</text><text x="216" y="117" class="sv-lbl f6" text-anchor="end" font-size="16">conv 3×3, 3 canales</text><rect x="232" y="96" width="133" height="28" class="fb1 sb3" stroke-width="2"/><text x="373" y="117" class="sv-lbl fb3" text-anchor="start" font-size="16">5,6×</text><text x="216" y="157" class="sv-lbl f6" text-anchor="end" font-size="16">depthwise 3×3, 16 can.</text><rect x="232" y="136" width="151" height="28" class="fc1 sc3" stroke-width="2"/><text x="391" y="157" class="sv-lbl fc3" text-anchor="start" font-size="16">6,3×</text><text x="216" y="197" class="sv-lbl f6" text-anchor="end" font-size="16">densa, 3 canales</text><rect x="232" y="176" width="131" height="28" class="fd1 sd3" stroke-width="2"/><text x="371" y="197" class="sv-lbl fd3" text-anchor="start" font-size="16">5,5×</text><line x1="232" y1="12" x2="232" y2="216" class="s4" stroke-width="2"/><line x1="256" y1="212" x2="256" y2="220" class="s4" stroke-width="2"/><text x="256" y="240" class="sv-lbl f4" text-anchor="middle" font-size="16">1× = igual que el C genérico</text></svg>
+  <figcaption><b>fig 3.5</b>Cuántas veces más rápido corre cada capa con ESP-NN que con C genérico en el ESP32-S3, medido por Espressif. La capa 1×1 con 64 canales (naranja) llena los carriles; la de 3 canales de entrada (azul) no. Las convoluciones se midieron con los datos en memoria externa.</figcaption>
+</figure>
+
+<h2>Implementaciones reales: ESP32, S3, P4 y Arm</h2>
+
+<p>La misma capa se resuelve de maneras distintas según el hardware. Cambian dos cosas: cuántas MAC hace el micro por ciclo y quién ejecuta el lazo. En los Espressif lo ejecuta la CPU; con una <strong>NPU</strong>, un acelerador separado dedicado a redes neuronales, lo ejecuta ese acelerador.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32<br>Xtensa LX6</th><th>ESP32-S3<br>Xtensa LX7</th><th>ESP32-P4<br>RISC-V</th><th>Cortex-M55<br>+ Ethos-U55</th></tr></thead>
+  <tbody>
+    <tr><td><b>Unidad para int8</b></td><td>común: un producto por instrucción</td><td>PIE: 8 registros de 128 bits</td><td>extensiones PIE y QACC propias de Espressif</td><td>Helium (8 registros de 128 bits) y una NPU aparte</td></tr>
+    <tr><td><b>MAC int8 por ciclo (pico)</b></td><td>del orden de 1</td><td>16</td><td>por confirmar</td><td>M55: 8; U55: 32 a 256 según configuración</td></tr>
+    <tr><td><b>Quién ejecuta la capa</b></td><td>la CPU</td><td>la CPU, con instrucciones PIE</td><td>la CPU, con instrucciones PIE</td><td>la NPU; la CPU queda libre</td></tr>
+    <tr><td><b>Detector de personas</b></td><td>380 ms a 240 MHz</td><td>54 ms a 240 MHz</td><td>73 ms a 360 MHz</td><td>sin dato en la misma prueba</td></tr>
+    <tr><td><b>Kernels</b></td><td>ESP-NN en C</td><td>ESP-NN en ensamblador PIE</td><td>ESP-NN con PIE y QACC</td><td>CMSIS-NN (M55) y compilador Vela (U55)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Los tiempos del detector son de Espressif con la memoria de trabajo en PSRAM; en el S3, con SRAM interna, bajan a 47 ms. El Cortex-M55 tiene registros de 128 bits, pero su camino de datos es de 64 bits: procesa cada vector en dos mitades y por eso llega a 8 MAC int8 por ciclo.</p>
+
+<p>La NPU cambia el reparto del trabajo. El Ethos-U55 recibe la red ya compilada, lee pesos y activaciones por su cuenta y calcula con 32 a 256 multiplicadores. Mientras tanto, la CPU puede atender la cámara o dormir. En el ESP32-S3, en cambio, el núcleo que infiere queda ocupado toda la inferencia.</p>
+
+<div class="caja dato">
+  <h4>dato: estándares y extensiones</h4>
+  <ul>
+    <li><strong>Helium</strong> es la <em>M-Profile Vector Extension</em> (MVE) de Armv8.1-M: un estándar de Arm que cualquier Cortex-M con MVE implementa igual.</li>
+    <li><strong>PIE</strong> es una extensión propia de Espressif, creada con el sistema TIE de Cadence para núcleos Xtensa. Ningún otro fabricante la tiene.</li>
+    <li><strong>RISC-V</strong> define una extensión vectorial estándar, la V. Los kernels de ESP-NN para el P4 usan, en cambio, las extensiones propias PIE y QACC.</li>
+  </ul>
+</div>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>El PIE solo multiplica lo que la memoria le entrega. Las activaciones de cada capa se guardan en la <strong>arena</strong>, la zona de memoria de trabajo que la red reserva al arrancar (<a href="02-memoria.html">nivel 2</a>). Si la arena está en la SRAM interna, las cargas llegan rápido.</p>
+
+<p>Si la arena está en la <strong>PSRAM</strong>, una memoria externa más grande y más lenta, cada carga pasa por la <a href="../buses/03-cache.html">caché</a> (Microcontroladores, Tomo 5, nivel 3). El detector sube entonces de 47 a 54 ms. Los pesos suelen quedar en la flash y también llegan por la caché, que el ESP32-S3 comparte entre sus dos núcleos.</p>
+
+<h2>Los números que importan</h2>
+
+<p>Tres cuentas ubican al PIE: el techo teórico, lo que logra la red completa y lo que logra la capa más favorable.</p>
+
+<div class="caja calculo">
+  <h4>cálculo: piso teórico del detector</h4>
+  <p class="formula"><var>t</var><sub>piso</sub> = <var>N</var><sub>MAC</sub> / (<var>m</var> · <var>f</var>)</p>
+  <dl>
+    <dt>N_MAC</dt><dd>7,16 · 10⁶ MAC por imagen (cuenta capa por capa de MobileNetV1 0,25 con entrada 96×96×1)</dd>
+    <dt>m</dt><dd>16 MAC por ciclo (PIE con int8)</dd>
+    <dt>f</dt><dd>240 MHz</dd>
+  </dl>
+  <p class="resultado">ciclos = 7,16 · 10⁶ / 16 ≈ 447 000 ciclos; t_piso = 447 000 / 240 MHz ≈ 1,86 ms</p>
+  <p>Es el tiempo si los 16 carriles multiplicaran en cada ciclo, sin cargar, reescalar ni saltar. La medición está unas 25 veces por encima.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: MAC por ciclo de la red completa</h4>
+  <p class="formula"><var>m</var><sub>ef</sub> = <var>N</var><sub>MAC</sub> / (<var>t</var> · <var>f</var>)</p>
+  <dl>
+    <dt>N_MAC</dt><dd>7,16 · 10⁶ MAC</dd>
+    <dt>t</dt><dd>47 ms (Espressif, arena en SRAM interna)</dd>
+    <dt>f</dt><dd>240 MHz</dd>
+  </dl>
+  <p class="resultado">t · f = 0,047 s · 240 MHz ≈ 11,3 · 10⁶ ciclos; m_ef = 7,16 / 11,3 ≈ 0,63 MAC por ciclo</p>
+  <p>La red aprovecha del orden del 4 % de los 16 MAC por ciclo. El resto del tiempo se va en cargar datos, reescalar, la primera capa y el programa que recorre la red.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: MAC por ciclo de la mejor capa</h4>
+  <p class="formula"><var>m</var><sub>capa</sub> = <var>H</var> · <var>W</var> · <var>C</var><sub>in</sub> · <var>C</var><sub>out</sub> / ciclos</p>
+  <dl>
+    <dt>H · W</dt><dd>10 · 10 píxeles (prueba de esp-nn)</dd>
+    <dt>C_in · C_out</dt><dd>64 · 64 canales</dd>
+    <dt>ciclos</dt><dd>331 008 con ESP-NN; 4 712 500 en C genérico</dd>
+  </dl>
+  <p class="resultado">MAC = 100 · 4096 = 409 600; m_capa = 409 600 / 331 008 ≈ 1,24 MAC por ciclo (C genérico: 0,087)</p>
+  <p>La capa más favorable acelera 14,2 veces pero usa del orden del 8 % del techo, con los datos en memoria externa. Alimentar a los multiplicadores cuesta más que multiplicar.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>El recorrido describe el mecanismo, no el código exacto de cada kernel. Los tiempos son mediciones de Espressif con su configuración. Las 7,16 millones de MAC salen de la arquitectura publicada, no de un perfilador. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>la secuencia de instrucciones de cada kernel de ESP-NN y qué acumulador usa en cada capa;</li>
+  <li>cuántos ciclos pierde una carga desalineada en el ESP32-S3;</li>
+  <li>el reparto de los 47 ms entre capas, que el <a href="04-medir.html">nivel 4</a> mide;</li>
+  <li>las MAC por ciclo del ESP32-P4, cuya optimización Espressif declara en curso;</li>
+  <li>las 8 MAC por ciclo del Cortex-M55, que vienen de una presentación de Arm y no de una medición propia.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Una capa 1×1 calcula cada canal de salida como una suma de productos entre los canales de un píxel y los pesos de un filtro.</li>
+    <li>El PIE hace 16 de esos productos por instrucción, uno por carril, y los suma en un acumulador con bits de guarda.</li>
+    <li>El resultado se reescala a la escala de la salida y se satura a int8, para que la capa siguiente lo reciba sin desborde.</li>
+    <li>El orden HWC, la alineación a 16 bytes y los canales múltiplos de 16 hacen que cada carga traiga 16 datos útiles.</li>
+    <li>El detector usa del orden del 4 % del techo: mover datos y reescalar pesa más que multiplicar.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Una capa 1×1 tiene 64 canales y otra, 3 canales de entrada. ¿Por qué ESP-NN acelera mucho más la primera?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El PIE no cambia de frecuencia según la capa. La diferencia está en cuántos carriles se llenan.">Porque el PIE sube el reloj cuando hay más canales.</button>
+    <button type="button" data-por-que="El tamaño de los pesos influye en la memoria, no en cuántos carriles trabajan en cada MAC.">Porque los pesos de 3 canales no caben en la flash.</button>
+    <button type="button" data-por-que="Con 64 canales en HWC, cada carga de 16 bytes trae 16 canales útiles y el lazo hace 4 pasadas completas. Con 3 canales, la mayoría de los carriles quedaría vacía.">Porque con 64 canales cada carga de 16 bytes llena los 16 carriles, y con 3 no.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · la capa 1×1 en C</h4>
+  <p>Este es el recorrido escrito en C, para un píxel. El lazo interno de 16 vueltas es lo que el PIE hace en una sola MAC vectorial (pasos 1 a 4). Después vienen el bias, la escala con redondeo y la saturación (paso 5), y el guardado (paso 6).</p>
+  <p>Es una versión de referencia: ESP-NN hace las mismas cuentas en ensamblador PIE. Con los números de las figuras, el código da −147 en el acumulador, 100 para 5 380 y 127 para 13 000.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>#include &lt;stdint.h&gt;
+
+/* Capa 1×1 int8 en orden HWC, para un píxel.
+   Versión de referencia en C: ESP-NN hace las mismas
+   cuentas en ensamblador PIE. C_IN es múltiplo de 16. */
+#define C_IN  64
+#define C_OUT 64
+
+/* Recorta al rango de int8: la saturación. */
+static int8_t saturar(int32_t v)
+{
+    if (v &gt; 127)  return 127;
+    if (v &lt; -128) return -128;
+    return (int8_t)v;
+}
+
+/* act:   C_IN activaciones del píxel
+   pesos: C_OUT filtros de C_IN pesos cada uno
+   bias:  un bias por canal de salida
+   escala de cada canal: mult / 2^shift (ej.: 19 / 2^10)
+   z_out: punto cero de la salida */
+void conv1x1_pixel(const int8_t *act, const int8_t *pesos,
+                   const int32_t *bias, const int32_t *mult,
+                   const int32_t *shift, int32_t z_out,
+                   int8_t *salida)
+{
+    /* Un canal de salida por vuelta. */
+    for (int k = 0; k &lt; C_OUT; k++) {
+        const int8_t *w = pesos + k * C_IN;  /* filtro k */
+        int32_t acc = 0;                     /* acumulador */
+
+        /* Pasos 1 a 4: cuatro grupos de 16 canales.
+           El PIE hace las 16 vueltas del lazo interno
+           en una sola MAC vectorial. */
+        for (int c = 0; c &lt; C_IN; c += 16)
+            for (int i = 0; i &lt; 16; i++)
+                acc += act[c + i] * w[c + i];
+
+        /* Paso 5: bias, escala con redondeo y recorte. */
+        acc += bias[k];
+        int64_t p = (int64_t)acc * mult[k];
+        int64_t r = 1LL &lt;&lt; (shift[k] - 1);
+        int32_t v = (int32_t)((p + r) &gt;&gt; shift[k]);
+
+        /* Paso 6: guardar el byte del canal k. */
+        salida[k] = saturar(v + z_out);
+    }
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em>, v1.8, capítulo 1: <em>Processor Instruction Extensions (PIE)</em>. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf">espressif.com/…/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README, tablas de rendimiento por kernel y por modelo (consultado el 10 de octubre de 2026, versión del 22 de septiembre de 2026). <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+    <li>Espressif Systems. <em>esp-tflite-micro</em>, README, comparación de rendimiento del detector de personas. <a href="https://github.com/espressif/esp-tflite-micro">github.com/espressif/esp-tflite-micro</a></li>
+    <li>Espressif Systems. <em>Introduction to the ESP32-P4 and ESP32-S3 PIE</em> (blog para desarrolladores, 2024). <a href="https://developer.espressif.com/blog/2024/12/pie-introduction/">developer.espressif.com/blog/2024/12/pie-introduction</a></li>
+    <li>Howard, A. G. et al. <em>MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications</em>. arXiv:1704.04861. <a href="https://arxiv.org/abs/1704.04861">arxiv.org/abs/1704.04861</a></li>
+    <li>Jacob, B. et al. <em>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</em>. arXiv:1712.05877. <a href="https://arxiv.org/abs/1712.05877">arxiv.org/abs/1712.05877</a></li>
+    <li>Google. <em>LiteRT 8-bit quantization specification</em>. <a href="https://ai.google.dev/edge/litert/models/quantization_spec">ai.google.dev/edge/litert/models/quantization_spec</a></li>
+    <li>Arm. <em>Arm Cortex-M55 and Ethos-U55</em>, presentación en Hot Chips 32 (2020). <a href="https://www.hc32.hotchips.org/assets/program/conference/day1/HotChips2020_Edge_Computing_Arm_Cortex-M55.pdf">hc32.hotchips.org/…/HotChips2020_Edge_Computing_Arm_Cortex-M55.pdf</a></li>
+    <li>Arm. <em>Ethos-U55</em>, página del producto. <a href="https://www.arm.com/products/silicon-ip-cpu/ethos/ethos-u55">arm.com/products/silicon-ip-cpu/ethos/ethos-u55</a></li>
+    <li>Arm. <em>Helium technology</em>. <a href="https://www.arm.com/technologies/helium">arm.com/technologies/helium</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. Las 7,16 millones de MAC son una cuenta propia sobre la arquitectura publicada; los valores del acumulador y del reescalado son ilustrativos. Los datos marcados como por confirmar deben contrastarse con el manual técnico de cada variante.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-03</footer>
+</body>
+</html>

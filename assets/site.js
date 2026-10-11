@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.16";
+const VERSION = "0.1.17";
 
 const CURSOS = {
   micro: {
@@ -63,8 +63,15 @@ const CURSOS = {
   borde: {
     titulo: "Inteligencia en el borde", seccion: "ia",
     niveles: [
-      { f: "01-frameworks.html", t: "Del modelo al micro", d: "TFLite Micro, ESP-NN, ESP-DL y el viaje de un modelo hasta la flash." },
-      { f: "02-pipeline.html", t: "Todo junto", d: "Cámara → inferencia → decisión: casos reales, tiempos y cómo elegir micro." },
+      { f: "01-del-modelo-al-micro.html", t: "Del modelo al micro", d: "Intérprete o grafo compilado: cómo un modelo llega a la flash y quién ejecuta cada capa." },
+      { f: "02-memoria.html", t: "El presupuesto de memoria", d: "Pesos en flash, activaciones en la arena y cuándo hace falta la PSRAM." },
+      { f: "03-convolucion-pie.html", t: "La convolución en el PIE", d: "Cargas de 16 bytes, MAC vectoriales y saturación a int8: dónde se van los 47 ms." },
+      { f: "04-medir.html", t: "Medir cada capa", d: "Contadores de ciclos, perfil por capa y energía por inferencia." },
+      { f: "05-camara-al-tensor.html", t: "De la cámara al tensor", d: "LCD_CAM, DMA, formatos de píxel y doble buffer entre dos núcleos." },
+      { f: "06-decidir.html", t: "Decidir con la salida", d: "Umbral, histéresis, votos y NMS; precisión y recall con datos del lugar." },
+      { f: "07-energia.html", t: "Energía y autonomía", d: "Dormir, despertar, inferir y transmitir: carga por ciclo y meses de batería." },
+      { f: "08-palabra-clave.html", t: "Oír una palabra", d: "Micrófono, tramas, espectrograma Mel y WakeNet en el ESP32-S3." },
+      { f: "09-sensores.html", t: "Sentir vibraciones", d: "Señales 1D, rasgos y autoencoders para detectar anomalías." },
     ],
   },
 };
