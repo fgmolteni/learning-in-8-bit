@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 7: Energía y autonomía</title>
+<meta name="description" content="Cuánto dura una batería en un detector que duerme y se despierta: el perfil de corriente de cada despertar, qué queda encendido en deep-sleep, y por qué la cámara pesa más que la red.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 7: Energía y autonomía">
+<meta property="og:description" content="Cuánto dura una batería en un detector que duerme y se despierta: el perfil de corriente de cada despertar, qué queda encendido en deep-sleep, y por qué la cámara pesa más que la red.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="borde" data-nivel="7">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="07">nivel 07, 15 min de lectura</span>
+  <h1>Energía y autonomía</h1>
+  <p class="bajada">Cuánto dura una batería en un detector que duerme y se despierta: el perfil de corriente de cada despertar, qué queda encendido en deep-sleep, y por qué la cámara pesa más que la red.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Dibujar el perfil de corriente de un despertar y calcular su carga en mA·s.</li>
+    <li>Explicar qué queda encendido en deep-sleep y qué se pierde.</li>
+    <li>Calcular la corriente media y la autonomía con una batería.</li>
+    <li>Explicar por qué una cámara en standby puede consumir más que el micro dormido.</li>
+    <li>Comparar el reposo de ESP32, ESP32-S3 y ESP32-P4.</li>
+  </ul>
+</div>
+
+<h2>El problema: una batería y una cámara</h2>
+
+<p>Queremos un detector de personas a batería, por ejemplo en una puerta. Si el ESP32-S3 infiere sin parar, consume del orden de 72 mA más la cámara, y una batería de 2000 mAh dura menos de un día. La inferencia en sí cuesta poco: del orden de 11 mJ por imagen, según el <a href="04-medir.html">nivel 4</a>.</p>
+
+<p>La respuesta corta: el micro tiene que dormir casi todo el tiempo y despertarse solo cuando algo pasa, por ejemplo cuando un sensor de movimiento lo avisa. Entonces la autonomía depende de tres números: la corriente dormido, la carga de cada despertar y cuántas veces se despierta. Y la cámara, más que la red, decide la cuenta.</p>
+
+<h2>El nodo visto desde afuera</h2>
+
+<p>Entra la energía de una batería y un aviso de un sensor PIR, un detector de movimiento por infrarrojo que consume poco. Sale una decisión, "hubo una persona", cada vez que algo se mueve. Entre aviso y aviso, el nodo duerme.</p>
+
+<p>La magnitud que importa es la <strong>carga</strong>: corriente por tiempo, en mA·s o mAh. Una batería de 2000 mAh entrega 2000 mA durante una hora, o 1 mA durante 2000 horas. La <strong>autonomía</strong> es la capacidad dividida por la <strong>corriente media</strong>.</p>
+
+<h2>Adentro: qué duerme y qué queda despierto</h2>
+
+<p>El ESP32-S3 tiene un <strong>dominio RTC</strong>: un grupo de circuitos con alimentación propia que sigue encendido cuando todo lo demás se apaga. Incluye un temporizador, algunos GPIO, el coprocesador de bajo consumo <strong>ULP</strong> y 16 KB de memoria RTC.</p>
+
+<figure class="diagrama" data-titulo="fig-7.1">
+  <svg viewBox="0 0 640 296" role="img" aria-label="Qué queda encendido en deep-sleep. El dominio RTC sigue vivo: su temporizador, los GPIO RTC, el coprocesador ULP y 16 KB de memoria RTC; el S3 consume 7 a 8 microamperes. Los núcleos, el PIE y la SRAM se apagan, así que la arena se pierde y el programa arranca de nuevo al despertar. Un sensor PIR puede despertar al micro con un flanco en un GPIO RTC."><rect x="16" y="16" width="296" height="200" class="f1 s3" stroke-width="2"/><rect x="15" y="15" width="2" height="2" class="f0"/><rect x="311" y="15" width="2" height="2" class="f0"/><rect x="15" y="215" width="2" height="2" class="f0"/><rect x="311" y="215" width="2" height="2" class="f0"/><text x="32" y="40" class="sv-lbl fc3" text-anchor="start" font-size="16">dominio RTC: queda encendido</text><rect x="32" y="56" width="128" height="48" class="f1 sc3" stroke-width="2"/><rect x="31" y="55" width="2" height="2" class="f0"/><rect x="159" y="55" width="2" height="2" class="f0"/><rect x="31" y="103" width="2" height="2" class="f0"/><rect x="159" y="103" width="2" height="2" class="f0"/><text x="96" y="76" class="sv-tit fc3" text-anchor="middle" font-size="16">TIMER RTC</text><text x="96" y="94" class="sv-lbl f4" text-anchor="middle" font-size="16">despierta a hora</text><rect x="168" y="56" width="128" height="48" class="f1 sc3" stroke-width="2"/><rect x="167" y="55" width="2" height="2" class="f0"/><rect x="295" y="55" width="2" height="2" class="f0"/><rect x="167" y="103" width="2" height="2" class="f0"/><rect x="295" y="103" width="2" height="2" class="f0"/><text x="232" y="76" class="sv-tit fc3" text-anchor="middle" font-size="16">GPIO RTC</text><text x="232" y="94" class="sv-lbl f4" text-anchor="middle" font-size="16">despierta por pin</text><rect x="32" y="120" width="128" height="48" class="f1 sc3" stroke-width="2"/><rect x="31" y="119" width="2" height="2" class="f0"/><rect x="159" y="119" width="2" height="2" class="f0"/><rect x="31" y="167" width="2" height="2" class="f0"/><rect x="159" y="167" width="2" height="2" class="f0"/><text x="96" y="140" class="sv-tit fc3" text-anchor="middle" font-size="16">ULP</text><text x="96" y="158" class="sv-lbl f4" text-anchor="middle" font-size="16">vigila sensores</text><rect x="168" y="120" width="128" height="48" class="f1 sc3" stroke-width="2"/><rect x="167" y="119" width="2" height="2" class="f0"/><rect x="295" y="119" width="2" height="2" class="f0"/><rect x="167" y="167" width="2" height="2" class="f0"/><rect x="295" y="167" width="2" height="2" class="f0"/><text x="232" y="140" class="sv-tit fc3" text-anchor="middle" font-size="16">MEMORIA RTC</text><text x="232" y="158" class="sv-lbl f4" text-anchor="middle" font-size="16">16 KB</text><text x="32" y="196" class="sv-lbl f4" text-anchor="start" font-size="16">deep-sleep del S3: 7 a 8 µA</text><rect x="344" y="16" width="280" height="200" class="f1 s2" stroke-width="2"/><rect x="343" y="15" width="2" height="2" class="f0"/><rect x="623" y="15" width="2" height="2" class="f0"/><rect x="343" y="215" width="2" height="2" class="f0"/><rect x="623" y="215" width="2" height="2" class="f0"/><text x="360" y="40" class="sv-lbl f4" text-anchor="start" font-size="16">apagado en deep-sleep</text><rect x="360" y="56" width="248" height="48" class="f1 s2" stroke-width="2"/><rect x="359" y="55" width="2" height="2" class="f0"/><rect x="607" y="55" width="2" height="2" class="f0"/><rect x="359" y="103" width="2" height="2" class="f0"/><rect x="607" y="103" width="2" height="2" class="f0"/><text x="484" y="85" class="sv-tit f4" text-anchor="middle" font-size="16">NÚCLEOS Y PIE</text><rect x="360" y="120" width="248" height="48" class="f1 s2" stroke-width="2"/><rect x="359" y="119" width="2" height="2" class="f0"/><rect x="607" y="119" width="2" height="2" class="f0"/><rect x="359" y="167" width="2" height="2" class="f0"/><rect x="607" y="167" width="2" height="2" class="f0"/><text x="484" y="149" class="sv-tit f4" text-anchor="middle" font-size="16">SRAM: se pierde la arena</text><text x="360" y="196" class="sv-lbl f4" text-anchor="start" font-size="16">al despertar, el programa arranca de nuevo</text><rect x="16" y="240" width="136" height="40" class="f1 sd3" stroke-width="2"/><rect x="15" y="239" width="2" height="2" class="f0"/><rect x="151" y="239" width="2" height="2" class="f0"/><rect x="15" y="279" width="2" height="2" class="f0"/><rect x="151" y="279" width="2" height="2" class="f0"/><text x="84" y="265" class="sv-tit fd3" text-anchor="middle" font-size="16">SENSOR PIR</text><line x1="152" y1="260" x2="328" y2="260" class="sd3" stroke-width="2"/><line x1="328" y1="260" x2="328" y2="80" class="sd3" stroke-width="2"/><line x1="328" y1="80" x2="304" y2="80" class="sd3" stroke-width="2"/><rect x="310" y="76" width="2" height="8" class="fd3"/><rect x="308" y="77" width="2" height="6" class="fd3"/><rect x="306" y="78" width="2" height="4" class="fd3"/><rect x="304" y="79" width="2" height="2" class="fd3"/><text x="168" y="252" class="sv-lbl fd3" text-anchor="start" font-size="16">flanco</text></svg>
+  <figcaption><b>fig 7.1</b>En deep-sleep solo el dominio RTC (verde) sigue vivo. Los núcleos y la SRAM se apagan. Un PIR (magenta) despierta al micro por un GPIO RTC.</figcaption>
+</figure>
+
+<p>En <strong>deep-sleep</strong>, el modo más profundo con despertar, solo queda el dominio RTC: el S3 consume del orden de 7 a 8 µA según el datasheet. El precio es que la SRAM se apaga: la arena, el estado del programa y la red preparada se pierden. Al despertar, el programa arranca de nuevo, como después de un reset.</p>
+
+<p>En <strong>light-sleep</strong> los núcleos se detienen pero la SRAM se conserva: el programa sigue donde estaba. El S3 consume del orden de 240 µA, unas 30 veces más que en deep-sleep. Conviene si el micro se despierta muy seguido y rearrancar costaría más que mantener la memoria.</p>
+
+<div class="caja analogia">
+  <h4>analogía: el capacitor de un sample and hold</h4>
+  <p>La memoria RTC es como el capacitor de retención de un sample and hold: guarda lo mínimo mientras todo lo demás descansa. Lo que no se guardó ahí, se vuelve a construir al despertar.</p>
+</div>
+
+<h2>Recorrido: un despertar completo</h2>
+
+<p>Seguimos un despertar del detector. Las corrientes de la inferencia y del reposo salen del datasheet del S3; las del arranque y la cámara son supuestos razonables, marcados como tales.</p>
+
+<figure class="diagrama" data-titulo="fig-7.2">
+  <svg viewBox="0 0 640 280" role="img" aria-label="Perfil de corriente de un despertar del nodo. Dormido consume 23 microamperes, casi cero en la escala. Al despertar, el arranque toma 40 mA durante 0,2 s, la cámara y el micro 78 mA durante 0,5 s, y tres inferencias 72,4 mA durante 0,14 s; después vuelve a dormir."><rect x="64" y="184" width="64" height="2" class="f2 s3" stroke-width="2"/><text x="96" y="208" class="sv-lbl f4" text-anchor="middle" font-size="16">dormir</text><rect x="128" y="104" width="80" height="80" class="fb1 sb3" stroke-width="2"/><text x="168" y="96" class="sv-lbl fb3" text-anchor="middle" font-size="16">40 mA</text><text x="168" y="208" class="sv-lbl fb3" text-anchor="middle" font-size="16">arranque</text><rect x="208" y="28" width="200" height="156" class="fc1 sc3" stroke-width="2"/><text x="308" y="20" class="sv-lbl fc3" text-anchor="middle" font-size="16">78 mA</text><text x="308" y="208" class="sv-lbl fc3" text-anchor="middle" font-size="16">cámara</text><rect x="408" y="40" width="56" height="144" class="fa1 sa3" stroke-width="2"/><text x="436" y="32" class="sv-lbl fa3" text-anchor="middle" font-size="16">72,4 mA</text><text x="436" y="208" class="sv-lbl fa3" text-anchor="middle" font-size="16">inferencia</text><rect x="464" y="184" width="64" height="2" class="f2 s3" stroke-width="2"/><text x="496" y="208" class="sv-lbl f4" text-anchor="middle" font-size="16">dormir</text><line x1="64" y1="184" x2="528" y2="184" class="s4" stroke-width="2"/><text x="16" y="188" class="sv-lbl f4" text-anchor="start" font-size="16">0</text><text x="168" y="232" class="sv-lbl fb3" text-anchor="middle" font-size="16">0,2 s</text><text x="308" y="232" class="sv-lbl fc3" text-anchor="middle" font-size="16">0,5 s</text><text x="436" y="232" class="sv-lbl fa3" text-anchor="middle" font-size="16">0,14 s</text><text x="16" y="264" class="sv-lbl f4" text-anchor="start" font-size="16">dormido: 23 µA, casi cero a esta escala, pero durante casi toda la hora</text></svg>
+  <figcaption><b>fig 7.2</b>Arranque (azul), cámara (verde) e inferencia (naranja) duran menos de un segundo. Dormido, el nodo consume 23 µA durante casi toda la hora. Arranque y cámara son supuestos.</figcaption>
+</figure>
+
+<ol>
+  <li><strong>Dormir.</strong> El S3 en deep-sleep, con el dominio RTC vigilando un GPIO: 8 µA. Se suman el PIR y el regulador, del orden de 10 y 5 µA (supuestos): 23 µA en total.</li>
+  <li><strong>Despertar.</strong> El PIR ve movimiento y cambia su salida. El flanco en el GPIO RTC despierta al micro.</li>
+  <li><strong>Arrancar.</strong> El micro corre el programa desde el principio, prepara el intérprete y la arena. Supuesto: 0,2 s a 40 mA.</li>
+  <li><strong>Encender la cámara.</strong> El sensor necesita algunos cuadros para ajustar la exposición antes de dar una imagen útil. Supuesto: 0,5 s a 78 mA, el micro esperando más la cámara.</li>
+  <li><strong>Inferir.</strong> Tres inferencias de 47 ms para la votación del <a href="06-decidir.html">nivel 6</a>, a 72,4 mA según el datasheet: 0,14 s.</li>
+  <li><strong>Volver a dormir.</strong> El programa apaga la alimentación de la cámara y entra en deep-sleep.</li>
+</ol>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">¿Por qué el detector tiene que preparar el intérprete en cada despertar?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La flash conserva el modelo; lo que se pierde es la RAM.">Porque el modelo se borra de la flash.</button>
+    <button type="button" data-por-que="El PIR solo despierta; no tiene nada que ver con el intérprete.">Porque el PIR lo pide.</button>
+    <button type="button" data-por-que="En deep-sleep la SRAM se apaga: la arena y el estado del intérprete se pierden, y el programa arranca de nuevo.">Porque en deep-sleep se apaga la SRAM y la arena se pierde.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Cómo se encadena: la corriente media</h2>
+
+<p>La corriente media suma dos partes. La de reposo corre siempre: 23 µA. La de los despertares es la carga de cada uno repartida en el tiempo: si hay 20 despertares por hora, cada uno aporta su carga multiplicada por 20 y dividida por 3600 segundos.</p>
+
+<p>Mirando el perfil, la cámara se lleva unos 39 de los 57 mA·s de cada despertar; la inferencia, unos 10. Por eso acortar el tiempo de la cámara rinde más que acelerar la red. Y la cámara tiene otra trampa: en standby, según su datasheet, el OV2640 consume 600 µA, 75 veces lo que consume el S3 dormido. Hay que cortarle la alimentación, no solo ponerla en espera.</p>
+
+<figure class="diagrama" data-titulo="fig-7.3">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Autonomía con una batería de 2000 mAh y 20 despertares por hora, ambos supuestos. Siempre despierto dura unas 17 horas; durmiendo con la cámara en standby, 89 días; durmiendo con la cámara apagada, 245 días."><text x="192" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">siempre despierto</text><rect x="208" y="24" width="4" height="32" class="fd1 sd3" stroke-width="2"/><text x="220" y="46" class="sv-lbl fd3" text-anchor="start" font-size="16">17 horas</text><text x="192" y="94" class="sv-lbl f6" text-anchor="end" font-size="16">cámara en standby</text><rect x="208" y="72" width="124" height="32" class="fb1 sb3" stroke-width="2"/><text x="340" y="94" class="sv-lbl fb3" text-anchor="start" font-size="16">89 días</text><text x="192" y="142" class="sv-lbl f6" text-anchor="end" font-size="16">cámara apagada</text><rect x="208" y="120" width="343" height="32" class="fa1 sa3" stroke-width="2"/><text x="559" y="142" class="sv-lbl fa3" text-anchor="start" font-size="16">245 días</text><text x="16" y="188" class="sv-lbl f4" text-anchor="start" font-size="16">batería de 2000 mAh, 20 despertares por hora (supuestos)</text></svg>
+  <figcaption><b>fig 7.3</b>La misma batería con tres estrategias: siempre despierto (magenta), durmiendo con la cámara en standby (azul) y durmiendo con la cámara apagada (naranja).</figcaption>
+</figure>
+
+<div class="caja ojo">
+  <h4>ojo: mandar el resultado cuesta más</h4>
+  <p>Transmitir por Wi-Fi llega a 340 mA de pico en el S3 (datasheet, 802.11b a 21 dBm), y conectarse a una red puede tomar del orden de segundos (por confirmar en cada instalación). Avisar por radio en cada detección puede costar más que todo el resto del despertar. Mandar la imagen a la nube para que decida otro cuesta todavía más que decidir en el micro.</p>
+</div>
+
+<h2>Implementaciones reales: ESP32, S3, P4 y Arm</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>ESP32-P4</th><th>Cortex-M55 + Ethos-U55</th></tr></thead>
+  <tbody>
+    <tr><td><b>Deep-sleep (típico)</b></td><td>10 µA (timer y memoria RTC)</td><td>7 a 8 µA</td><td>12 µA (timer y memoria LP)</td><td>según el fabricante del micro</td></tr>
+    <tr><td><b>Light-sleep (típico)</b></td><td>0,8 mA</td><td>240 µA</td><td>0,8 mA</td><td>según el fabricante</td></tr>
+    <tr><td><b>Coprocesador de bajo consumo</b></td><td>ULP (máquina de estados)</td><td>ULP-FSM y ULP-RISC-V</td><td>núcleo LP RISC-V</td><td>depende del micro</td></tr>
+    <tr><td><b>Inferir</b></td><td>380 ms por imagen</td><td>47 a 54 ms</td><td>73 ms</td><td>la NPU infiere y la CPU puede dormir</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Con una NPU, la energía por inferencia baja porque la red corre en circuitos dedicados, y la CPU puede quedar dormida mientras tanto. Pero el reposo y la cámara siguen mandando en un nodo que pasa el 99 % del tiempo dormido: una inferencia más barata acorta solo una de las tres barras del perfil.</p>
+
+<h2>Relación con el resto del micro</h2>
+
+<p>Los modos de consumo, el árbol de relojes y el ULP están en el <a href="../micro/06-energia.html">Microcontroladores, Tomo 1, nivel 6</a>. El despertar por pin usa la matriz de interrupciones del <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>. Medir estas corrientes es el método del <a href="04-medir.html">nivel 4</a>.</p>
+
+<h2>Los números que importan</h2>
+
+<div class="caja calculo">
+  <h4>cálculo: la carga de un despertar</h4>
+  <p class="formula"><var>Q</var> = Σ <var>I</var><sub>k</sub> · <var>t</var><sub>k</sub></p>
+  <dl>
+    <dt>arranque</dt><dd>40 mA · 0,2 s = 8 mA·s (supuesto)</dd>
+    <dt>cámara</dt><dd>78 mA · 0,5 s = 39 mA·s (supuesto)</dd>
+    <dt>inferencia</dt><dd>72,4 mA · 0,141 s = 10,2 mA·s (datasheet y Espressif)</dd>
+  </dl>
+  <p class="resultado">Q = 8 + 39 + 10,2 ≈ 57,2 mA·s por despertar</p>
+  <p>La cámara se lleva dos tercios; la red, menos de un quinto.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: corriente media y autonomía</h4>
+  <p class="formula"><var>I</var><sub>m</sub> = <var>I</var><sub>reposo</sub> + <var>Q</var> · <var>N</var> / 3600 s; <var>T</var> = <var>C</var> / <var>I</var><sub>m</sub></p>
+  <dl>
+    <dt>I_reposo</dt><dd>0,023 mA (8 µA del S3 más PIR y regulador, supuestos)</dd>
+    <dt>N</dt><dd>20 despertares por hora (supuesto)</dd>
+    <dt>C</dt><dd>2000 mAh (supuesto)</dd>
+  </dl>
+  <p class="resultado">I_m = 0,023 + 57,2 · 20 / 3600 ≈ 0,341 mA; T = 2000 / 0,341 ≈ 5870 h ≈ 245 días</p>
+  <p>Del orden de 8 meses, sin contar la autodescarga de la batería. Con 40 despertares por hora, la autonomía cae casi a la mitad.</p>
+</div>
+
+<div class="caja calculo">
+  <h4>cálculo: la cámara en standby</h4>
+  <p class="formula"><var>I</var><sub>m</sub>' = <var>I</var><sub>m</sub> + <var>I</var><sub>standby</sub></p>
+  <dl>
+    <dt>I_standby</dt><dd>0,6 mA (OV2640, datasheet)</dd>
+    <dt>I_m</dt><dd>0,341 mA</dd>
+  </dl>
+  <p class="resultado">I_m' = 0,941 mA; T = 2000 / 0,941 ≈ 2125 h ≈ 89 días</p>
+  <p>Dejar la cámara en standby en vez de cortarle la alimentación le quita dos tercios a la autonomía.</p>
+</div>
+
+<h2>Límites y datos por confirmar</h2>
+
+<p>Las cuentas usan corrientes típicas del datasheet, que varían con la temperatura, la placa y la versión del chip. El arranque, la cámara, el PIR y el regulador son supuestos. Quedan por confirmar estos puntos:</p>
+
+<ul>
+  <li>el tiempo y la corriente reales del arranque desde deep-sleep con el intérprete;</li>
+  <li>cuánto tarda la cámara en dar una imagen útil después de encenderse;</li>
+  <li>la autodescarga de la batería y la eficiencia del regulador;</li>
+  <li>el costo de conectarse y transmitir por Wi-Fi en una instalación concreta.</li>
+</ul>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>En deep-sleep solo vive el dominio RTC: el S3 consume del orden de 8 µA, pero la SRAM y la arena se pierden.</li>
+    <li>Autonomía = capacidad / corriente media, y la corriente media es el reposo más la carga de cada despertar repartida en el tiempo.</li>
+    <li>En el detector, la cámara gasta más que la red: acortar su tiempo encendida rinde más que acelerar la inferencia.</li>
+    <li>Una cámara en standby consume 600 µA: hay que cortarle la alimentación.</li>
+    <li>Transmitir por radio puede costar más que todo lo demás: decidir en el micro ahorra energía.</li>
+  </ul>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Lográs que la red tarde la mitad. ¿Cuánto mejora la autonomía del nodo del recorrido?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La inferencia es una parte chica de la carga del despertar; reducirla a la mitad no duplica la autonomía.">Se duplica.</button>
+    <button type="button" data-por-que="La inferencia aporta unos 10 de 57 mA·s: a la mitad, la carga baja a unos 52 mA·s y la autonomía sube del orden del 9 %.">Poco: del orden del 9 %.</button>
+    <button type="button" data-por-que="La inferencia sí aporta carga; acortarla mejora algo, aunque poco.">Nada: la inferencia no consume.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<!-- firmware: bloque de código de referencia (permitido solo en el tomo "Inteligencia en el borde") -->
+<div class="caja firmware">
+  <h4>firmware · el presupuesto de energía en C</h4>
+  <p>Tres funciones con las fórmulas de los cálculos: la carga de un despertar a partir de sus etapas, la corriente media y la autonomía. Sirven para probar estrategias antes de medir.</p>
+  <p>Con las etapas del recorrido da 57,2 mA·s, 0,341 mA y 245 días; con la cámara en standby, 89 días.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>/* Presupuesto de energía de un nodo que duerme y se
+   despierta: carga por despertar, corriente media y
+   autonomía. Corrientes en mA, tiempos en s. */
+
+typedef struct {
+    const char *nombre;
+    float ma;    /* corriente de la etapa */
+    float s;     /* duración de la etapa  */
+} Etapa;
+
+/* Carga de un despertar: suma de corriente por tiempo. */
+float carga_mas(const Etapa *e, int n)
+{
+    float q = 0;
+    for (int i = 0; i &lt; n; i++)
+        q += e[i].ma * e[i].s;
+    return q;                       /* mA·s */
+}
+
+/* Corriente media: la de reposo, siempre, más la carga
+   de cada despertar repartida en la hora. */
+float corriente_media(float reposo_ma, float q_mas,
+                      float despertares_por_hora)
+{
+    return reposo_ma + q_mas * despertares_por_hora / 3600;
+}
+
+/* Horas hasta vaciar la batería (sin autodescarga). */
+float autonomia_h(float bateria_mah, float media_ma)
+{
+    return bateria_mah / media_ma;
+}</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet</em> v2.2: modos de energía (sección 4), tablas 5-7, 5-9 y 5-10, memoria RTC. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf">espressif.com/…/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet</em> v5.3: consumo en modos de bajo consumo. <a href="https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf">espressif.com/…/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-P4 Series Datasheet</em> pre-release v0.7, tabla 5-8. <a href="https://www.espressif.com/sites/default/files/documentation/esp32-p4_datasheet_en.pdf">espressif.com/…/esp32-p4_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-IDF: Sleep Modes</em> (fuentes de despertar). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/sleep_modes.html">docs.espressif.com/…/sleep_modes.html</a></li>
+    <li>OmniVision. <em>OV2640 Color CMOS UXGA CameraChip Sensor</em>, datasheet (125 mW activo, 600 µA en standby). <a href="https://www.uctronics.com/download/cam_module/OV2640DS.pdf">uctronics.com/download/cam_module/OV2640DS.pdf</a></li>
+    <li>Espressif Systems. <em>ESP-NN</em>, README: tiempos del detector por micro. <a href="https://github.com/espressif/esp-nn">github.com/espressif/esp-nn</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, verificada contra las fuentes. Arranque, cámara, PIR, regulador, batería y despertares por hora son supuestos declarados.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-02, nivel-07</footer>
+</body>
+</html>
