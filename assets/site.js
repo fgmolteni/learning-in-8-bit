@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.31";
+const VERSION = "0.1.32";
 
 const CURSOS = {
   micro: {
@@ -20,7 +20,7 @@ const CURSOS = {
     titulo: "Tocar el mundo", seccion: "micro",
     niveles: [
       { f: "01-pin.html", t: "La frontera del chip", d: "Niveles lógicos y margen de ruido, push-pull y open-drain, el disparador Schmitt, las resistencias de pull, el ruido de masa y la protección contra descargas.", c: { f: "01b-pin-esp32.html", t: "Los pines del ESP32, del ESP32-S3 y del RP2040" } },
-      { f: "02-temporizadores-pwm.html", t: "Temporizadores y PWM", d: "Contador, prescaler y comparador: PWM, tiempo muerto y puentes en H." },
+      { f: "02-temporizadores-pwm.html", t: "Contar el tiempo", d: "Prescaler, contador y comparador; deriva y jitter; PWM, registro sombra y tiempo muerto de un puente en H.", c: { f: "02b-temporizadores-esp32.html", t: "Los temporizadores y el PWM del ESP32, del ESP32-S3 y del RP2040" } },
       { f: "03-adc.html", t: "Del voltaje al número", d: "Muestreo, cuantización, aproximaciones sucesivas, tiempo de adquisición y errores de un convertidor.", c: { f: "03b-adc-esp32.html", t: "El ADC del ESP32, del ESP32-S3 y del RP2040" } },
       { f: "04-dac.html", t: "De número a tensión", d: "La escalera del DAC, cuánta exactitud pide cada bit, el glitch y el PWM y el sigma-delta como DAC de un bit.", c: { f: "04b-dac-esp32.html", t: "El DAC del ESP32 y las alternativas sin DAC" } },
       { f: "05-rmt-pcnt.html", t: "Generar y contar pulsos", d: "RMT para trenes de pulsos e infrarrojo; PCNT para encoders en cuadratura." },
