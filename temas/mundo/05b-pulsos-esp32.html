@@ -22,7 +22,7 @@
 <header>
   <span class="nivel-chip" data-n="05b">nivel 05, componentes, 9 min de lectura</span>
   <h1>El RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="05-rmt-pcnt.html">«Pulsos con precisión de hardware»</a>: cuántos canales tienen, cuánta memoria, qué DMA, y cómo resuelve el RP2040 el mismo problema con otra arquitectura. Todo viene de sus manuales.</p>
+  <p class="bajada">Cómo aplican tres micros lo que explica <a href="05-rmt-pcnt.html">«Pulsos con precisión de hardware»</a>: cuántos canales tienen, cuánta memoria, si tienen DMA, y cómo resuelve el RP2040 el mismo problema con otra arquitectura. Todo viene de sus manuales.</p>
 </header>
 
 <div class="caja objetivos">
@@ -56,7 +56,7 @@
 
 <h2>El RMT: la memoria alcanza para pocos LEDs</h2>
 
-<p>Cada palabra de la memoria del <span class="ref" data-nota="rmt">RMT</span> es un símbolo de dos tramos, y un bit del WS2812 es un símbolo.<span class="nota-margen" popover id="nota-rmt"><b>rmt · remote control</b>Periférico de Espressif, pensado para señales de control remoto infrarrojo, que reproduce y graba trenes de pulsos desde una memoria propia.</span> Con 24 bits por LED, la cuenta de cuántos LEDs entran en la memoria sale directa.</p>
+<p>Cada palabra de la memoria del <span class="ref" data-nota="rmt">RMT</span> es un símbolo de dos tramos, y un bit del <span class="ref" data-nota="ws2812">WS2812</span> es un símbolo.<span class="nota-margen" popover id="nota-rmt"><b>rmt · remote control</b>Periférico de Espressif, pensado para señales de control remoto infrarrojo, que reproduce y graba trenes de pulsos desde una memoria propia.</span><span class="nota-margen" popover id="nota-ws2812"><b>ws2812 · Worldsemi</b>LED RGB con controlador integrado, del fabricante Worldsemi.</span> Con 24 bits por LED, la cuenta de cuántos LEDs entran en la memoria sale directa.</p>
 
 <div class="tabla-scroll">
 <table>
@@ -78,18 +78,18 @@
 
 <p>El contador de pulsos del ESP32 tiene ocho unidades y el del ESP32-S3 cuatro. Cada una tiene dos canales que comparten un contador. En el ESP32 ese contador es de 16 bits con signo; el manual del S3 no lo describe de la misma manera, y no lo uso para el cálculo.</p>
 
-<p>Los dos soportan pulsos de hasta 40 MHz. El filtro de glitches usa el reloj del bus de periféricos, así que su alcance depende de la frecuencia de ese reloj: un umbral de 1023 ciclos a 80 MHz descarta pulsos de hasta 12,8 µs. Con un reloj de 80 MHz, 40 MHz de frecuencia máxima son dos ciclos por pulso, y activar el filtro con un umbral grande baja la frecuencia utilizable.</p>
+<p>Los dos soportan pulsos de hasta 40 MHz. El filtro de <span class="ref" data-nota="glitch">glitches</span> usa el reloj del bus de periféricos, así que su alcance depende de la frecuencia de ese reloj: un umbral de 1023 ciclos a 80 MHz descarta pulsos de hasta 12,8 µs.<span class="nota-margen" popover id="nota-glitch"><b>glitch</b>Pico breve e indeseado en una señal.</span> Con un reloj de 80 MHz, 40 MHz de frecuencia máxima son dos ciclos por pulso, y activar el filtro con un umbral grande descarta también los pulsos legítimos de esa duración, así que baja la frecuencia utilizable.</p>
 
 <h2>El sensor táctil</h2>
 
-<p>Los dos micros hacen la medida de la página anterior con un oscilador de relajación: cargan y descargan el pad con una corriente fija entre dos tensiones, y miden la frecuencia. Difieren en qué miden.</p>
+<p>Los dos micros hacen la medida de la página anterior con un <span class="ref" data-nota="relajacion">oscilador de relajación</span>: cargan y descargan el pad con una corriente fija entre dos tensiones, y miden la frecuencia.<span class="nota-margen" popover id="nota-relajacion"><b>oscilador de relajación</b>Circuito que carga y descarga un capacitor entre dos umbrales con corriente constante; su frecuencia depende de la capacidad.</span> Difieren en qué miden.</p>
 
 <ul>
   <li><strong>ESP32:</strong> cuenta los pulsos de salida del oscilador en una ventana de tiempo fija y compara con la cuenta de referencia. Al tocar, la cuenta baja. Tiene 10 pads.</li>
   <li><strong>ESP32-S3:</strong> deja pasar un número fijo de pulsos y mide cuánto tarda. Al tocar, el tiempo sube. Tiene 14 pads más un canal interno, T0, que mide el ruido del propio chip y se resta de las lecturas.</li>
 </ul>
 
-<p>El S3 agrega un filtro de promedio opcional, hasta tres canales en modo de proximidad, tolerancia a la humedad y rechazo de agua. Los dos pueden despertar a la CPU desde el sueño profundo, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span> Los manuales de los dos avisan que su sensor táctil todavía no pasó la prueba de susceptibilidad conducida, y que por eso tiene escenarios de aplicación limitados.</p>
+<p>El S3 agrega un filtro de promedio opcional, hasta tres canales en modo de proximidad, tolerancia a la humedad y rechazo de agua. Los dos pueden despertar a la CPU desde el sueño profundo, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span> Los manuales de los dos avisan que su sensor táctil todavía no pasó la prueba de susceptibilidad conducida, que mide si un ruido que entra por los cables altera su funcionamiento, y que por eso tiene escenarios de aplicación limitados.</p>
 
 <h2>El RP2040: máquinas de estado en lugar de periféricos</h2>
 

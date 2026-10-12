@@ -46,7 +46,7 @@
 
 <h2>La información está en los flancos</h2>
 
-<p>Mover un pin con bucles de espera (<em><span class="ref" data-nota="bitbanging">bit-banging</span></em>) funciona en un micro simple.<span class="nota-margen" popover id="nota-bitbanging"><b>bit-banging</b>Mover un pin con instrucciones del programa y bucles de espera, en lugar de hardware dedicado.</span> En uno con sistema operativo y radio, la CPU no controla cuándo la interrumpen. Una interrupción del Wi-Fi en medio de un pulso de 400 ns lo estira a microsegundos, y un fallo de <span class="ref" data-nota="cache">caché</span> cambia la temporización sin aviso.<span class="nota-margen" popover id="nota-cache"><b>cache</b>Memoria rápida intermedia; un fallo obliga a ir a la lenta y demora de forma impredecible.</span></p>
+<p>Mover un pin con bucles de espera (<em><span class="ref" data-nota="bitbanging">bit-banging</span></em>) funciona en un micro simple.<span class="nota-margen" popover id="nota-bitbanging"><b>bit-banging</b>Mover un pin con instrucciones del programa y bucles de espera, en lugar de hardware dedicado.</span> En uno con sistema operativo y radio, la <span class="ref" data-nota="cpu">CPU</span> no controla cuándo la interrumpen.<span class="nota-margen" popover id="nota-cpu"><b>cpu · central processing unit</b>Unidad central de proceso: el núcleo que lee y ejecuta las instrucciones del programa.</span> Una interrupción del Wi-Fi en medio de un pulso de 400 ns lo estira a microsegundos, y un fallo de <span class="ref" data-nota="cache">caché</span> cambia la temporización sin aviso.<span class="nota-margen" popover id="nota-cache"><b>cache</b>Memoria rápida intermedia; un fallo obliga a ir a la lenta y demora de forma impredecible.</span></p>
 
 <p>Contar pulsos con una interrupción por flanco tiene un costo distinto: el tiempo. Valvano mide una <span class="ref" data-nota="interrupcion">interrupción</span> con dos magnitudes: la latencia, el tiempo entre que llega el dato y el software lo atiende, y el ancho de banda que la CPU puede dedicar a eso.<span class="nota-margen" popover id="nota-interrupcion"><b>interrupt</b>Señal que detiene el programa en curso para atender un evento y después lo retoma.</span> Su regla es que el porcentaje de tiempo en software de interrupción debe ser pequeño frente al tiempo entre interrupciones.</p>
 
@@ -71,7 +71,7 @@
   <figcaption><b>fig 5.1</b>Cada palabra de 32 bits de la memoria del RMT es un símbolo: dos tramos, cada uno con un nivel y una duración de 15 bits contada en ticks del reloj del RMT. La máquina de estados los recorre en orden y pone el pin en cada nivel exactamente esa cantidad de ticks. Una duración de cero marca el final.</figcaption>
 </figure>
 
-<p>En transmisión, una máquina de estados recorre la memoria y pone el pin en cada nivel la cantidad exacta de ticks, sin huecos entre símbolos. La temporización la da el reloj del bloque dividido por un <span class="ref" data-nota="prescaler">prescaler</span>: con ticks de 100 ns, una duración de 35 es un pulso de 3,5 µs, siempre igual, haga lo que haga la CPU.<span class="nota-margen" popover id="nota-prescaler"><b>prescaler</b>Divisor que baja la frecuencia de un reloj antes de llegar al contador.</span></p>
+<p>En transmisión, una <span class="ref" data-nota="maquina-estados">máquina de estados</span> recorre la memoria y pone el pin en cada nivel la cantidad exacta de ticks, sin huecos entre símbolos.<span class="nota-margen" popover id="nota-maquina-estados"><b>máquina de estados</b>Circuito secuencial que pasa de un estado al siguiente según su entrada y su estado actual.</span> La temporización la da el reloj del bloque dividido por un <span class="ref" data-nota="prescaler">prescaler</span>: con ticks de 100 ns, una duración de 35 es un pulso de 3,5 µs, siempre igual, haga lo que haga la CPU.<span class="nota-margen" popover id="nota-prescaler"><b>prescaler</b>Divisor que baja la frecuencia de un reloj antes de llegar al contador.</span></p>
 
 <p>En recepción el camino se invierte: el bloque mide cuánto dura cada nivel y escribe los pares en su memoria. Tiene un filtro que descarta pulsos más cortos que un umbral. Como estos protocolos no tienen una longitud fija, además usa un umbral de inactividad: la trama se da por terminada cuando la línea queda quieta más de un tiempo configurado.</p>
 
@@ -190,7 +190,7 @@
 
 <h2>Contar para medir: el sensor táctil</h2>
 
-<p>El PCNT cuenta pulsos que ya existen. Pero un contador también sirve para medir una magnitud que no es un pulso, si antes se la convierte en una frecuencia. El sensor táctil capacitivo hace eso con una capacidad muy chica: la de un pad de cobre, que aumenta un poco cuando un dedo se acerca desde el otro lado de un vidrio o un plástico.</p>
+<p>El <span class="ref" data-nota="pcnt">PCNT</span> cuenta pulsos que ya existen.<span class="nota-margen" popover id="nota-pcnt"><b>pcnt · pulse count controller</b>Periférico de Espressif que cuenta flancos de señales externas sin interrumpir a la CPU.</span> Pero un contador también sirve para medir una magnitud que no es un pulso, si antes se la convierte en una frecuencia. El sensor táctil capacitivo hace eso con una capacidad muy chica: la de un pad de cobre, que aumenta un poco cuando un dedo se acerca desde el otro lado de un vidrio o un plástico.</p>
 
 <h3>Del capacitor a una frecuencia</h3>
 
@@ -198,7 +198,7 @@
 
 <p class="formula"><var>T</var> = 2 · <var>C</var> · Δ<var>V</var> / <var>I</var> &nbsp;→&nbsp; <var>f</var> = <var>I</var> / (2 · <var>C</var> · Δ<var>V</var>)</p>
 
-<p>Esto supone que la carga y la descarga usan la misma corriente, y los manuales hablan de una fuente de corriente fija sin más detalle. La conclusión no depende de eso: la frecuencia es inversamente proporcional a la capacidad. Si el dedo la aumenta, la rampa se vuelve más lenta y la frecuencia baja. Una nota de aplicación de Texas Instruments ubica estas frecuencias entre 100 kHz y 1 MHz, según el diseño.</p>
+<p>Esto supone que la carga y la descarga usan la misma corriente, y los manuales hablan de una fuente de corriente fija sin más detalle. La conclusión no depende de eso: si las corrientes fueran distintas, el período sería <var>C</var> · Δ<var>V</var> · (1/<var>I</var><sub>1</sub> + 1/<var>I</var><sub>2</sub>), y seguiría siendo proporcional a la capacidad, o sea la frecuencia sería inversamente proporcional a ella. Si el dedo la aumenta, la rampa se vuelve más lenta y la frecuencia baja. Una nota de aplicación de <span class="ref" data-nota="ti">Texas Instruments</span> ubica estas frecuencias entre 100 kHz y 1 MHz, según el diseño.<span class="nota-margen" popover id="nota-ti"><b>texas instruments</b>Fabricante estadounidense de semiconductores.</span></p>
 
 <figure class="diagrama" data-titulo="fig-5.6 interactivo">
   <canvas data-motor="per-tactil"></canvas>
@@ -226,13 +226,13 @@
 <p>El pad es un nodo de alta impedancia, así que también capta ruido. El S3 trae varias defensas en hardware, según su manual:</p>
 
 <ul>
-  <li>Un canal interno, T0, que no sale a ningún pin y mide el ruido del propio chip. Su valor se resta de las lecturas de los otros canales.</li>
-  <li>Un filtro de promedio (IIR) opcional sobre una serie de lecturas, para que un pico de ruido no dispare un falso toque.</li>
+  <li>Un canal interno, T0, que no sale a ningún pin y mide el ruido del propio micro. Su valor se resta de las lecturas de los otros canales.</li>
+  <li>Un filtro de promedio (<span class="ref" data-nota="iir">IIR</span>) opcional sobre una serie de lecturas, para que un pico de ruido no dispare un falso toque.<span class="nota-margen" popover id="nota-iir"><b>iir · infinite impulse response</b>Filtro recursivo; acá hace de promedio móvil.</span></li>
   <li>Tolerancia a la humedad, que mitiga el efecto de gotas chicas, y rechazo de agua, que detecta si la superficie del panel está cubierta de agua y corta la lectura.</li>
   <li>Hasta tres canales en modo de proximidad, para detectar un dedo que se acerca sin tocar.</li>
 </ul>
 
-<p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador ULP recorra los pads sin despertarla.</p>
+<p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads sin despertarla.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span></p>
 
 <div class="caja ojo">
   <h4>ojo: el táctil de Espressif tiene un límite documentado</h4>

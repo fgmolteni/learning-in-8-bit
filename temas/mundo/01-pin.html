@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 1: La frontera del chip</title>
+<title>Nivel 1: La frontera del micro</title>
 <meta name="description" content="Un pin es el punto donde la lógica interna se encuentra con el mundo exterior. Cada pieza de su celda resuelve un problema de esa frontera: niveles, sentido, ruido, velocidad y protección.">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Apuntes en bits">
-<meta property="og:title" content="Nivel 1: La frontera del chip">
+<meta property="og:title" content="Nivel 1: La frontera del micro">
 <meta property="og:description" content="Un pin es el punto donde la lógica interna se encuentra con el mundo exterior. Cada pieza de su celda resuelve un problema de esa frontera: niveles, sentido, ruido, velocidad y protección.">
 <link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../assets/icono-180.png">
@@ -21,7 +21,7 @@
 <main class="leccion">
 <header>
   <span class="nivel-chip" data-n="01">nivel 01, 19 min de lectura</span>
-  <h1>La frontera del chip</h1>
+  <h1>La frontera del micro</h1>
   <p class="bajada">Un pin es el punto donde la lógica interna se encuentra con el mundo exterior. Cada pieza de su celda resuelve un problema de esa frontera: niveles, sentido, ruido, velocidad y protección.</p>
 </header>
 
@@ -36,7 +36,7 @@
   </ul>
 </div>
 
-<p>Adentro del micro la lógica trabaja con transistores finos y corrientes mínimas. Afuera hay cables largos, pulsadores con <span class="ref" data-nota="rebote">rebote</span>, cargas que piden corriente y <span class="ref" data-nota="esd">descargas electrostáticas</span>.<span class="nota-margen" popover id="nota-rebote"><b>rebote · switch bounce</b>Al cerrarse, un contacto mecánico rebota y produce varios flancos en pocos milisegundos.</span><span class="nota-margen" popover id="nota-esd"><b>esd · electrostatic discharge</b>Pulso breve de alta tensión, como el chispazo al tocar un objeto cargado.</span> El pin es la frontera entre los dos mundos, y el circuito que la maneja es la <strong>celda de entrada y salida</strong>: hay una por cada pin.</p>
+<p>Adentro del micro la lógica trabaja con transistores finos y corrientes mínimas. Afuera hay cables largos, pulsadores con <span class="ref" data-nota="rebote">rebote</span>, cargas que piden corriente y <span class="ref" data-nota="esd">descargas electrostáticas</span>.<span class="nota-margen" popover id="nota-rebote"><b>rebote · switch bounce</b>Al cerrarse, un contacto mecánico rebota y produce varios flancos en un lapso breve.</span><span class="nota-margen" popover id="nota-esd"><b>esd · electrostatic discharge</b>Pulso breve de alta tensión, como el chispazo al tocar un objeto cargado.</span> El pin es la frontera entre los dos mundos, y el circuito que la maneja es la <strong>celda de entrada y salida</strong>: hay una por cada pin.</p>
 
 <p>Esa celda tiene que resolver cinco problemas: qué tensión cuenta como un 1 o un 0, cómo se pasa de hablar a escuchar, qué hacer con una señal lenta o ruidosa, cuánto se puede exigir antes de que el ruido propio la estropee, y cómo sobrevivir a lo que llegue de afuera. Cada sección de este nivel es una respuesta.</p>
 
@@ -48,11 +48,11 @@
 
 <p class="formula"><var>NM</var><sub>H</sub> = <var>V</var><sub>OH</sub> − <var>V</var><sub>IH</sub> &nbsp;&nbsp;&nbsp; <var>NM</var><sub>L</sub> = <var>V</var><sub>IL</sub> − <var>V</var><sub>OL</sub></p>
 
-<p>Calculemos los márgenes de dos micros reales con sus hojas de datos. El ESP32-S3 garantiza <var>V</var><sub>OH</sub> ≥ 0,8 · <var>V</var><sub>DD</sub>, <var>V</var><sub>IH</sub> ≥ 0,75 · <var>V</var><sub>DD</sub>, <var>V</var><sub>IL</sub> ≤ 0,25 · <var>V</var><sub>DD</sub> y <var>V</var><sub>OL</sub> ≤ 0,1 · <var>V</var><sub>DD</sub>. Con <var>V</var><sub>DD</sub> = 3,3 V:</p>
+<p>Calculemos los márgenes de dos micros reales con sus hojas de datos. El ESP32-S3 garantiza <var>V</var><sub>OH</sub> ≥ 0,8 · <var>V</var><sub>DD</sub> (la tensión de alimentación), <var>V</var><sub>IH</sub> ≥ 0,75 · <var>V</var><sub>DD</sub>, <var>V</var><sub>IL</sub> ≤ 0,25 · <var>V</var><sub>DD</sub> y <var>V</var><sub>OL</sub> ≤ 0,1 · <var>V</var><sub>DD</sub>. Con <var>V</var><sub>DD</sub> = 3,3 V:</p>
 
 <p class="formula"><var>NM</var><sub>H</sub> = 2,64 − 2,475 = 0,165 V &nbsp;&nbsp;&nbsp; <var>NM</var><sub>L</sub> = 0,825 − 0,33 = 0,495 V</p>
 
-<p>El RP2040 da valores absolutos a 3,3 V: <var>V</var><sub>OH</sub> ≥ 2,62 V, <var>V</var><sub>IH</sub> ≥ 2,0 V, <var>V</var><sub>IL</sub> ≤ 0,8 V y <var>V</var><sub>OL</sub> ≤ 0,5 V, lo que da <var>NM</var><sub>H</sub> = 0,62 V y <var>NM</var><sub>L</sub> = 0,30 V.</p>
+<p>El <span class="ref" data-nota="rp2040">RP2040</span> da valores absolutos a 3,3 V: <var>V</var><sub>OH</sub> ≥ 2,62 V, <var>V</var><sub>IH</sub> ≥ 2,0 V, <var>V</var><sub>IL</sub> ≤ 0,8 V y <var>V</var><sub>OL</sub> ≤ 0,5 V, lo que da <var>NM</var><sub>H</sub> = 0,62 V y <var>NM</var><sub>L</sub> = 0,30 V.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span></p>
 
 <figure class="diagrama" data-titulo="fig-1.1">
   <svg viewBox="0 0 640 296" role="img" aria-label="Niveles lógicos de salida y de entrada del ESP32-S3 y del RP2040 a 3,3 voltios, con sus márgenes de ruido del nivel alto y del nivel bajo y la zona prohibida entre VIL y VIH">
@@ -198,7 +198,7 @@
   <figcaption><b>fig 1.5</b>Con 45 kΩ y 100 pF, la línea tarda 6,2 µs en llegar al umbral de nivel alto. En el semiperíodo de un reloj de 400 kHz (1,25 µs, azul) solo llegó a 0,80 V. Una resistencia débil sirve para fijar un nivel, no para un bus rápido.</figcaption>
 </figure>
 
-<p>La conclusión es de diseño: las resistencias de pull internas fijan niveles de reposo. Para una línea que debe subir en cientos de nanosegundos hace falta una resistencia externa de un valor mucho menor, y el open-drain la usa.</p>
+<p>La conclusión es de diseño: las resistencias de pull internas fijan niveles de reposo. Para una línea que debe subir en cientos de nanosegundos hace falta una resistencia externa de un valor mucho menor, porque <var>τ</var> = <var>R</var> · <var>C</var> baja con <var>R</var>, y el open-drain la usa.</p>
 
 <div class="caja quiz" data-ok="2">
   <h4>repaso rápido</h4>
@@ -221,19 +221,19 @@
 
 <p class="formula"><var>V</var> = 3 nH · (20 mA / 2 ns) = 3 nH · 10<sup>7</sup> A/s = 30 mV por pin</p>
 
-<p>Si conmutan 8 pines a la vez, la masa interna rebota unos 240 mV respecto de la de la placa. Es casi la mitad del margen del nivel bajo del ESP32-S3 (495 mV) y más que su margen del nivel alto (165 mV): el ruido propio de los flancos rápidos se come el margen de la primera sección. La regla de diseño sale sola: la menor fuerza que cumpla con la velocidad que necesitás, y no conmutar muchos pines rápidos juntos.</p>
+<p>Si conmutan 8 pines a la vez, la masa interna rebota unos 240 mV respecto de la de la placa. Es casi la mitad del margen del nivel bajo del ESP32-S3 (495 mV) y más que su margen del nivel alto (165 mV): el ruido propio de los flancos rápidos se come el margen de ruido de la sección de niveles lógicos. La regla de diseño sale sola: la menor fuerza que cumpla con la velocidad que necesitás, y no conmutar muchos pines rápidos juntos.</p>
 
 <h2>Protección: descargas y latch-up</h2>
 
-<p>Una entrada tiene las compuertas de sus transistores conectadas directamente al mundo exterior, y un pulso de tensión alta, una descarga electrostática, puede perforar el óxido (Weste y Harris, sección 13.6.2). Por eso cada pin tiene diodos de protección hacia <var>V</var><sub>DD</sub> y hacia masa. Conducen si la tensión del <span class="ref" data-nota="pad">pad</span> supera <var>V</var><sub>DD</sub> aproximadamente en 0,7 V, o baja de −0,7 V, y derivan la corriente de la descarga hacia los rieles de alimentación, que son robustos.<span class="nota-margen" popover id="nota-pad"><b>pad</b>Contacto metálico del chip donde se conecta la celda de E/S con el exterior.</span> Una resistencia en serie, de entre 100 Ω y 3 kΩ, limita la corriente.</p>
+<p>Una entrada tiene las compuertas de sus transistores conectadas directamente al mundo exterior, y un pulso de tensión alta, una descarga electrostática, puede perforar el óxido (Weste y Harris, sección 13.6.2). Por eso cada pin tiene diodos de protección hacia <var>V</var><sub>DD</sub> y hacia masa. Conducen si la tensión del <span class="ref" data-nota="pad">pad</span> supera <var>V</var><sub>DD</sub> aproximadamente en 0,7 V, o baja de −0,7 V, y derivan la corriente de la descarga hacia los rieles de alimentación, que son robustos.<span class="nota-margen" popover id="nota-pad"><b>pad</b>Contacto metálico del chip donde se conecta la celda de E/S con el exterior.</span> Una resistencia en serie, de entre 100 Ω y 3 kΩ según la misma fuente, limita la corriente.</p>
 
-<p>Los fabricantes miden esa robustez con modelos de descarga normalizados. Los datasheets dan, por ejemplo, para el ESP32-S3 ±2000 V en el modelo del cuerpo humano (HBM) y ±1000 V en el del dispositivo cargado (CDM); para el ESP32, ±2000 V y ±500 V; y para el RP2040, 2 kV y 500 V (4 kV en los pines tolerantes).</p>
+<p>Los fabricantes miden esa robustez con modelos de descarga normalizados. Los datasheets dan, por ejemplo, para el ESP32-S3 ±2000 V en el modelo del cuerpo humano (<span class="ref" data-nota="hbm">HBM</span>) y ±1000 V en el del dispositivo cargado (<span class="ref" data-nota="cdm">CDM</span>); para el ESP32, ±2000 V y ±500 V; y para el RP2040, 2 kV y 500 V (4 kV en los pines tolerantes).<span class="nota-margen" popover id="nota-hbm"><b>hbm · human body model</b>Modelo de descarga de una persona cargada que toca el chip; norma JS-001.</span><span class="nota-margen" popover id="nota-cdm"><b>cdm · charged device model</b>Modelo de descarga del propio chip cargado que toca una superficie conectada a masa; norma JS-002.</span></p>
 
 <h3>Por qué los pines no toleran 5 V</h3>
 
 <p>Los diodos están pensados para descargas breves, no para corriente continua. Con un sensor de 5 V conectado a un pin de 3,3 V, el diodo de arriba conduce cuando el pin llega a unos 3,3 + 0,7 = 4,0 V. El 1 V que sobra cae sobre la resistencia de la fuente. Con 1 kΩ (valor supuesto), la corriente que entra de forma continua a la alimentación es (5 − 4,0) V / 1 kΩ = 1 mA.</p>
 
-<p>Esa corriente se suma a la de la alimentación de 3,3 V, que no está hecha para absorberla. Además puede disparar el <strong>latch-up</strong>: un <span class="ref" data-nota="tiristor">tiristor parásito</span> que forman los transistores del CMOS entre <var>V</var><sub>DD</sub> y masa.<span class="nota-margen" popover id="nota-tiristor"><b>tiristor · SCR</b>Estructura de cuatro capas p-n-p-n que, una vez disparada, conduce hasta que se corta la corriente.</span> Weste y Harris explican que los pads de E/S son especialmente susceptibles, porque las tensiones externas pueden caer por debajo de masa o subir por encima de <var>V</var><sub>DD</sub> (sección 7.3.6). Una vez disparado, cortocircuita la alimentación hasta que se corta. Los datasheets de los tres micros fijan la tensión máxima en un pin en <var>V</var><sub>DD</sub> más una fracción de volt: 0,3 V para <var>V</var><sub>IH</sub> en los de Espressif y 0,5 V como máximo absoluto en el RP2040. Para 5 V hace falta un divisor o un traductor de nivel.</p>
+<p>Esa corriente se suma a la de la alimentación de 3,3 V, que no está hecha para absorberla. Además puede disparar el <strong>latch-up</strong>: un <span class="ref" data-nota="tiristor">tiristor parásito</span> que forman los transistores del CMOS entre <var>V</var><sub>DD</sub> y masa.<span class="nota-margen" popover id="nota-tiristor"><b>tiristor · SCR</b>Estructura de cuatro capas p-n-p-n que, una vez disparada, conduce hasta que se corta la corriente.</span> Weste y Harris explican que los pads de E/S son especialmente susceptibles, porque las tensiones externas pueden caer por debajo de masa o subir por encima de <var>V</var><sub>DD</sub> (sección 7.3.6). Una vez disparado, cortocircuita la alimentación hasta que se corta. Los datasheets de los tres micros (ESP32, ESP32-S3 y RP2040) fijan la tensión máxima en un pin en <var>V</var><sub>DD</sub> más una fracción de volt: <var>V</var><sub>DD</sub> + 0,3 V como máximo de <var>V</var><sub>IH</sub> en los de Espressif y <var>V</var><sub>DD</sub> + 0,5 V como máximo absoluto en el RP2040. Para 5 V hace falta un divisor o un traductor de nivel.</p>
 
 <div class="caja quiz" data-ok="2">
   <h4>repaso</h4>
@@ -241,7 +241,7 @@
   <div class="opciones">
     <button type="button" data-por-que="Las resistencias de pull valen decenas de kiloohms: no conducen corrientes grandes. El problema está en los diodos de protección.">El pull-up interno de 45 kΩ no aguanta 5 V y se quema.</button>
     <button type="button" data-por-que="El nivel alto que reconoce la entrada es solo un mínimo: 5 V se leen como 1. El problema es la corriente que entra por el diodo.">El comparador no reconoce 5 V como un 1.</button>
-    <button type="button" data-por-que="El diodo hacia V_DD conduce de forma continua, empuja corriente a la alimentación de 3,3 V y puede disparar el latch-up, que corta V_DD contra masa.">El diodo de protección hacia V<sub>DD</sub> conduce de forma continua y puede disparar el latch-up.</button>
+    <button type="button" data-por-que="El diodo hacia VDD conduce de forma continua, empuja corriente a la alimentación de 3,3 V y puede disparar el latch-up, que corta VDD contra masa.">El diodo de protección hacia V<sub>DD</sub> conduce de forma continua y puede disparar el latch-up.</button>
   </div>
   <p class="feedback" aria-live="polite"></p>
 </div>
@@ -254,7 +254,7 @@
     <li>La histéresis evita el repiqueteo de una señal lenta o ruidosa, siempre que sea mayor que el ruido.</li>
     <li>Un pull de 45 kΩ con 100 pF tarda unos 6 µs en subir al nivel alto: fija niveles, no mueve un bus rápido.</li>
     <li>Los flancos rápidos hacen rebotar la masa por la inductancia de los terminales: la menor fuerza que cumpla.</li>
-    <li>Los diodos de protección son para descargas breves. Una tensión sostenida por encima de <var>V</var><sub>DD</sub> + 0,3 V entra por ellos y puede disparar el latch-up.</li>
+    <li>Los diodos de protección son para descargas breves. Una tensión sostenida por encima de <var>V</var><sub>DD</sub> + 0,7 V, aproximadamente, entra por ellos y puede disparar el latch-up.</li>
   </ul>
 </div>
 
@@ -269,7 +269,7 @@
     <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, capítulo 6 (niveles de fuerza de salida). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
     <li>Raspberry Pi Ltd. <em>RP2040 Datasheet</em>, sección 5.5.3 (especificaciones de los pines). <a href="https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf">datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf</a></li>
   </ol>
-  <p class="nota">La capacidad de 100 pF, el alambre de 3 mm, el cambio de 20 mA en 2 ns, los 8 pines simultáneos y la resistencia de 1 kΩ de la fuente de 5 V son supuestos para ilustrar los cálculos, no datos de un chip. El valor de 1 nH por milímetro es el que da Weste y Harris para un alambre típico. La aproximación de 0,7 V para los diodos de protección es de esa misma fuente («aproximadamente»). El ESP32-S3 no especifica su histéresis en el datasheet; el valor de 0,2 V es del RP2040.</p>
+  <p class="nota">La capacidad de 100 pF, el alambre de 3 mm, el cambio de 20 mA en 2 ns, los 8 pines simultáneos y la resistencia de 1 kΩ de la fuente de 5 V son supuestos para ilustrar los cálculos, no datos de un micro. El valor de 1 nH por milímetro es el que da Weste y Harris para un alambre típico. La aproximación de 0,7 V para los diodos de protección es de esa misma fuente («aproximadamente»). El ESP32-S3 no especifica su histéresis en el datasheet; el valor de 0,2 V es del RP2040.</p>
 </section>
 
 <div data-nav-niveles></div>

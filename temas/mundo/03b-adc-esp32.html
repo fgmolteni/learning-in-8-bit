@@ -29,7 +29,7 @@
   <h4>al terminar esta página vas a poder…</h4>
   <ul>
     <li>Calcular cuánto vale un LSB en volts para cada atenuación del ESP32-S3 y cuántos LSB de error deja el datasheet.</li>
-    <li>Explicar por qué la referencia interna obliga a calibrar cada chip.</li>
+    <li>Explicar por qué la referencia interna obliga a calibrar cada micro.</li>
     <li>Elegir entre controlador RTC y controlador digital según lo que haya que medir.</li>
     <li>Explicar por qué ADC2 falla con el Wi-Fi activo, y qué hace el árbitro.</li>
     <li>Leer un ENOB de datasheet y reconocer cuánto de la pérdida es ruido y cuánto es distorsión.</li>
@@ -39,7 +39,7 @@
 
 <h2>Qué trae cada micro</h2>
 
-<p>Los tres usan un SAR de 12 bits, la arquitectura que desarrolla la página anterior. Cambian la cantidad de convertidores, la velocidad y, sobre todo, qué tan lejos queda cada uno del ideal.</p>
+<p>Los tres usan un <span class="ref" data-nota="sar">SAR</span> de hasta 12 bits, la arquitectura que desarrolla la página anterior.<span class="nota-margen" popover id="nota-sar"><b>sar · successive approximation register</b>Convertidor por aproximaciones sucesivas: un bit por paso, con un solo comparador (nivel 3).</span> Cambian la cantidad de convertidores, la velocidad y, sobre todo, qué tan lejos queda cada uno del ideal.</p>
 
 <div class="tabla-scroll">
 <table>
@@ -54,7 +54,7 @@
 </table>
 </div>
 
-<p>Las cifras de <span class="ref" data-nota="espressif">Espressif</span> se midieron con 100 nF en el pin, a 25 °C, con una señal continua y el Wi-Fi apagado (en el ESP32, también el Bluetooth).<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> El ENOB del <span class="ref" data-nota="rp2040">RP2040</span> se midió a 250 kmuestras/s, con una senoide de 997 Hz y una referencia de bajo ruido en la placa.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span> Con la radio encendida o una fuente más ruidosa, los números empeoran.</p>
+<p>Las cifras de <span class="ref" data-nota="espressif">Espressif</span> se midieron con 100 nF en el pin, a 25 °C, con una señal continua y el Wi-Fi apagado (en el ESP32, también el Bluetooth).<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> El <span class="ref" data-nota="enob">ENOB</span> del <span class="ref" data-nota="rp2040">RP2040</span> se midió a 250 kmuestras/s, con una senoide de 997 Hz y una referencia de bajo ruido en la placa.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span><span class="nota-margen" popover id="nota-enob"><b>enob · effective number of bits</b>Bits efectivos: cuántos bits de un ADC valen de verdad, calculados con la SINAD (nivel 3).</span> Con la radio encendida o una fuente más ruidosa, los números empeoran.</p>
 
 <h2>La referencia y la atenuación</h2>
 
@@ -62,7 +62,7 @@
 
 <p class="formula"><var>V</var><sub>dato</sub> = (<var>V</var><sub>ref</sub> / <var>k</var>) · <var>dato</var> / 4095</p>
 
-<p>Esto dice algo útil: al atenuar, el <span class="ref" data-nota="fondo-escala">fondo de escala</span> sube a <var>V</var><sub>ref</sub> / <var>k</var>, pero el escalón de 1 LSB crece en la misma proporción.<span class="nota-margen" popover id="nota-fondo-escala"><b>full scale</b>La mayor tensión que el convertidor llega a medir.</span> Medir más rango cuesta resolución.</p>
+<p>Esto dice algo útil: al atenuar, el <span class="ref" data-nota="fondo-escala">fondo de escala</span> sube a <var>V</var><sub>ref</sub> / <var>k</var>, pero el escalón de 1 <span class="ref" data-nota="lsb">LSB</span> crece en la misma proporción.<span class="nota-margen" popover id="nota-fondo-escala"><b>full scale</b>La mayor tensión que el convertidor llega a medir.</span><span class="nota-margen" popover id="nota-lsb"><b>lsb · least significant bit</b>Valor del bit menos significativo: el escalón mínimo del convertidor.</span> Medir más rango cuesta resolución.</p>
 
 <p>Calculemos cuánto vale un LSB para cada atenuación, y cuántos LSB de error representa el error total calibrado del datasheet:</p>
 
@@ -96,17 +96,17 @@
 </table>
 </div>
 
-<p>Dos diferencias saltan a la vista. El ESP32 no mide bien cerca de 0 V: el rango útil empieza en 100 o 150 mV, que es la zona muerta de la curva de errores de la página anterior. Y su error calibrado es de 4 a 5 veces el del S3. Además, el datasheet avisa que con atenuación 3 y un resultado por encima de 3000 (unos 2450 mV) la exactitud empeora más de lo que indica la tabla.</p>
+<p>Dos diferencias saltan a la vista. El ESP32 no mide bien cerca de 0 V: el rango útil empieza en 100 o 150 mV, que es la zona muerta de la curva de errores de la página anterior. Y su error calibrado es de 4 a 5 veces el del S3. Además, el datasheet avisa que con atenuación 3 y una lectura por encima de 3000 cuentas (unos 2450 mV) la exactitud empeora más de lo que indica la tabla.</p>
 
 <p>Para medir una señal de 3,3 V ninguno de los dos alcanza: hace falta un divisor externo, con su capacitor, por lo visto en la sección de la fuente de la página anterior.</p>
 
-<h2>Calibración: por qué cada chip es distinto</h2>
+<h2>Calibración: por qué cada micro es distinto</h2>
 
-<p>Si el código es <var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub> y <var>V</var><sub>ref</sub> cambia de un chip a otro, entonces cambia la ganancia de todo el convertidor. Es lo que pasa: el datasheet del ESP32 dice que, por defecto, <strong>las lecturas difieren ±6 % entre chips</strong>. A 1 V de entrada, eso son ±60 mV. Ninguna especificación de linealidad arregla algo así si no se mide el chip.</p>
+<p>Si el código es <var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub> y <var>V</var><sub>ref</sub> cambia de un micro a otro, entonces cambia la ganancia de todo el convertidor. Es lo que pasa: el datasheet del ESP32 dice que, por defecto, <strong>las lecturas difieren ±6 % entre micros</strong>. A 1 V de entrada, eso son ±60 mV. Ninguna especificación de linealidad arregla algo así si no se mide el micro.</p>
 
 <p>Por eso los parámetros de calibración se graban en <span class="ref" data-nota="efuse">eFuses</span>.<span class="nota-margen" popover id="nota-efuse"><b>efuse · electronic fuse</b>Memoria que se programa una sola vez; guarda datos de fábrica, como los de calibración.</span> El ESP32 usa un esquema de ajuste lineal basado en esos datos; si los bits no están grabados, el driver usa un valor de referencia por defecto que da el usuario. El S3 usa un ajuste de curva, con parámetros que Espressif dice grabar durante la fabricación del módulo. Para los dos, la documentación de <span class="ref" data-nota="espidf">ESP-IDF</span> dice que el objetivo es minimizar el efecto de las distintas tensiones de referencia.<span class="nota-margen" popover id="nota-espidf"><b>esp-idf · Espressif IoT Development Framework</b>Entorno de desarrollo oficial de Espressif para sus micros.</span> No explica el algoritmo interno, y acá no lo voy a inventar.</p>
 
-<p>Lo que sí se ve en las tablas: tras calibrar, el error cae a ±5 mV en el S3 con 0 dB y a ±23 mV en el ESP32. Según la página anterior, una recta corrige offset y ganancia, y la INL necesita una curva. Que el S3 calibre con una curva sugiere que corrige parte de la INL, pero esa es una inferencia y no una afirmación de las fuentes.</p>
+<p>Lo que sí se ve en las tablas: tras calibrar, el error cae a ±5 mV en el S3 con 0 dB y a ±23 mV en el ESP32. Según la página anterior, una recta corrige offset y ganancia, y la <span class="ref" data-nota="inl">INL</span> necesita una curva.<span class="nota-margen" popover id="nota-inl"><b>inl · integral nonlinearity</b>No linealidad integral: cuánto se aparta la curva real de una recta (nivel 3).</span> Que el S3 calibre con una curva sugiere que corrige parte de la INL, pero esa es una inferencia y no una afirmación de las fuentes.</p>
 
 <h2>Cómo se dispara una conversión</h2>
 
@@ -138,7 +138,7 @@
   <li><strong>Controlador de potencia (<span class="ref" data-nota="pwdet">PWDET</span>):</strong> es de uso interno de la radio, para medir su potencia de transmisión.<span class="nota-margen" popover id="nota-pwdet"><b>pwdet · power detect</b>Circuito de la radio que mide su propia potencia de transmisión.</span></li>
 </ul>
 
-<p>El ESP32 permite además que sus dos SAR conviertan al mismo tiempo (muestreo simultáneo).</p>
+<p>El ESP32 permite además que sus dos SAR conviertan al mismo tiempo (muestreo simultáneo), lo que sirve para medir dos señales en el mismo instante.</p>
 
 <h2>ADC2 y la radio</h2>
 
@@ -162,17 +162,17 @@
 
 <h2>El sensor de temperatura: una tensión más que lee el ADC</h2>
 
-<p>El ESP32-S3 trae otro sensor que llega al mismo convertidor: uno de temperatura. No mide el ambiente. Según su datasheet, genera una tensión que varía con la temperatura, que el ADC convierte a un valor digital, y está pensado sobre todo para detectar los cambios de temperatura dentro del chip. El valor depende de la frecuencia del reloj y de la carga de las E/S, y en general la temperatura interna es mayor que la del ambiente.</p>
+<p>El ESP32-S3 trae otro sensor que llega al mismo convertidor: uno de temperatura. No mide el ambiente. Según su datasheet, genera una tensión que varía con la temperatura, que el ADC convierte a un valor digital, y está pensado sobre todo para detectar los cambios de temperatura dentro del micro. El valor depende de la frecuencia del reloj y de la carga de las E/S, y en general la temperatura interna es mayor que la del ambiente.</p>
 
 <h3>Cómo sale una tensión que depende de la temperatura</h3>
 
-<p>El principio es el de un transistor bipolar. Su tensión base-emisor es <var>V</var><sub>BE</sub> = (<var>k</var><var>T</var> / <var>q</var>) · ln(<var>I</var><sub>C</sub> / <var>I</var><sub>S</sub>), donde <var>I</var><sub>S</sub>, la corriente de saturación, cambia mucho con la temperatura y de un chip a otro. Por sí sola, <var>V</var><sub>BE</sub> es poco útil como termómetro.</p>
+<p>El principio es el de un transistor bipolar. Su tensión base-emisor es <var>V</var><sub>BE</sub> = (<var>k</var><var>T</var> / <var>q</var>) · ln(<var>I</var><sub>C</sub> / <var>I</var><sub>S</sub>), donde <var>I</var><sub>S</sub>, la corriente de saturación, cambia mucho con la temperatura y de un micro a otro. Por sí sola, <var>V</var><sub>BE</sub> es poco útil como termómetro.</p>
 
 <p>La salida es usar dos transistores con la misma corriente, uno de ellos formado por <var>N</var> transistores iguales en paralelo. La diferencia entre sus tensiones cancela <var>I</var><sub>S</sub>:</p>
 
 <p class="formula">Δ<var>V</var><sub>BE</sub> = (<var>k</var><var>T</var> / <var>q</var>) · ln(<var>N</var>)</p>
 
-<p>Esta tensión es proporcional a la temperatura absoluta (PTAT) y no depende de <var>I</var><sub>C</sub> ni de <var>I</var><sub>S</sub> (Kester, <em>Practical Design Techniques for Sensor Signal Conditioning</em>, sección 7). Cuánto vale se calcula directo. La constante <var>k</var> / <var>q</var> es 86,17 µV/K, y con <var>N</var> = 8 (supuesto):</p>
+<p>Esta tensión es proporcional a la temperatura absoluta (<span class="ref" data-nota="ptat">PTAT</span>) y no depende de <var>I</var><sub>C</sub> ni de <var>I</var><sub>S</sub> (Kester, <em>Practical Design Techniques for Sensor Signal Conditioning</em>, sección 7).<span class="nota-margen" popover id="nota-ptat"><b>ptat · proportional to absolute temperature</b>Tensión que crece en forma lineal con la temperatura absoluta, en kelvin.</span> Cuánto vale se calcula directo. La constante <var>k</var> / <var>q</var> es 86,17 µV/K, y con <var>N</var> = 8 (supuesto):</p>
 
 <p class="formula">Δ<var>V</var><sub>BE</sub> / <var>T</var> = 86,17 µV/K · ln 8 ≈ 179 µV/K</p>
 
@@ -203,7 +203,7 @@
 
 <div class="caja ojo">
   <h4>ojo: mide el silicio, no el ambiente</h4>
-  <p>El sensor está dentro del chip, y el chip se calienta con su propio consumo. Sirve para vigilar la salud térmica del micro, por ejemplo para bajar la velocidad si se calienta, no para saber la temperatura de una habitación. En el ESP32 clásico, la documentación de Espressif eliminó el sensor de temperatura (así figura en el historial de revisiones del datasheet y del manual), por lo que no hay que contar con él.</p>
+  <p>El sensor está dentro del micro, y el chip se calienta con su propio consumo. Sirve para vigilar la salud térmica del micro, por ejemplo para bajar la velocidad si se calienta, no para saber la temperatura de una habitación. En el ESP32 clásico, la documentación de Espressif eliminó el sensor de temperatura (así figura en el historial de revisiones del datasheet y del manual), por lo que no hay que contar con él.</p>
 </div>
 
 <h3>El RP2040: la tensión sola, sin diferencia</h3>
@@ -212,7 +212,7 @@
 
 <p class="formula"><var>T</var> = 27 − (<var>V</var><sub>ADC</sub> − 0,706) / 0,001721</p>
 
-<p>Como no usa la diferencia, <var>V</var><sub>BE</sub> y su pendiente varían de un chip a otro, y el datasheet advierte que, si hace falta exactitud, hay que calibrar. Y como mide una tensión, hereda lo que ya sabemos del ADC: el código es una fracción de la referencia. El datasheet da el ejemplo: una lectura de 891 corresponde a 20,1 °C, pero si la referencia fuera 1 % menor que 3,3 V, la misma lectura correspondería a 24,3 °C: un error de más de 4 °C por un 1 % de la referencia. Se puede comprobar: 891 · 3,3 / 4095 = 0,718 V da 27 − (0,718 − 0,706) / 0,001721 ≈ 20,1 °C, y con 3,267 V sale 0,711 V y 24,2 °C.</p>
+<p>Como no usa la diferencia, <var>V</var><sub>BE</sub> y su pendiente varían de un micro a otro, y el datasheet advierte que, si hace falta exactitud, hay que calibrar. Y como mide una tensión, hereda lo que ya sabemos del ADC: el código es una fracción de la referencia. El datasheet da el ejemplo: una lectura de 891 corresponde a 20,1 °C, pero si la referencia fuera 1 % menor que 3,3 V, la misma lectura correspondería a 24,3 °C: un error de más de 4 °C por un 1 % de la referencia. Se puede comprobar: 891 · 3,3 / 4095 = 0,718 V da 27 − (0,718 − 0,706) / 0,001721 ≈ 20 °C (el datasheet da 20,1 °C, con otros redondeos), y con 3,267 V sale 0,711 V y unos 24 °C.</p>
 
 <h2>El RP2040: un contraste</h2>
 
@@ -242,7 +242,7 @@
 
 <h3>De dónde salen esos errores</h3>
 
-<p>El DNL del RP2040 es plano y menor a 1 LSB, salvo en cuatro códigos: <strong>512, 1536, 2560 y 3584</strong>. Raspberry Pi atribuye el INL en diente de sierra y esos picos a un error en la escala de algunos capacitores internos, de apenas decenas de femtofaradios.</p>
+<p>El <span class="ref" data-nota="dnl">DNL</span> del RP2040 es plano y menor a 1 LSB, salvo en cuatro códigos: <strong>512, 1536, 2560 y 3584</strong>.<span class="nota-margen" popover id="nota-dnl"><b>dnl · differential nonlinearity</b>No linealidad diferencial: cuánto se aparta cada escalón de 1 LSB (nivel 3).</span> Raspberry Pi atribuye el INL en diente de sierra y esos picos a un error en la escala de algunos capacitores internos, de apenas decenas de femtofaradios.</p>
 
 <p>Es lo que adelantó la página anterior: la exactitud de un SAR con DAC de capacitores depende de qué tan bien se parecen los capacitores entre sí. Los cuatro códigos son múltiplos impares de 512: en cada uno se enciende el bit de peso 512 y los de abajo pasan de unos a ceros. Que justo ahí caigan los picos sugiere un capacitor de ese peso fuera de escala, pero es una lectura mía; el datasheet solo habla de «algunos capacitores internos».</p>
 
@@ -273,7 +273,7 @@
   <ul>
     <li>Los tres micros usan un SAR de 12 bits, pero ninguno tiene 12 bits de exactitud: con 0 dB, el error calibrado del S3 equivale a un ADC de unos 7 bits.</li>
     <li>Atenuar suma rango y resta resolución: el LSB crece como 1/<var>k</var>.</li>
-    <li>La referencia varía de un chip a otro (±6 % en el ESP32): la calibración de fábrica es parte del convertidor.</li>
+    <li>La referencia varía de un micro a otro (±6 % en el ESP32): la calibración de fábrica es parte del convertidor.</li>
     <li>ADC2 comparte su núcleo con la radio y un árbitro puede cortar tu conversión. Con el Wi-Fi activo, usá ADC1.</li>
     <li>El ENOB se calcula con la SINAD: la distorsión de la INL también cuesta bits (RP2040: 9,9 contra 8,7).</li>
     <li>El sensor de temperatura integrado usa ΔV<sub>BE</sub> = (<var>k</var><var>T</var>/<var>q</var>) · ln <var>N</var> y mide el silicio, no el ambiente. Sale como una tensión más, y hereda los límites del ADC.</li>

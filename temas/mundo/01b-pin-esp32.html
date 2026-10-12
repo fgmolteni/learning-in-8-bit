@@ -25,7 +25,7 @@
 <header>
   <span class="nivel-chip" data-n="01b">nivel 01, componentes, 16 min de lectura</span>
   <h1>Los pines del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="01-pin.html">«La frontera del chip»</a>: las cifras de sus pines, la matriz que conecta señales con pines, los pines que deciden el arranque y los que sobreviven al sueño profundo. Todo viene de sus hojas de datos y manuales.</p>
+  <p class="bajada">Cómo aplican tres micros lo que explica <a href="01-pin.html">«La frontera del micro»</a>: las cifras de sus pines, la matriz que conecta señales con pines, los pines que deciden el arranque y los que sobreviven al sueño profundo. Todo viene de sus hojas de datos y manuales.</p>
 </header>
 
 <div class="caja objetivos">
@@ -76,7 +76,7 @@
 <p>Un micro tiene muchos más periféricos que pines. La solución son dos capas de conmutación entre las señales de los periféricos y los pines.</p>
 
 <ul>
-  <li><strong>El IO MUX</strong> es un multiplexor junto a cada pin. Elige entre unas pocas funciones fijas de ese pin o la función GPIO, que a su vez puede venir de la matriz. La ruta directa por el IO MUX no pasa por la sincronización de la matriz.</li>
+  <li><strong>El IO MUX</strong> es un multiplexor junto a cada pin. Elige entre unas pocas funciones fijas de ese pin o la función <span class="ref" data-nota="gpio">GPIO</span>, que a su vez puede venir de la matriz.<span class="nota-margen" popover id="nota-gpio"><b>gpio · general-purpose input/output</b>Pin que el programa puede usar como entrada o salida digital.</span> La ruta directa por el IO MUX no pasa por la sincronización de la matriz.</li>
   <li><strong>La matriz de GPIO</strong> es un conmutador «todos con todos». En el ESP32, cada una de las 162 entradas de periférico puede tomar su señal de cualquier pin, y la salida de cada uno de los 34 pines puede venir de una de 176 señales de periférico. En el ESP32-S3 son 175 entradas y 184 salidas para 45 pines.</li>
 </ul>
 
@@ -122,7 +122,7 @@
 </table>
 </div>
 
-<p>Hay además un requisito de tiempo en el ESP32: los niveles tienen que estar estables antes de que suba el reset (tiempo de preparación mínimo de 0 ms) y mantenerse al menos 1 ms después, porque en ese lapso el micro lee los pines.</p>
+<p>Hay además un requisito de tiempo en el ESP32: los niveles tienen que estar estables antes de que suba el reset (tiempo de preparación, o setup, mínimo de 0 ms) y mantenerse al menos 1 ms después, porque en ese lapso el micro lee los pines.</p>
 
 <div class="caja ojo">
   <h4>ojo: el pin de la tensión de la flash</h4>
@@ -144,7 +144,7 @@
 
 <p>No todos los pines están a disposición. En el ESP32, los GPIO34 a 39 son solo de entrada y no tienen driver de salida ni resistencias de pull. Un pulsador a masa en uno de ellos sin resistencia externa deja el pin flotando cuando está suelto: lee ruido y da pulsaciones fantasma.</p>
 
-<p>En el ESP32-S3, el datasheet clasifica los pines por prioridad de uso. Se deben usar con cuidado los strapping pins (GPIO0, 3, 45 y 46), los del USB Serial/JTAG (GPIO19 y 20), los del <span class="ref" data-nota="jtag">JTAG</span> (GPIO39 a 42) y los de la <span class="ref" data-nota="uart0">UART0</span> (GPIO43 y 44).<span class="nota-margen" popover id="nota-jtag"><b>jtag · Joint Test Action Group</b>Interfaz estándar, IEEE 1149.1, para probar y depurar chips.</span><span class="nota-margen" popover id="nota-uart0"><b>uart · universal asynchronous receiver-transmitter</b>Puerto serie asíncrono; la UART0 suele ser la de la consola.</span> Los GPIO26 a 32 están asignados al SPI de la flash y la <span class="ref" data-nota="psram">PSRAM</span> y no se recomienda usarlos.<span class="nota-margen" popover id="nota-psram"><b>psram · pseudo-static RAM</b>Memoria RAM externa de bajo costo, para datos grandes.</span> Los GPIO33 a 37 sirven de GPIO solo si el micro no está conectado a una flash o PSRAM en modo SPI de 8 líneas. En el ESP32, el datasheet multiplexa los GPIO6 a 11 con el SPI de la flash.</p>
+<p>En el ESP32-S3, el datasheet clasifica los pines por prioridad de uso. Se deben usar con cuidado los strapping pins (GPIO0, 3, 45 y 46), los del <span class="ref" data-nota="usb">USB</span> Serial/JTAG (GPIO19 y 20), los del <span class="ref" data-nota="jtag">JTAG</span> (GPIO39 a 42) y los de la <span class="ref" data-nota="uart0">UART0</span> (GPIO43 y 44).<span class="nota-margen" popover id="nota-jtag"><b>jtag · Joint Test Action Group</b>Interfaz estándar, IEEE 1149.1, para probar y depurar chips.</span><span class="nota-margen" popover id="nota-uart0"><b>uart · universal asynchronous receiver-transmitter</b>Puerto serie asíncrono; la UART0 suele ser la de la consola.</span><span class="nota-margen" popover id="nota-usb"><b>usb · universal serial bus</b>Bus serie estándar que conecta un micro con una computadora y otros periféricos.</span> Los GPIO26 a 32 están asignados al SPI de la flash y la <span class="ref" data-nota="psram">PSRAM</span> y no se recomienda usarlos.<span class="nota-margen" popover id="nota-psram"><b>psram · pseudo-static RAM</b>Memoria RAM externa de bajo costo, para datos grandes.</span> Los GPIO33 a 37 sirven de GPIO solo si el micro no está conectado a una flash o PSRAM en modo SPI de 8 líneas. En el ESP32, el datasheet multiplexa los GPIO6 a 11 con el SPI de la flash.</p>
 
 <h2>El dominio RTC</h2>
 
@@ -154,7 +154,7 @@
 
 <h2>El RP2040: un contraste</h2>
 
-<p>El RP2040 tiene 30 GPIO. Cada uno elige su función con un campo de selección propio: es el equivalente de la función del IO MUX. Las cifras de su tabla muestran un perfil de márgenes distinto, con la histéresis especificada, y el fabricante publica además la corriente total que pueden entregar y absorber todos los pines juntos: 50 mA de cada lado.</p>
+<p>El RP2040 tiene 30 GPIO. Cada uno elige su función con un campo de selección propio: cumple un papel parecido al de la función del IO MUX. Las cifras de su tabla muestran un perfil de márgenes distinto, con la histéresis especificada, y el fabricante publica además la corriente total que pueden entregar y absorber todos los pines juntos: 50 mA de cada lado.</p>
 
 <div class="caja clave">
   <h4>para llevar</h4>

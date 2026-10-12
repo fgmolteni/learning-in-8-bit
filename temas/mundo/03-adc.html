@@ -82,7 +82,7 @@
 
 <p class="formula"><var>f</var><sub>máx</sub> = (<var>q</var> / 8 µs) / (π · <var>q</var> · 2<sup><var>N</var></sup>) = 125 000 / (π · 4096) ≈ 9,7 Hz</p>
 
-<p>Para un ADC de 12 bits y 8 µs, una senoide de más de 9,7 Hz ya produce errores, aunque el ADC pueda convertir 100 000 veces por segundo. El problema no es la velocidad de conversión: es que la entrada cambia <em>mientras</em> se convierte.</p>
+<p>Para un ADC de 12 bits y 8 µs, una senoide de más de 9,7 Hz ya produce errores, aunque el ADC pueda convertir unas 125 000 veces por segundo. El problema no es la velocidad de conversión: es que la entrada cambia <em>mientras</em> se convierte.</p>
 
 <p>La solución es el <strong>circuito de muestreo y retención</strong> (<em>sample-and-hold</em>): una llave que conecta la entrada a un capacitor y se abre para dejar la tensión atrapada mientras el convertidor trabaja. La llave se cierra durante la <strong>adquisición</strong> (el capacitor sigue a la entrada) y se abre durante la <strong>retención</strong> (el valor queda fijo).</p>
 
@@ -165,7 +165,7 @@
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th>f<sub>s</sub></th><th>fin de la transición (f<sub>s</sub> − f<sub>a</sub>)</th><th>octavas disponibles</th><th>polos para 60 dB (≈ 10 por octava)</th></tr></thead>
+  <thead><tr><th>f<sub>s</sub></th><th>fin de la transición (f<sub>s</sub> − f<sub>a</sub>)</th><th>octavas disponibles</th><th>polos necesarios (10 ÷ octavas)</th></tr></thead>
   <tbody>
     <tr><td>2,5 kHz</td><td>1,5 kHz</td><td>0,58</td><td>18</td></tr>
     <tr><td>4 kHz</td><td>3 kHz</td><td>1,58</td><td>7</td></tr>
@@ -230,6 +230,8 @@
 
 <p class="formula">SNR = 20 log<sub>10</sub> [ (<var>q</var> · 2<sup><var>N</var></sup> / 2√2) / (<var>q</var> / √12) ] = 20 log<sub>10</sub> 2<sup><var>N</var></sup> + 20 log<sub>10</sub> √(3/2) = 6,02 · <var>N</var> + 1,76 dB</p>
 
+<p>El paso intermedio es √12 / (2√2) = √(12/8) = √(3/2).</p>
+
 <p>Dos lecturas valen la pena. Cada bit agrega 6,02 dB, porque cada bit duplica el número de niveles. Y para 12 bits da 6,02 · 12 + 1,76 ≈ 74 dB: lo máximo que un ADC de 12 bits puede lograr con una senoide de escala completa.</p>
 
 <h3>Bits efectivos: la fórmula al revés</h3>
@@ -278,18 +280,18 @@
 
 <p>¿Por qué alcanzan N pasos? Cada comparación descarta la mitad de los valores posibles. Con 2<sup>N</sup> valores, después de N mitades queda uno solo: es una búsqueda binaria. (Las fuentes dicen «N pasos para N bits» pero no lo demuestran; el argumento es nuestro.)</p>
 
-<p>Hay un detalle fácil de pasar por alto: la balanza hay que compensarla en la mitad de la pesa más chica. Sin ese desplazamiento, el error de cuantización sería de un LSB entero en lugar de ½ LSB, porque el código siempre redondea hacia abajo.</p>
+<p>Hay un detalle fácil de pasar por alto: a la balanza hay que darle un desplazamiento de la mitad de la pesa más chica, o sea de ½ LSB. Sin ese desplazamiento, el error de cuantización sería de un LSB entero en lugar de ½ LSB, porque el código siempre redondea hacia abajo.</p>
 
 <div class="caja dato">
   <h4>dato: una idea de 1556</h4>
-  <p>El algoritmo del SAR es el de un acertijo de pesadas que Tartaglia resolvió en 1556 con pesas de 1, 2, 4, 8, 16 y 32 libras: con una balanza de dos platillos se pesa cualquier número entero de libras hasta 63. Los primeros convertidores que lo usaban se llamaban «codificadores secuenciales» o «de realimentación»; el nombre SAR llegó en los años 70, cuando salieron los primeros circuitos integrados de registro de aproximaciones sucesivas.</p>
+  <p>El algoritmo del SAR es el de un acertijo de pesadas que Tartaglia resolvió en 1556 (Kester, MT-021) con pesas de 1, 2, 4, 8, 16 y 32 libras: con una balanza de dos platillos se pesa cualquier número entero de libras hasta 63. Los primeros convertidores que lo usaban se llamaban «codificadores secuenciales» o «de realimentación»; el nombre SAR llegó en los años 70, cuando salieron los primeros circuitos integrados de registro de aproximaciones sucesivas.</p>
 </div>
 
 <h3>El DAC de capacitores</h3>
 
 <p>En el circuito, las «pesas» son tensiones que genera un <strong>DAC</strong> (convertidor digital-analógico) interno. En un SAR integrado ese DAC es un arreglo de capacitores pesados en potencias de dos: C, C/2, C/4, …, más un capacitor extra del valor del LSB que hace que el total sea 2C. Las placas de arriba se unen en un nodo que va al comparador.</p>
 
-<p>Ese mismo arreglo es el capacitor de muestreo, así que el circuito de muestreo y retención del apartado anterior y el DAC del SAR son la misma pieza. Los capacitores de un mismo chip se parecen mucho entre sí y siguen juntos la temperatura, con menos de 1 <span class="ref" data-nota="ppm">ppm</span>/°C de diferencia.<span class="nota-margen" popover id="nota-ppm"><b>ppm · parts per million</b>Una parte en un millón: 1 ppm/°C es una millonésima de cambio por cada grado.</span> Por eso la relación entre ellos, que es lo que importa, es muy estable.</p>
+<p>Ese mismo arreglo es el capacitor de muestreo, así que el circuito de muestreo y retención del apartado anterior y el DAC del SAR son la misma pieza. Los capacitores de un mismo chip se parecen mucho entre sí y siguen juntos la temperatura, con menos de 1 <span class="ref" data-nota="ppm">ppm</span>/°C de diferencia (Kester, MT-021).<span class="nota-margen" popover id="nota-ppm"><b>ppm · parts per million</b>Una parte en un millón: 1 ppm/°C es una millonésima de cambio por cada grado.</span> Por eso la relación entre ellos, que es lo que importa, es muy estable.</p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
   <svg viewBox="0 0 640 272" role="img" aria-label="DAC de capacitores de un SAR de 4 bits: capacitores de 8C, 4C, 2C, C y C de terminación con las placas de arriba unidas al comparador; cada placa de abajo tiene una llave a la entrada, a la referencia o a masa; la lógica SAR lee el comparador y mueve las llaves">
@@ -314,7 +316,7 @@
   <figcaption><b>fig 3.4</b>Conversión paso a paso. Cada barra es el valor que prueba el DAC interno; la línea horizontal es la tensión de entrada. Si la barra queda por debajo de la línea, el bit se conserva (barra llena); si la pasa, se descarta (tramado). Abajo se arma el resultado, del bit más significativo al menos significativo. Movés la entrada con el deslizador.</figcaption>
 </figure>
 
-<p>El <strong>comparador</strong> es la única pieza con ganancia del lazo. Tiene un preamplificador que reduce el offset y un <span class="ref" data-nota="latch">latch regenerativo</span> que amplifica una diferencia de milivolts hasta un 0 o un 1 lógico.<span class="nota-margen" popover id="nota-latch"><b>regenerative latch</b>Circuito con realimentación positiva que amplifica una diferencia mínima hasta un 0 o un 1 lógico y lo retiene.</span> Cuando la diferencia es de una fracción de LSB, tarda más en decidir y su propio ruido pesa: por eso los últimos bits son los más frágiles.</p>
+<p>El <strong>comparador</strong> es la única pieza con ganancia del lazo. Tiene un preamplificador que reduce el offset (el error de continua) y un <span class="ref" data-nota="latch">latch regenerativo</span> que amplifica una diferencia de milivolts hasta un 0 o un 1 lógico.<span class="nota-margen" popover id="nota-latch"><b>regenerative latch</b>Circuito con realimentación positiva que amplifica una diferencia mínima hasta un 0 o un 1 lógico y lo retiene.</span> Cuando la diferencia es de una fracción de LSB, tarda más en decidir y su propio ruido pesa: por eso los últimos bits son los más frágiles.</p>
 
 <h3>El precio de cada familia</h3>
 
@@ -339,7 +341,7 @@
 
 <p>Dijimos que durante la adquisición el capacitor sigue a la entrada. Falta ver con qué rapidez lo hace, porque no se carga a través de un cable ideal sino a través de la resistencia de la fuente, y eso impone un tiempo mínimo.</p>
 
-<p>El circuito es un resistor <var>R</var> (la fuente más la resistencia de la llave) que carga un capacitor <var>C</var> hasta <var>V</var><sub>in</sub>. La tensión del capacitor sigue una exponencial, con <var>τ</var> = <var>R</var> · <var>C</var>:</p>
+<p>El circuito es un resistor <var>R</var> (la fuente más la resistencia de la llave) que carga un capacitor <var>C</var> hasta <var>V</var><sub>in</sub>. La tensión del capacitor sigue una exponencial, con la constante de tiempo <var>τ</var> = <var>R</var> · <var>C</var>:</p>
 
 <p class="formula"><var>v</var>(<var>t</var>) = <var>V</var><sub>in</sub> · (1 − e<sup>−<var>t</var>/<var>τ</var></sup>)</p>
 
@@ -364,15 +366,15 @@
 
 <p>Este planteo es el mismo que usa Walsh en Analog Dialogue: asentamiento exponencial, con el número de constantes de tiempo igual al logaritmo natural del cociente entre el escalón a asentar y el error permitido, ½ LSB. Si el escalón es la escala completa, ese logaritmo es ln(2<sup><var>N</var></sup> · LSB / (½ LSB)) = ln 2<sup><var>N</var>+1</sup> = (<var>N</var> + 1) · ln 2, la expresión de arriba.</p>
 
-<p>Es el peor caso: la entrada acaba de cambiar de un extremo al otro, por ejemplo al pasar de un canal a otro en un multiplexor. Walsh agrega una precisión útil: con un capacitor externo de unos pocos nanofarads, el escalón que la fuente debe reponer es el que provoca la conmutación del DAC interno (del orden de 100 mV como mínimo en señales lentas), y no la escala completa.</p>
+<p>Es el peor caso: la entrada acaba de cambiar de un extremo al otro, por ejemplo al pasar de un canal a otro en un <span class="ref" data-nota="multiplexor">multiplexor</span>.<span class="nota-margen" popover id="nota-multiplexor"><b>multiplexer</b>Circuito que elige una de varias entradas según una señal de control.</span> Walsh agrega una precisión útil: con un capacitor externo de unos pocos nanofarads, el escalón que la fuente debe reponer es el que provoca la conmutación del DAC interno (del orden de 100 mV como mínimo en señales lentas), y no la escala completa.</p>
 
 <h3>Qué hacer con esto</h3>
 
 <p>Hay dos consecuencias prácticas, y las dos salen de lo mismo:</p>
 
 <ul>
-  <li><strong>Impedancia de la fuente.</strong> Cuanto mayor es <var>R</var>, mayor es <var>τ</var>. Con fuentes de alta impedancia hay que alargar el muestreo o bajar <var>R</var> con un seguidor con amplificador operacional.</li>
-  <li><strong>Un capacitor en el pin.</strong> Un capacitor externo mucho mayor que el interno (del orden de 2<sup><var>N</var>+1</sup> veces) le presta carga al interno durante la adquisición sin variar su tensión de forma apreciable. La fuente repone esa carga despacio, entre muestras. Sirve para señales lentas, y la resistencia de la fuente con ese capacitor forma además un pasabajos que ayuda contra el solapamiento.</li>
+  <li><strong>Impedancia de la fuente.</strong> Cuanto mayor es <var>R</var>, mayor es <var>τ</var>. Con fuentes de alta impedancia hay que alargar el muestreo o bajar <var>R</var> con un seguidor con <span class="ref" data-nota="opamp">amplificador operacional</span>.<span class="nota-margen" popover id="nota-opamp"><b>amplificador operacional</b>Amplificador de ganancia muy alta; como seguidor copia su entrada con una impedancia de salida baja.</span></li>
+  <li><strong>Un capacitor en el pin.</strong> Un capacitor externo mucho mayor que el interno (del orden de 2<sup><var>N</var>+1</sup> veces, para que al repartir carga con el interno su tensión cambie menos de ½ LSB) le presta carga al interno durante la adquisición sin variar su tensión de forma apreciable. La fuente repone esa carga despacio, entre muestras. Sirve para señales lentas, y la resistencia de la fuente con ese capacitor forma además un pasabajos que ayuda contra el solapamiento.</li>
 </ul>
 
 <div class="caja quiz" data-ok="0">
@@ -398,7 +400,7 @@
 </figure>
 
 <ul>
-  <li><strong>Error de offset:</strong> cuánto se aparta <var>K</var> de su valor ideal. La recta queda corrida en paralelo. Si es positivo, las tensiones pequeñas leen cero.</li>
+  <li><strong>Error de offset:</strong> cuánto se aparta <var>K</var> de su valor ideal. La recta queda corrida en paralelo. Si es negativo, las tensiones pequeñas leen cero.</li>
   <li><strong>Error de ganancia:</strong> cuánto se aparta <var>G</var> de su valor ideal, en general en porcentaje. La pendiente es distinta y el error crece hacia el fondo de escala.</li>
 </ul>
 
@@ -411,12 +413,12 @@
 
 <div class="caja ojo">
   <h4>ojo: dos formas de trazar la recta de la INL</h4>
-  <p>La recta de <strong>extremos</strong> va del origen al fondo de escala. La de <strong>mejor ajuste</strong> pasa por el medio de la curva y da, en general, solo el 50 % del valor. La segunda produce hojas de datos más lindas pero sirve menos para presupuestar errores de medición. Antes de comparar dos ADC conviene ver qué método usó cada fabricante.</p>
+  <p>La recta de <strong>extremos</strong> va del origen al fondo de escala. La de <strong>mejor ajuste</strong> pasa por el medio de la curva y da, en general, solo el 50 % del valor (Kester, MT-010). La segunda produce hojas de datos más lindas pero sirve menos para presupuestar errores de medición. Antes de comparar dos ADC conviene ver qué método usó cada fabricante.</p>
 </div>
 
 <h3>Qué significan esos números en volts</h3>
 
-<p>Supongamos un ADC de 12 bits sobre 3,3 V con una INL de ±4 LSB (valor ilustrativo, no de un chip). Un LSB es 0,81 mV, así que el error de linealidad llega a ±4 · 0,81 mV ≈ ±3,2 mV.</p>
+<p>Supongamos un ADC de 12 bits sobre 3,3 V con una INL de ±4 LSB (valor ilustrativo, no de un micro). Un LSB es 0,81 mV, así que el error de linealidad llega a ±4 · 0,81 mV ≈ ±3,2 mV.</p>
 
 <p>En fracción de la escala son ±0,1 %: un intervalo de incertidumbre de 8 LSB / 4096 ≈ 0,2 %, que es el escalón de un ADC de 9 bits (1/512 ≈ 0,2 %). El cálculo responde una pregunta concreta, ¿para qué sirven los bits de más? En exactitud estática, aquí, para nada: los últimos 3 bits dan resolución (el ADC distingue cambios finos) pero no exactitud (el valor absoluto es incierto).</p>
 
@@ -471,7 +473,7 @@
     <li>Walsh, A. <em>Front-End Amplifier and RC Filter Design for a Precision SAR Analog-to-Digital Converter</em>. Analog Dialogue 46-12, Analog Devices. <a href="https://www.analog.com/library/analogdialogue/archives/46-12/sar_front_end.html">analog.com/library/analogdialogue/archives/46-12/sar_front_end.html</a></li>
     <li>Valvano, J. <em>Embedded Systems: Introduction to Arm Cortex-M Microcontrollers</em>, cap. 14: ADC, adquisición de datos y control. Universidad de Texas en Austin. <a href="http://users.ece.utexas.edu/~valvano/Volume1/E-Book/C14_ADCdataAcquisition.htm">users.ece.utexas.edu/~valvano/Volume1/E-Book/C14_ADCdataAcquisition.htm</a></li>
   </ol>
-  <p class="nota">Los valores de la fuente de 50 kΩ, la llave de 1 kΩ, el capacitor de 15 pF y la INL de ±4 LSB son supuestos para ilustrar el cálculo, no datos de un chip. La tabla de polos usa la pendiente asintótica de 6 dB por octava por polo, con la regla de Kester (MT-002). El argumento de que la búsqueda binaria alcanza con N pasos es propio. El tiempo de un flash no se da en microsegundos porque depende del retardo de los comparadores.</p>
+  <p class="nota">El ADC de 8 µs es el ejemplo de MT-002, y el reloj de 1 MHz de la tabla del precio de cada familia y la senoide de 900 Hz son ilustrativos. Los valores de la fuente de 50 kΩ, la llave de 1 kΩ, el capacitor de 15 pF y la INL de ±4 LSB son supuestos para ilustrar el cálculo, no datos de un micro. La tabla de polos usa la pendiente asintótica de 6 dB por octava por polo, con la regla de Kester (MT-002). El argumento de que la búsqueda binaria alcanza con N pasos es propio. El tiempo de un flash no se da en microsegundos porque depende del retardo de los comparadores.</p>
 </section>
 
 <div data-nav-niveles></div>

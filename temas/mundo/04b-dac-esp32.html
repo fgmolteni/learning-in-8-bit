@@ -63,13 +63,13 @@
 
 <h3>La referencia es la alimentación: el ruido pasa a la salida</h3>
 
-<p>Como la referencia es <var>V</var><sub>DD</sub>, cualquier variación de la alimentación se multiplica por el código, igual que el código por la referencia en la medición ratiométrica del ADC. A mitad de escala, <var>D</var> / 255 ≈ ½, así que una variación de la alimentación aparece a la salida reducida a la mitad.</p>
+<p>Como la referencia es <var>V</var><sub>DD</sub>, cualquier variación de la alimentación se multiplica por el código, igual que el código por la referencia en la medición <span class="ref" data-nota="ratiometrica">ratiométrica</span> del ADC.<span class="nota-margen" popover id="nota-ratiometrica"><b>medición ratiométrica</b>Medición cuyo resultado depende de la relación con la referencia, y no de su valor absoluto.</span> A mitad de escala, <var>D</var> / 255 ≈ ½, así que una variación de la alimentación aparece a la salida reducida a la mitad.</p>
 
 <p>Un ejemplo con un valor supuesto: si <var>V</var><sub>DD</sub> tiene 50 mV de ruido, a mitad de escala la salida recibe unos 25 mV, o sea 25 / 12,9 ≈ 2 LSB. Es más que el escalón: en un DAC con referencia de la alimentación, el <span class="ref" data-nota="desacople">desacople</span> de <var>V</var><sub>DD</sub> es parte de la exactitud.<span class="nota-margen" popover id="nota-desacople"><b>decoupling</b>Capacitores cerca del chip que dan carga rápida y filtran el ruido de la alimentación.</span></p>
 
 <h3>Quién le da el valor</h3>
 
-<p>El valor del DAC puede venir de tres fuentes, según el manual: el generador de coseno, un registro que escribe el programa, o el DMA. La conversión se dispara por software o por la máquina de estados del ADC, y el coprocesador <span class="ref" data-nota="ulp">ULP</span> puede controlarlo por completo.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span> Con el DMA, el reloj y los datos del <span class="ref" data-nota="i2s">I2S</span> se conectan al DAC, y se reproducen muestras de 8 bits desde la RAM sin la CPU.<span class="nota-margen" popover id="nota-i2s"><b>i2s · Inter-IC Sound</b>Bus serie para audio digital, definido por Philips.</span></p>
+<p>El valor del DAC puede venir de tres fuentes, según el manual: el generador de coseno, un registro que escribe el programa, o el <span class="ref" data-nota="dma">DMA</span>.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span> La conversión se dispara por software o por la máquina de estados del <span class="ref" data-nota="adc">ADC</span>, y el coprocesador <span class="ref" data-nota="ulp">ULP</span> puede controlarlo por completo.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span><span class="nota-margen" popover id="nota-adc"><b>adc · analog-to-digital converter</b>Conversor analógico-digital: convierte una tensión en un número (nivel 3).</span> Con el DMA, el reloj y los datos del <span class="ref" data-nota="i2s">I2S</span> se conectan al DAC, y se reproducen muestras de 8 bits desde la RAM sin la CPU.<span class="nota-margen" popover id="nota-i2s"><b>i2s · Inter-IC Sound</b>Bus serie para audio digital, definido por Philips.</span></p>
 
 <h2>El generador de coseno</h2>
 
@@ -104,17 +104,17 @@
 
 <h2>Sin DAC en el ESP32-S3</h2>
 
-<p>El ESP32-S3 no tiene DAC en su datasheet ni en su manual. Para generar una tensión analógica hay tres caminos:</p>
+<p>El ESP32-S3 no tiene <span class="ref" data-nota="dac">DAC</span> en su datasheet ni en su manual.<span class="nota-margen" popover id="nota-dac"><b>dac · digital-to-analog converter</b>Conversor digital-analógico: convierte un número en una tensión (nivel 4).</span> Para generar una tensión analógica hay tres caminos:</p>
 
 <ul>
-  <li><strong>PWM con un filtro RC.</strong> El del <a href="02-temporizadores-pwm.html">nivel 2</a>. Es lo más simple, con el costo de asentamiento que calcula el nivel 4.</li>
+  <li><strong><span class="ref" data-nota="pwm">PWM</span> con un filtro RC.<span class="nota-margen" popover id="nota-pwm"><b>pwm · pulse-width modulation</b>Pulsos de ancho variable a frecuencia fija: el valor medio sigue el ancho.</span></strong> El del <a href="02-temporizadores-pwm.html">nivel 2</a>. Es lo más simple, con el costo de asentamiento que calcula el nivel 4.</li>
   <li><strong>El modulador sigma-delta.</strong> Es lo que sigue.</li>
   <li><strong>Un DAC externo,</strong> por I2S para audio (<a href="../datos/03-i2s.html">Tomo 3, nivel 3</a>) o por <span class="ref" data-nota="i2c">I2C</span> o <span class="ref" data-nota="spi">SPI</span> para tensiones de precisión (<a href="../datos/02-spi-i2c.html">Tomo 3, nivel 2</a>).<span class="nota-margen" popover id="nota-i2c"><b>i2c · Inter-Integrated Circuit</b>Bus de dos hilos para chips cercanos, definido por Philips.</span><span class="nota-margen" popover id="nota-spi"><b>spi · Serial Peripheral Interface</b>Bus serie con reloj y selección de chip, de Motorola.</span></li>
 </ul>
 
 <h3>El modulador sigma-delta del S3</h3>
 
-<p>Ocho de las salidas de periféricos del S3 tienen un modulador sigma-delta de 1 bit y segundo orden, que se puede llevar a cualquier pin por la matriz de GPIO. Su <span class="ref" data-nota="funcion-transferencia">función de transferencia</span>, según el manual, es<span class="nota-margen" popover id="nota-funcion-transferencia"><b>transfer function</b>Relación entre la salida y la entrada de un sistema, según la frecuencia.</span></p>
+<p>Ocho de las salidas de periféricos del S3 tienen un modulador <span class="ref" data-nota="sigma-delta">sigma-delta</span> de 1 bit y segundo orden, que se puede llevar a cualquier pin por la matriz de <span class="ref" data-nota="gpio">GPIO</span>.<span class="nota-margen" popover id="nota-sigma-delta"><b>sigma-delta</b>Modulador que genera un tren de pulsos de 1 bit cuya densidad representa el valor (nivel 4).</span><span class="nota-margen" popover id="nota-gpio"><b>gpio · general-purpose input/output</b>Pin que el programa puede usar como entrada o salida digital.</span> Su <span class="ref" data-nota="funcion-transferencia">función de transferencia</span>, según el manual, es<span class="nota-margen" popover id="nota-funcion-transferencia"><b>transfer function</b>Relación entre la salida y la entrada de un sistema, según la frecuencia.</span></p>
 
 <p class="formula"><var>H</var>(<var>z</var>) = <var>X</var>(<var>z</var>) · <var>z</var><sup>−1</sup> + <var>E</var>(<var>z</var>) · (1 − <var>z</var><sup>−1</sup>)<sup>2</sup></p>
 

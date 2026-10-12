@@ -42,7 +42,7 @@
 
 <p class="formula"><var>V</var><sub>out</sub> = <var>V</var><sub>ref</sub> · <var>D</var> / 2<sup><var>N</var></sup></p>
 
-<p>La salida es siempre la referencia por el código, y en ese sentido todo DAC es un multiplicador. El escalón mínimo es el mismo LSB del nivel anterior: <var>V</var><sub>ref</sub> / 2<sup><var>N</var></sup>. Con 8 bits y 3,3 V, un LSB vale unos 13 mV.</p>
+<p>La salida es siempre el producto de la referencia por el código, y en ese sentido todo DAC es un multiplicador. El escalón mínimo es el mismo LSB del nivel anterior: <var>V</var><sub>ref</sub> / 2<sup><var>N</var></sup>. Con 8 bits y 3,3 V, un LSB vale unos 13 mV.</p>
 
 <p>Con 2<sup><var>N</var></sup> en el denominador, el código máximo queda 1 LSB por debajo de la referencia. Algunos DAC dividen por 2<sup><var>N</var></sup> − 1 para que el máximo llegue justo a <var>V</var><sub>ref</sub>; es una convención, y conviene mirar cuál usa el chip.</p>
 
@@ -50,7 +50,7 @@
 
 <h3>Por qué sale una escalera</h3>
 
-<p>Un DAC no entrega una curva. Entrega un valor por vez y lo mantiene hasta que llega el código siguiente, o sea un período 1/<var>f</var><sub>c</sub>. El resultado es una serie de pulsos rectangulares de ese ancho: una escalera que aproxima a la senoide que se quería generar.</p>
+<p>Un DAC no entrega una curva. Entrega un valor por vez y lo mantiene hasta que llega el código siguiente, o sea un período 1/<var>f</var><sub>c</sub>, donde <var>f</var><sub>c</sub> es la frecuencia con que se actualiza el DAC. El resultado es una serie de pulsos rectangulares de ese ancho: una escalera que aproxima a la senoide que se quería generar.</p>
 
 <h3>Las imágenes y la envolvente</h3>
 
@@ -86,7 +86,7 @@
   <figcaption><b>fig 4.1</b>Arriba, la escalera (naranja) con ocho muestras por período y la senoide ideal (punteada). Abajo, su espectro: la señal en <var>f</var> y las imágenes en torno a <var>f</var><sub>c</sub> y 2<var>f</var><sub>c</sub> (magenta), todas bajo la envolvente sen(<var>x</var>)/<var>x</var> (azul punteada).</figcaption>
 </figure>
 
-<p>La envolvente tiene un costo que se calcula directo. En la frecuencia de Nyquist, <var>x</var> = ½:</p>
+<p>La envolvente tiene un costo que se calcula directo. En la <span class="ref" data-nota="nyquist">frecuencia de Nyquist</span>, <var>x</var> = ½:<span class="nota-margen" popover id="nota-nyquist"><b>nyquist</b>La mitad de la frecuencia de muestreo: la máxima que un sistema muestreado puede representar (nivel 3).</span></p>
 
 <p class="formula">sen(π/2) / (π/2) = 2/π ≈ 0,637 &nbsp;→&nbsp; 20 log<sub>10</sub> 0,637 ≈ −3,92 dB</p>
 
@@ -98,7 +98,7 @@
 
 <p>Las cuentas son las mismas. La primera imagen está en <var>f</var><sub>c</sub> − <var>f</var>, y entre <var>f</var> y ese punto el filtro tiene que bajar lo que haga falta. Para una señal de 1 kHz y 60 dB de atenuación, la tabla de polos del nivel anterior vale igual: actualizar el DAC a 2,5 kHz pide 18 polos; a 4 kHz, 7.</p>
 
-<p>Si la señal llega en bloques, se puede actualizar el DAC más rápido que los datos, insertando valores <span class="ref" data-nota="interpolados">interpolados</span> con un filtro digital.<span class="nota-margen" popover id="nota-interpolados"><b>interpolated</b>Valores calculados entre las muestras originales con un filtro digital.</span> Con eso las imágenes se van más arriba y el filtro analógico se relaja: cada vez que se duplica la tasa, la SNR mejora 3 dB, igual que al <span class="ref" data-nota="sobremuestrear">sobremuestrear</span> un ADC.<span class="nota-margen" popover id="nota-sobremuestrear"><b>oversampling</b>Muestrear o actualizar a una tasa mayor que la mínima que pide Nyquist.</span></p>
+<p>Si la señal llega en bloques, se puede actualizar el DAC más rápido que los datos, insertando valores <span class="ref" data-nota="interpolados">interpolados</span> con un filtro digital.<span class="nota-margen" popover id="nota-interpolados"><b>interpolated</b>Valores calculados entre las muestras originales con un filtro digital.</span> Con eso las imágenes se van más arriba y el filtro analógico se relaja: cada vez que se duplica la tasa, la <span class="ref" data-nota="snr">SNR</span> mejora 3 dB, igual que al <span class="ref" data-nota="sobremuestrear">sobremuestrear</span> un ADC.<span class="nota-margen" popover id="nota-sobremuestrear"><b>oversampling</b>Muestrear o actualizar a una tasa mayor que la mínima que pide Nyquist.</span><span class="nota-margen" popover id="nota-snr"><b>snr · signal-to-noise ratio</b>Relación señal-ruido: cuánto mayor es la señal que el ruido, en decibeles.</span></p>
 
 <h2>Cuánta exactitud pide cada bit</h2>
 
@@ -148,9 +148,9 @@
 
 <h3>Dos más, para completar</h3>
 
-<p>Un <strong>DAC termométrico</strong> es el equivalente de la cadena con fuentes de corriente: 2<sup><var>N</var></sup> − 1 fuentes iguales, y cada incremento de código enciende una más. Una vez encendida no se apaga, así que es monótono sin importar cuán exactas sean las corrientes (Kester, MT-014).</p>
+<p>Un <strong>DAC <span class="ref" data-nota="termometrico">termométrico</span></strong> es el equivalente de la cadena con fuentes de corriente: 2<sup><var>N</var></sup> − 1 fuentes iguales, y cada incremento de código enciende una más.<span class="nota-margen" popover id="nota-termometrico"><b>termométrico</b>Código en que se encienden tantos elementos iguales como indica el valor, como la columna de un termómetro.</span> Una vez encendida no se apaga, así que es monótono sin importar cuán exactas sean las corrientes (Kester, MT-014).</p>
 
-<p>Un <strong>arreglo de capacitores</strong> pesados en potencias de dos es el DAC del SAR del nivel anterior. Tiene una limitación: las fugas le hacen perder exactitud en unos pocos milisegundos, así que sirve dentro de un SAR, que convierte en microsegundos, pero no como DAC de propósito general (Kester, MT-015).</p>
+<p>Un <strong>arreglo de capacitores</strong> pesados en potencias de dos es el DAC del <span class="ref" data-nota="sar">SAR</span> del nivel anterior.<span class="nota-margen" popover id="nota-sar"><b>sar · successive approximation register</b>Convertidor por aproximaciones sucesivas: un bit por paso, con un solo comparador (nivel 3).</span> Tiene una limitación: las fugas le hacen perder exactitud en unos pocos milisegundos, así que sirve dentro de un SAR, que convierte en microsegundos, pero no como DAC de propósito general (Kester, MT-015).</p>
 
 <div class="tabla-scroll">
 <table>
@@ -179,7 +179,7 @@
 
 <p>En el salto de mitad de escala cambian todos los bits a la vez: el MSB sube y los demás bajan. Si las llaves no conmutan exactamente al mismo tiempo, durante un instante el código es uno que no era ni el anterior ni el siguiente.</p>
 
-<p>Taub-Schilling lo plantea con 4 bits: de 0111 a 1000. Si el MSB conmuta antes que los demás, por un momento los interruptores quedan en 1111, y la salida pasa por 15 en lugar de 8. Con 8 bits, de 127 (0111 1111) a 128 (1000 0000), el código intermedio es 1111 1111 = 255: el pico es de +127 LSB, lo que el MSB se adelanta.</p>
+<p>Taub-Schilling lo plantea con 4 bits: de 0111 a 1000. Si el MSB conmuta antes que los demás, por un momento los interruptores quedan en 1111, y la salida pasa por 15 en lugar de 8. Con 8 bits, de 127 (0111 1111) a 128 (1000 0000), el código intermedio es 1111 1111 = 255: el pico es de +127 LSB y dura lo que se adelanta el MSB.</p>
 
 <figure class="diagrama" data-titulo="fig-4.3">
   <svg viewBox="0 0 640 272" role="img" aria-label="Arriba, la salida de un DAC de 8 bits en el salto de 127 a 128: la ideal sube un LSB y la real pasa por 255 durante un instante. Abajo, los tiempos de las llaves: el bit más significativo sube antes de que los demás bajen">
@@ -243,7 +243,7 @@
 <ul>
   <li><strong>Resolución:</strong> el número de bits, y con él el número de salidas posibles, 2<sup><var>N</var></sup>.</li>
   <li><strong>Linealidad:</strong> cuánto se aparta la salida de una recta. Una especificación de «menos de ±½ LSB» significa que ningún punto se aparta más de medio escalón de su valor ideal.</li>
-  <li><strong>Monotonía:</strong> que la salida no retroceda al subir el código. Con una DNL peor que −1 LSB en algún escalón, se pierde.</li>
+  <li><strong>Monotonía:</strong> que la salida no retroceda al subir el código. Con una <span class="ref" data-nota="dnl">DNL</span> peor que −1 LSB en algún escalón, se pierde.<span class="nota-margen" popover id="nota-dnl"><b>dnl · differential nonlinearity</b>No linealidad diferencial: cuánto se aparta cada escalón de 1 LSB (nivel 3).</span></li>
   <li><strong>Exactitud:</strong> cuánto se aparta la salida real de la ideal, incluyendo la incertidumbre de la referencia y el offset del amplificador. Un ejemplo de hoja de datos de calidad media: «0,2 % de plena escala + ½ LSB».</li>
   <li><strong>Tiempo de establecimiento:</strong> lo que tarda la salida en acercarse «lo suficiente» a su valor final después de un cambio de código; un ejemplo típico es «500 ns para 0,2 % de plena escala».</li>
   <li><strong>Glitch:</strong> el pico de la transición mayor, que se mide como un área.</li>
@@ -289,7 +289,7 @@
     <li>Kester, W. <em>MT-010: The Importance of Data Converter Static Specifications</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-010.pdf">analog.com/…/MT-010.pdf</a></li>
     <li>Kester, W. <em>MT-022: ADC Architectures III: Sigma-Delta ADC Basics</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-022.pdf">analog.com/…/MT-022.pdf</a></li>
   </ol>
-  <p class="nota">La cuenta de la exactitud del MSB, el tamaño del glitch de 8 bits, el rizado del PWM y el tiempo de asentamiento son deducciones propias a partir de los hechos de las fuentes. El adelanto de 10 ns, la frecuencia de 100 kHz y las impedancias de 10 kΩ y 100 kΩ son supuestos para ilustrar el cálculo, no datos de un chip. La mejora del sigma-delta se describe sin cifras porque ninguna fuente de este nivel las da.</p>
+  <p class="nota">La cuenta de la exactitud del MSB, el tamaño del glitch de 8 bits, el rizado del PWM y el tiempo de asentamiento son deducciones propias a partir de los hechos de las fuentes. El adelanto de 10 ns, la frecuencia de 100 kHz y las impedancias de 10 kΩ y 100 kΩ son supuestos para ilustrar el cálculo, no datos de un micro. La mejora del sigma-delta se describe sin cifras porque ninguna fuente de este nivel las da.</p>
 </section>
 
 <div data-nav-niveles></div>
