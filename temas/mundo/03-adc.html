@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nivel 3: El ADC</title>
-<meta name="description" content="Un comparador, un arreglo de capacitores y una búsqueda binaria convierten una tensión en un número. Este nivel sigue la carga eléctrica paso a paso y muestra de dónde salen los errores.">
+<title>Nivel 3: Del voltaje al número</title>
+<meta name="description" content="Un ADC hace dos cortes sobre una señal continua, uno en el tiempo y otro en la amplitud. Cada corte tira información y fija un límite que ningún software recupera después.">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Apuntes en bits">
-<meta property="og:title" content="Nivel 3: El ADC">
-<meta property="og:description" content="Un comparador, un arreglo de capacitores y una búsqueda binaria convierten una tensión en un número. Este nivel sigue la carga eléctrica paso a paso y muestra de dónde salen los errores.">
+<meta property="og:title" content="Nivel 3: Del voltaje al número">
+<meta property="og:description" content="Un ADC hace dos cortes sobre una señal continua, uno en el tiempo y otro en la amplitud. Cada corte tira información y fija un límite que ningún software recupera después.">
 <link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../assets/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,124 +23,414 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="03">nivel 03, 18 min de lectura</span>
-  <h1>El ADC por dentro</h1>
-  <p class="bajada">Un comparador, un arreglo de capacitores y una búsqueda binaria convierten una tensión en un número. Este nivel sigue la carga eléctrica paso a paso y muestra de dónde salen los errores.</p>
+  <span class="nivel-chip" data-n="03">nivel 03, 34 min de lectura</span>
+  <h1>Del voltaje al número</h1>
+  <p class="bajada">Un ADC hace dos cortes sobre una señal continua, uno en el tiempo y otro en la amplitud. Cada corte tira información y fija un límite que ningún software recupera después.</p>
 </header>
 
 <div class="caja objetivos">
   <h4>al terminar este nivel vas a poder…</h4>
   <ul>
-    <li>Explicar cómo un SAR usa un <strong>DAC de capacitores</strong> y un comparador para resolver un bit por paso.</li>
-    <li>Calcular cuánto tiempo de muestreo pide una fuente de alta impedancia y cómo resolverlo.</li>
-    <li>Distinguir <strong>offset, ganancia, DNL e INL</strong> y saber qué corrige la calibración.</li>
-    <li>Explicar por qué el <strong>aliasing</strong> se combate con un filtro analógico antes del pin y no después.</li>
-    <li>Elegir atenuación, canal (ADC1 o ADC2) y micro según el rango y la exactitud que necesites.</li>
+    <li>Distinguir <strong>muestrear</strong> de <strong>cuantizar</strong> y decir qué límite fija cada corte.</li>
+    <li>Calcular dónde cae un alias y explicar por qué el filtro <strong>antialiasing</strong> es analógico y va antes del convertidor.</li>
+    <li>Deducir el ruido de cuantización y la relación señal-ruido de un ADC ideal, y pasar de una SNR medida a <strong>bits efectivos</strong>.</li>
+    <li>Explicar cómo un <strong>SAR</strong> encuentra el código con un comparador y un DAC de capacitores, y compararlo con flash, rampa y sigma-delta.</li>
+    <li>Calcular cuánto tiempo de adquisición pide una fuente con resistencia, y separar los errores que corrige una recta de los que no.</li>
   </ul>
 </div>
 
-<p>Un sensor entrega una tensión continua en el tiempo y en amplitud. Para que el micro la procese, el <strong>ADC</strong> tiene que hacer dos cortes: <strong>muestrear</strong> (tomar el valor en instantes separados) y <strong>cuantizar</strong> (redondearlo al más cercano de 2<sup>N</sup> niveles). Los dos micros de este tomo usan el mismo tipo de convertidor, el de <strong>aproximaciones sucesivas</strong> (SAR), y este nivel lo abre por dentro.</p>
+<h2>Qué hace un ADC</h2>
 
-<h2>Por qué SAR</h2>
+<p>Un sensor entrega una tensión que varía de forma continua: en cualquier instante puede valer cualquier número dentro de un rango. Un micro, en cambio, solo guarda números enteros y solo mira de a ratos. El <strong>ADC</strong> (convertidor analógico-digital) es el puente, y para cruzarlo tiene que hacer dos cortes independientes.</p>
+
+<p>El primero es en el tiempo. Cada cierto intervalo el ADC mira la tensión y se queda con ese valor; lo que pasó entre dos miradas no existe para el resto del sistema. Eso es <strong>muestrear</strong>. El segundo es en la amplitud: el valor medido se redondea al más cercano de un conjunto finito de niveles, porque con N bits solo hay 2<sup>N</sup> códigos posibles. Eso es <strong>cuantizar</strong>.</p>
+
+<p>Los dos cortes son independientes y limitan cosas distintas. El muestreo decide qué frecuencias de la señal sobreviven. La cuantización decide qué tan fino es el detalle de cada muestra. Se combaten con herramientas diferentes, y conviene no mezclarlos.</p>
+
+<h3>Las magnitudes que describen a un ADC</h3>
+
+<ul>
+  <li><strong>Rango:</strong> de la menor a la mayor tensión que convierte, por ejemplo 0 a 3,3 V.</li>
+  <li><strong>Cantidad de códigos:</strong> 2<sup>N</sup>. Un ADC de 12 bits distingue 4096 valores.</li>
+  <li><strong>Resolución:</strong> la menor variación de entrada que cambia el código. Es el ancho de un escalón y se llama <strong>LSB</strong> (bit menos significativo), porque es el valor del bit 0.</li>
+  <li><strong>Referencia:</strong> la tensión contra la que el ADC compara. Define cuál es el máximo.</li>
+</ul>
+
+<p>Las tres primeras se relacionan por una igualdad simple: rango = cantidad de códigos × resolución. Sirve para pasar de «bits» a «volts» y saber cuánto vale un escalón.</p>
+
+<p>Con 12 bits y 3,3 V, el escalón es 3,3 V / 4096 ≈ 0,81 mV. (Algunos textos dividen por 4095 en vez de 4096, según cuenten niveles o intervalos; la diferencia es del 0,02 %, irrelevante acá.) Ese número es el mejor detalle posible <em>si no hubiera ruido</em>. En un sistema real casi siempre manda el ruido y no los bits, así que 0,81 mV es un piso teórico, no una promesa.</p>
+
+<h3>El código es una fracción, no una tensión</h3>
+
+<p>El ADC no mide volts: compara la entrada contra su referencia y entrega la fracción</p>
+
+<p class="formula">código = (<var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub>) · 2<sup><var>N</var></sup></p>
+
+<p>Los volts salen de multiplicar por la referencia. Si la referencia se mueve, todas las lecturas se mueven con ella aunque la entrada esté quieta. Si el sensor se alimenta de la misma tensión que usa el ADC como referencia, los dos se mueven juntos y la fracción no cambia. Esa medición se llama <strong>ratiométrica</strong>.</p>
+
+<h2>Muestrear: el corte en el tiempo</h2>
+
+<h3>Por qué la entrada tiene que quedarse quieta</h3>
+
+<p>Convertir lleva tiempo. Un ADC que tarda 8 µs en convertir 12 bits no mide la tensión «en un instante»: la mide mientras dura la conversión. Si en ese lapso la entrada se mueve más de 1 LSB, el resultado queda mal definido.</p>
+
+<p>Calculemos hasta qué frecuencia aguanta un ADC así, sin ayuda. El resultado va a explicar por qué todo ADC práctico lleva un circuito de muestreo y retención. Tomamos la peor señal: una senoide de amplitud completa, <var>v</var>(<var>t</var>) = (<var>q</var> · 2<sup><var>N</var></sup> / 2) · sen(2π <var>f</var> <var>t</var>), donde <var>q</var> es el valor de 1 LSB. Su pendiente máxima es</p>
+
+<p class="formula">(d<var>v</var>/d<var>t</var>)<sub>máx</sub> = π · <var>f</var> · <var>q</var> · 2<sup><var>N</var></sup></p>
+
+<p>Exigimos que la entrada no se mueva más de 1 LSB (<var>q</var>) durante los 8 µs de conversión. Despejando la frecuencia:</p>
+
+<p class="formula"><var>f</var><sub>máx</sub> = (<var>q</var> / 8 µs) / (π · <var>q</var> · 2<sup><var>N</var></sup>) = 125 000 / (π · 4096) ≈ 9,7 Hz</p>
+
+<p>Para un ADC de 12 bits y 8 µs, una senoide de más de 9,7 Hz ya produce errores, aunque el ADC pueda convertir 100 000 veces por segundo. El problema no es la velocidad de conversión: es que la entrada cambia <em>mientras</em> se convierte.</p>
+
+<p>La solución es el <strong>circuito de muestreo y retención</strong> (<em>sample-and-hold</em>): una llave que conecta la entrada a un capacitor y se abre para dejar la tensión atrapada mientras el convertidor trabaja. La llave se cierra durante la <strong>adquisición</strong> (el capacitor sigue a la entrada) y se abre durante la <strong>retención</strong> (el valor queda fijo).</p>
+
+<p>Con esto el límite de frecuencia deja de depender del tiempo de conversión y pasa a depender de qué tan rápido y limpio se cierra la llave. En el mismo ejemplo, con 2 µs de adquisición más 8 µs de conversión, se llega a 100 000 muestras por segundo y a señales de hasta 50 kHz. Desde acá, «una muestra» es el valor que quedó retenido en un instante preciso.</p>
+
+<h3>Qué se pierde al muestrear: el solapamiento</h3>
+
+<p>Tomar muestras cada <var>T</var> = 1/<var>f</var><sub>s</sub> segundos descarta todo lo que pasó entre una y otra. La pregunta útil es qué señales se distinguen después de muestreadas.</p>
+
+<p>Probá con una senoide de 900 Hz muestreada a 1000 muestras por segundo. Cada muestra cae casi en el mismo punto del ciclo que la anterior, avanzando solo un poco: lo que se ve en las muestras es una onda lenta que da una vuelta cada 10 ms, o sea 100 Hz. Una senoide real de 100 Hz produce <em>exactamente las mismas muestras</em>.</p>
+
+<figure class="diagrama" data-titulo="fig-3.1">
+  <svg viewBox="0 0 640 248" role="img" aria-label="Una senoide de 900 Hz muestreada cada milisegundo: los once puntos de muestra caen exactamente sobre una senoide de 100 Hz, que es lo que ve el ADC">
+    <line x1="64" y1="200" x2="624" y2="200" class="s4" stroke-width="2"/>
+    <line x1="64" y1="200" x2="64" y2="206" class="s4" stroke-width="2"/>
+    <text x="64" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">0</text>
+    <line x1="120" y1="200" x2="120" y2="206" class="s4" stroke-width="2"/>
+    <line x1="176" y1="200" x2="176" y2="206" class="s4" stroke-width="2"/>
+    <text x="176" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">2</text>
+    <line x1="232" y1="200" x2="232" y2="206" class="s4" stroke-width="2"/>
+    <line x1="288" y1="200" x2="288" y2="206" class="s4" stroke-width="2"/>
+    <text x="288" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">4</text>
+    <line x1="344" y1="200" x2="344" y2="206" class="s4" stroke-width="2"/>
+    <line x1="400" y1="200" x2="400" y2="206" class="s4" stroke-width="2"/>
+    <text x="400" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">6</text>
+    <line x1="456" y1="200" x2="456" y2="206" class="s4" stroke-width="2"/>
+    <line x1="512" y1="200" x2="512" y2="206" class="s4" stroke-width="2"/>
+    <text x="512" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">8</text>
+    <line x1="568" y1="200" x2="568" y2="206" class="s4" stroke-width="2"/>
+    <line x1="624" y1="200" x2="624" y2="206" class="s4" stroke-width="2"/>
+    <text x="624" y="224" class="sv-lbl f4" text-anchor="middle" font-size="16">10</text>
+    <text x="624" y="244" class="sv-lbl f4" text-anchor="end" font-size="16">tiempo (ms)</text>
+    <line x1="64" y1="112" x2="624" y2="112" class="s2" stroke-width="2" stroke-dasharray="2 4"/>
+    <polyline points="64,112 68,115 72,118 76,121 80,123 84,126 88,129 92,132 96,134 100,137 104,140 108,142 112,145 116,147 120,150 124,152 128,154 132,156 136,158 140,160 144,162 148,164 152,165 156,167 160,168 164,170 168,171 172,172 176,173 180,174 184,174 188,175 192,175 196,176 200,176 204,176 208,176 212,176 216,175 220,175 224,174 228,174 232,173 236,172 240,171 244,170 248,168 252,167 256,165 260,164 264,162 268,160 272,158 276,156 280,154 284,152 288,150 292,147 296,145 300,142 304,140 308,137 312,134 316,132 320,129 324,126 328,123 332,121 336,118 340,115 344,112 348,109 352,106 356,103 360,101 364,98 368,95 372,92 376,90 380,87 384,84 388,82 392,79 396,77 400,74 404,72 408,70 412,68 416,66 420,64 424,62 428,60 432,59 436,57 440,56 444,54 448,53 452,52 456,51 460,50 464,50 468,49 472,49 476,48 480,48 484,48 488,48 492,48 496,49 500,49 504,50 508,50 512,51 516,52 520,53 524,54 528,56 532,57 536,59 540,60 544,62 548,64 552,66 556,68 560,70 564,72 568,74 572,77 576,79 580,82 584,84 588,87 592,90 596,92 600,95 604,98 608,101 612,103 616,106 620,109 624,112" class="fn sd3" stroke-width="4"/>
+    <polyline points="64,112 68,87 72,66 76,52 80,48 84,54 88,70 92,92 96,118 100,142 104,162 108,174 112,175 116,167 120,150 124,126 128,101 132,77 136,59 140,49 144,50 148,60 152,79 156,103 160,129 164,152 168,168 172,176 176,173 180,160 184,140 188,115 192,90 196,68 200,53 204,48 208,53 212,68 216,90 220,115 224,140 228,160 232,173 236,176 240,168 244,152 248,129 252,103 256,79 260,60 264,50 268,49 272,59 276,77 280,101 284,126 288,150 292,167 296,175 300,174 304,162 308,142 312,118 316,92 320,70 324,54 328,48 332,52 336,66 340,87 344,112 348,137 352,158 356,172 360,176 364,170 368,154 372,132 376,106 380,82 384,62 388,50 392,49 396,57 400,74 404,98 408,123 412,147 416,165 420,175 424,174 428,164 432,145 436,121 440,95 444,72 448,56 452,48 456,51 460,64 464,84 468,109 472,134 476,156 480,171 484,176 488,171 492,156 496,134 500,109 504,84 508,64 512,51 516,48 520,56 524,72 528,95 532,121 536,145 540,164 544,174 548,175 552,165 556,147 560,123 564,98 568,74 572,57 576,49 580,50 584,62 588,82 592,106 596,132 600,154 604,170 608,176 612,172 616,158 620,137 624,112" class="fn sa3" stroke-width="2"/>
+    <line x1="64" y1="112" x2="64" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="120" y1="150" x2="120" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="176" y1="173" x2="176" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="232" y1="173" x2="232" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="288" y1="150" x2="288" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="344" y1="112" x2="344" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="400" y1="74" x2="400" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="456" y1="51" x2="456" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="512" y1="51" x2="512" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="568" y1="74" x2="568" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <line x1="624" y1="112" x2="624" y2="200" class="sb2" stroke-width="2" stroke-dasharray="2 4"/>
+    <rect x="60" y="108" width="8" height="8" class="fb3"/>
+    <rect x="116" y="146" width="8" height="8" class="fb3"/>
+    <rect x="172" y="169" width="8" height="8" class="fb3"/>
+    <rect x="228" y="169" width="8" height="8" class="fb3"/>
+    <rect x="284" y="146" width="8" height="8" class="fb3"/>
+    <rect x="340" y="108" width="8" height="8" class="fb3"/>
+    <rect x="396" y="70" width="8" height="8" class="fb3"/>
+    <rect x="452" y="47" width="8" height="8" class="fb3"/>
+    <rect x="508" y="47" width="8" height="8" class="fb3"/>
+    <rect x="564" y="70" width="8" height="8" class="fb3"/>
+    <rect x="620" y="108" width="8" height="8" class="fb3"/>
+    <text x="64" y="24" class="sv-lbl fa3" text-anchor="start" font-size="16">señal real: 900 Hz</text>
+    <text x="232" y="24" class="sv-lbl fb3" text-anchor="start" font-size="16">muestras: 1000 por segundo</text>
+    <text x="440" y="24" class="sv-lbl fd3" text-anchor="start" font-size="16">lo que ve el ADC: 100 Hz</text>
+  </svg>
+  <figcaption><b>fig 3.1</b>Una senoide de 900 Hz (naranja) muestreada a 1000 muestras por segundo. Las muestras (puntos azules) caen exactamente sobre una senoide de 100 Hz (magenta): desde los números, las dos señales son idénticas.</figcaption>
+</figure>
+
+<p>Eso es el <strong>solapamiento</strong> (<em>aliasing</em>): una frecuencia por encima de <var>f</var><sub>s</sub>/2 aparece disfrazada de otra más baja. La regla general: una señal de frecuencia <var>f</var><sub>a</sub> produce imágenes en</p>
+
+<p class="formula">|± <var>K</var> · <var>f</var><sub>s</sub> ± <var>f</var><sub>a</sub>|, con <var>K</var> = 1, 2, 3, …</p>
+
+<p>y la que cae entre 0 y <var>f</var><sub>s</sub>/2 es la que el sistema «ve». A <var>f</var><sub>s</sub>/2 se lo llama <strong>frecuencia de Nyquist</strong>. Para no perder información, la señal no puede tener nada por encima de <var>f</var><sub>s</sub>/2; dicho al revés, <var>f</var><sub>s</sub> tiene que ser más del doble de la frecuencia más alta de la señal.</p>
+
+<p>Un ejemplo para ubicar el alias: con <var>f</var><sub>s</sub> = 1000 Hz, una interferencia de un motor a 1300 Hz aparece en |1300 − 1000| = 300 Hz, justo dentro de la banda útil. Otra a 2300 Hz también cae en 300 Hz. El ADC no puede saber de cuál de las tres vino ese 300 Hz.</p>
+
+<h3>Por qué el filtro va antes del ADC</h3>
+
+<p>Después de muestrear, un alias es indistinguible de una señal real de esa frecuencia. Ningún procesamiento posterior lo separa: promediar reduce el ruido, pero no saca un 300 Hz que ya entró. Por eso el filtro <strong>antialiasing</strong> es analógico y va antes del convertidor: un pasabajos que atenúe todo lo que esté por encima de Nyquist antes de muestrear.</p>
+
+<p>Acá aparece el costo real. Un filtro no corta de golpe: pasa de «deja pasar» a «atenúa lo suficiente» a lo largo de una <strong>banda de transición</strong>. Cada polo agrega unos 6 dB de atenuación por octava (cada vez que se duplica la frecuencia).</p>
+
+<p>Supongamos que la señal útil llega hasta <var>f</var><sub>a</sub> = 1 kHz y queremos que lo aliasado quede 60 dB abajo. El primer alias dañino viene de <var>f</var><sub>s</sub> − <var>f</var><sub>a</sub>, así que la transición va de 1 kHz a <var>f</var><sub>s</sub> − <var>f</var><sub>a</sub>. La tabla cuenta cuántos polos hacen falta según la <var>f</var><sub>s</sub> elegida.</p>
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th>Arquitectura</th><th>Cómo trabaja</th><th>Fuerte</th><th>Débil</th></tr></thead>
+  <thead><tr><th>f<sub>s</sub></th><th>fin de la transición (f<sub>s</sub> − f<sub>a</sub>)</th><th>octavas disponibles</th><th>polos para 60 dB (≈ 10 por octava)</th></tr></thead>
   <tbody>
-    <tr><td><b>Flash</b></td><td>2<sup>N</sup> − 1 comparadores en paralelo</td><td>velocidad (GS/s)</td><td>para 12 bits serían 4095 comparadores</td></tr>
-    <tr><td><b>Pipeline</b></td><td>etapas en serie que pasan el residuo</td><td>cientos de MS/s</td><td>latencia de varios ciclos al cambiar de canal</td></tr>
-    <tr><td><b>Sigma-delta</b></td><td>sobremuestreo con 1 bit y filtro digital</td><td>16 a 24 bits</td><td>ancho de banda bajo y respuesta lenta</td></tr>
-    <tr><td><b>SAR</b></td><td>búsqueda binaria, un bit por paso</td><td>poca área y poco consumo; cada muestra es independiente</td><td>velocidad media</td></tr>
+    <tr><td>2,5 kHz</td><td>1,5 kHz</td><td>0,58</td><td>18</td></tr>
+    <tr><td>4 kHz</td><td>3 kHz</td><td>1,58</td><td>7</td></tr>
+    <tr><td>20 kHz</td><td>19 kHz</td><td>4,25</td><td>3</td></tr>
   </tbody>
 </table>
 </div>
 
-<p>Para un micro de propósito general el SAR es el punto justo: un solo comparador, casi nada de consumo en reposo y la posibilidad de saltar de un canal a otro sin arrastrar la muestra anterior.</p>
+<p>Cálculo con la pendiente asintótica de 6 dB por octava y por polo; un diseño real pide algo más. La tabla muestra un compromiso: muestrear más rápido abarata el filtro, porque da más espacio para la transición; muestrear justo por encima de 2·<var>f</var><sub>a</sub> obliga a un filtro de muchos polos, difícil de construir. Por eso se suele empezar con <var>f</var><sub>s</sub> entre 2,5 y 4 veces <var>f</var><sub>a</sub> y se ajusta.</p>
 
-<h2>Muestrear y retener</h2>
+<p>Un resistor y un capacitor en la entrada son un polo, o sea 6 dB por octava: alcanza cuando se muestrea con mucho margen y no cuando se muestrea justo.</p>
 
-<p>El comparador necesita un tiempo para decidir. Si la entrada cambiara durante la búsqueda binaria, el resultado sería basura. Por eso primero hay un <strong>muestreo y retención</strong>: una llave analógica carga un capacitor con la tensión de entrada y después se abre, dejando la carga atrapada (Q = C × V<sub>in</sub>) mientras dura la conversión.</p>
+<h2>Cuantizar: el corte en la amplitud</h2>
 
-<p>Esa llave real no es perfecta. Al abrirse inyecta un poco de la carga de su propio canal en el capacitor, los flancos de su señal de control se acoplan por capacidades parásitas y, mientras está abierta, fuga. Todo eso tiene que quedar por debajo de medio LSB.</p>
+<p>Después de muestrear, cada muestra sigue siendo un número real: puede valer cualquier tensión dentro del rango. Pero el código tiene N bits y solo admite 2<sup>N</sup> valores. El ADC tiene que elegir uno, y la elección siempre deja un resto.</p>
 
-<h2>El DAC de capacitores</h2>
+<p>El mecanismo es el de una escalera. Se divide el rango pico a pico <var>R</var> en <var>Q</var> niveles de tamaño <var>S</var>, con <var>Q</var> · <var>S</var> = <var>R</var>. Cada entrada se asigna al nivel más cercano, y la transición de un nivel al siguiente ocurre en el punto medio entre los dos. Con los niveles bien ubicados el error nunca supera <var>S</var>/2. Con 12 bits, <var>S</var> es el LSB, y el error instantáneo queda entre −½ LSB y +½ LSB.</p>
 
-<p>En los SAR integrados, el capacitor de muestreo no es una pieza aparte: es el mismo <strong>DAC de capacitores</strong> que genera las tensiones de prueba. Es un arreglo de capacitores pesados en potencias de dos (2<sup>N−1</sup>C, …, 2C, C, más uno de terminación), con las placas de arriba unidas en un nodo que va al comparador.</p>
+<figure class="diagrama" data-titulo="fig-3.2">
+  <svg viewBox="0 0 640 296" role="img" aria-label="Arriba, la salida en código de un ADC ideal de 3 bits contra la entrada: una escalera de ocho niveles que sigue a la recta ideal. Abajo, el error entre la entrada y el nivel elegido, un diente de sierra entre menos y más medio LSB">
+    <line x1="96" y1="160" x2="584" y2="160" class="s4" stroke-width="2"/><line x1="96" y1="160" x2="96" y2="32" class="s4" stroke-width="2"/>
+    <text x="88" y="164" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><text x="88" y="52" class="sv-lbl f4" text-anchor="end" font-size="16">7</text><text x="88" y="112" class="sv-lbl f4" text-anchor="end" font-size="16">código</text>
+    <line x1="96" y1="160" x2="576" y2="40" class="s4" stroke-width="2" stroke-dasharray="4 4"/>
+    <text x="518" y="77" class="sv-lbl f4" text-anchor="start" font-size="16">ideal</text>
+    <polyline points="96,160 128,160 128,144 192,144 192,128 256,128 256,112 320,112 320,96 384,96 384,80 448,80 448,64 512,64 512,48 576,48" class="fn sa3" stroke-width="4"/>
+    <text x="416" y="144" class="sv-lbl fa3" text-anchor="start" font-size="16">escalón: 1 LSB = q</text>
+    <line x1="96" y1="224" x2="584" y2="224" class="s4" stroke-width="2"/><line x1="96" y1="200" x2="96" y2="248" class="s4" stroke-width="2"/>
+    <line x1="96" y1="200" x2="584" y2="200" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="96" y1="248" x2="584" y2="248" class="s2" stroke-width="2" stroke-dasharray="2 4"/>
+    <text x="88" y="204" class="sv-lbl f4" text-anchor="end" font-size="16">+q/2</text><text x="88" y="228" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><text x="88" y="252" class="sv-lbl f4" text-anchor="end" font-size="16">−q/2</text>
+    <polyline points="96,224 128,200 128,248 192,200 192,248 256,200 256,248 320,200 320,248 384,200 384,248 448,200 448,248 512,200 512,248 576,200" class="fn sd3" stroke-width="2"/>
+    <text x="584" y="192" class="sv-lbl fd3" text-anchor="end" font-size="16">error = entrada − nivel elegido</text>
+    <line x1="96" y1="256" x2="96" y2="262" class="s4" stroke-width="2"/><text x="96" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">0</text>
+    <line x1="160" y1="256" x2="160" y2="262" class="s4" stroke-width="2"/><text x="160" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">1</text>
+    <line x1="224" y1="256" x2="224" y2="262" class="s4" stroke-width="2"/><text x="224" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">2</text>
+    <line x1="288" y1="256" x2="288" y2="262" class="s4" stroke-width="2"/><text x="288" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">3</text>
+    <line x1="352" y1="256" x2="352" y2="262" class="s4" stroke-width="2"/><text x="352" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">4</text>
+    <line x1="416" y1="256" x2="416" y2="262" class="s4" stroke-width="2"/><text x="416" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">5</text>
+    <line x1="480" y1="256" x2="480" y2="262" class="s4" stroke-width="2"/><text x="480" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">6</text>
+    <line x1="544" y1="256" x2="544" y2="262" class="s4" stroke-width="2"/><text x="544" y="280" class="sv-lbl f4" text-anchor="middle" font-size="16">7</text>
+    <text x="584" y="296" class="sv-lbl f4" text-anchor="end" font-size="16">entrada (en LSB)</text>
+  </svg>
+  <figcaption><b>fig 3.2</b>Arriba, un ADC ideal de 3 bits: la escalera (naranja) sigue a la recta ideal y cada escalón mide 1 LSB. Abajo, el error entre la entrada y el nivel elegido: un diente de sierra que nunca sale de ±½ LSB.</figcaption>
+</figure>
 
-<figure class="diagrama" data-titulo="fig-3.1">
+<h3>Cuánto vale ese error, en promedio</h3>
+
+<p>El error máximo es fácil de ver, pero no dice cuánto ruido agrega. Para eso hay que mirar el error como una señal en el tiempo. Cuando la entrada sube despacio a través de un escalón, el error crece linealmente de −<var>q</var>/2 a +<var>q</var>/2 y vuelve a empezar, como muestra la parte de abajo de la figura 3.2. Su valor cuadrático medio, integrado en un ciclo, es</p>
+
+<p class="formula"><span style="text-decoration:overline"><var>e</var><sup>2</sup></span> = (1/<var>q</var>) · ∫ <var>e</var><sup>2</sup> d<var>e</var> &nbsp;(entre −<var>q</var>/2 y +<var>q</var>/2) = <var>q</var><sup>2</sup> / 12</p>
+
+<p>El valor eficaz de ese error, que es el <strong>ruido de cuantización</strong>, es entonces</p>
+
+<p class="formula"><var>e</var><sub>rms</sub> = <var>q</var> / √12 ≈ 0,29 · <var>q</var></p>
+
+<p>Esta deducción supone que el error no está correlacionado con la señal. Con señales muy repetitivas, o con un reloj sincronizado con la señal, esa suposición falla, pero el valor eficaz sigue siendo cercano.</p>
+
+<p>Este número es el piso de ruido de un ADC perfecto. Ningún ADC real hace mejor, y sirve de vara para medir cuánto peor es uno real.</p>
+
+<h3>De ahí sale la relación señal-ruido</h3>
+
+<p>Con una senoide de amplitud completa, el valor eficaz de la señal es <var>q</var> · 2<sup><var>N</var></sup> / (2√2). La relación señal-ruido es el cociente de los dos valores eficaces, en decibeles:</p>
+
+<p class="formula">SNR = 20 log<sub>10</sub> [ (<var>q</var> · 2<sup><var>N</var></sup> / 2√2) / (<var>q</var> / √12) ] = 20 log<sub>10</sub> 2<sup><var>N</var></sup> + 20 log<sub>10</sub> √(3/2) = 6,02 · <var>N</var> + 1,76 dB</p>
+
+<p>Dos lecturas valen la pena. Cada bit agrega 6,02 dB, porque cada bit duplica el número de niveles. Y para 12 bits da 6,02 · 12 + 1,76 ≈ 74 dB: lo máximo que un ADC de 12 bits puede lograr con una senoide de escala completa.</p>
+
+<h3>Bits efectivos: la fórmula al revés</h3>
+
+<p>Un ADC real mide menos que eso, porque además del ruido de cuantización tiene ruido propio y distorsión. Entonces se invierte la fórmula. En lugar de la SNR se usa la <strong>SINAD</strong>, que compara la señal con todo lo demás que aparece en el espectro, armónicos incluidos, y con ella se calcula cuántos bits «se están usando de verdad», el <strong>ENOB</strong>:</p>
+
+<p class="formula">ENOB = (SINAD − 1,76 dB) / 6,02 dB</p>
+
+<p>Si un ADC de 12 bits mide una SINAD de 62 dB, su ENOB es (62 − 1,76) / 6,02 = 10,0 bits. Los dos bits de abajo se pierden en ruido y distorsión. Esa es la diferencia entre los «12 bits» de la hoja de datos y la información real de las lecturas. La fórmula supone una señal de escala completa: con una señal más chica la SINAD baja y hay que corregirla.</p>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un ADC de 12 bits mide una SINAD de 62 dB con una senoide de escala completa. ¿Cuántos bits efectivos tiene?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="ENOB = (62 − 1,76) / 6,02 = 10,0. Los dos bits menos significativos se pierden en el ruido y la distorsión del propio ADC.">Unos 10 bits.</button>
+    <button type="button" data-por-que="Doce son los bits de la hoja de datos. Un ADC ideal de 12 bits daría unos 74 dB; 62 dB indica que el ruido y la distorsión reales son mayores que el error de cuantización.">12 bits, porque el ADC es de 12.</button>
+    <button type="button" data-por-que="Habría que tener una SINAD de unos 50 dB: 6,02 · 8 + 1,76 ≈ 50 dB. Con 62 dB el ADC usa más que 8 bits.">8 bits.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h3>Sobremuestrear: cambiar velocidad por bits</h3>
+
+<p>El ruido <var>q</var>/√12 se reparte de manera pareja entre 0 y <var>f</var><sub>s</sub>/2. Si la señal ocupa solo una banda BW mucho menor y un filtro digital descarta el resto, queda menos ruido en la banda útil:</p>
+
+<p class="formula">SNR = 6,02 · <var>N</var> + 1,76 dB + 10 log<sub>10</sub> ( <var>f</var><sub>s</sub> / (2 · BW) )</p>
+
+<p>Cada vez que se cuadruplica <var>f</var><sub>s</sub>, el término extra suma 10 log<sub>10</sub> 4 = 6,02 dB: un bit más, a cambio de muestrear cuatro veces más rápido. Esto justifica promediar muestras en un micro y es la idea central del sigma-delta, que aparece en la sección siguiente.</p>
+
+<h2>Cómo se busca el número</h2>
+
+<p>Hasta acá no preguntamos cómo el ADC encuentra el código. Es la pregunta de diseño central, porque hay que encontrar uno entre 2<sup>N</sup> valores, y la forma de buscar decide la velocidad, el costo y el consumo. Las cuatro familias se distinguen por cuántos comparadores usan y cuántos pasos tardan.</p>
+
+<ul>
+  <li><strong>Flash (en paralelo).</strong> Compara la entrada con todos los niveles a la vez. Un flash de N bits necesita 2<sup>N</sup> resistores y 2<sup>N</sup> − 1 comparadores y entrega el código casi de inmediato. Para 12 bits serían 4095 comparadores, por eso se usan en 6 u 8 bits y por encima de 1 GS/s.</li>
+  <li><strong>Aproximaciones sucesivas (SAR).</strong> Un solo comparador y N pasos, un bit por paso.</li>
+  <li><strong>Rampa (contador y doble rampa).</strong> Un solo comparador, pero hasta 2<sup>N</sup> ciclos de reloj, porque cuentan. Son lentos y muy exactos; se usan en voltímetros.</li>
+  <li><strong>Sigma-delta.</strong> Un convertidor de 1 bit que trabaja mucho más rápido de lo necesario, más un filtro digital. Cambia velocidad por resolución: de 16 a 24 bits, con anchos de banda bajos.</li>
+</ul>
+
+<p>Por velocidad, el orden es este: el comparador en paralelo es el más rápido, el SAR le sigue, con aproximadamente tantos impulsos de reloj como bits, y los contadores son los más lentos, con 2<sup>N</sup> ciclos.</p>
+
+<h3>El SAR en detalle: una balanza</h3>
+
+<p>Es la arquitectura de los micros, así que merece el desarrollo. El principio es el de una balanza con pesas de 1/2, 1/4, 1/8… kg: se prueba la pesa mayor; si el objeto pesa más, se deja; si no, se saca. Después se prueba la siguiente, y así hasta la última. El resultado, 1 · 1/2 + 0 · 1/4 + 1 · 1/8 = 5/8 kg, se lee directamente como el código 101.</p>
+
+<p>¿Por qué alcanzan N pasos? Cada comparación descarta la mitad de los valores posibles. Con 2<sup>N</sup> valores, después de N mitades queda uno solo: es una búsqueda binaria. (Las fuentes dicen «N pasos para N bits» pero no lo demuestran; el argumento es nuestro.)</p>
+
+<p>Hay un detalle fácil de pasar por alto: la balanza hay que compensarla en la mitad de la pesa más chica. Sin ese desplazamiento, el error de cuantización sería de un LSB entero en lugar de ½ LSB, porque el código siempre redondea hacia abajo.</p>
+
+<div class="caja dato">
+  <h4>dato: una idea de 1556</h4>
+  <p>El algoritmo del SAR es el de un acertijo de pesadas que Tartaglia resolvió en 1556 con pesas de 1, 2, 4, 8, 16 y 32 libras: con una balanza de dos platillos se pesa cualquier número entero de libras hasta 63. Los primeros convertidores que lo usaban se llamaban «codificadores secuenciales» o «de realimentación»; el nombre SAR llegó en los años 70, cuando salieron los primeros circuitos integrados de registro de aproximaciones sucesivas.</p>
+</div>
+
+<h3>El DAC de capacitores</h3>
+
+<p>En el circuito, las «pesas» son tensiones que genera un <strong>DAC</strong> (convertidor digital-analógico) interno. En un SAR integrado ese DAC es un arreglo de capacitores pesados en potencias de dos: C, C/2, C/4, …, más un capacitor extra del valor del LSB que hace que el total sea 2C. Las placas de arriba se unen en un nodo que va al comparador.</p>
+
+<p>Ese mismo arreglo es el capacitor de muestreo, así que el circuito de muestreo y retención del apartado anterior y el DAC del SAR son la misma pieza. Los capacitores de un mismo chip se parecen mucho entre sí y siguen juntos la temperatura, con menos de 1 ppm/°C de diferencia. Por eso la relación entre ellos, que es lo que importa, es muy estable.</p>
+
+<figure class="diagrama" data-titulo="fig-3.3">
   <svg viewBox="0 0 640 272" role="img" aria-label="DAC de capacitores de un SAR de 4 bits: capacitores de 8C, 4C, 2C, C y C de terminación con las placas de arriba unidas al comparador; cada placa de abajo tiene una llave a la entrada, a la referencia o a masa; la lógica SAR lee el comparador y mueve las llaves">
     <line x1="64" y1="56" x2="464" y2="56" class="s5" stroke-width="2"/><text x="64" y="44" class="sv-lbl f4" text-anchor="start" font-size="16">nodo común (placas de arriba)</text><line x1="96" y1="56" x2="96" y2="88" class="s4" stroke-width="2"/><rect x="76" y="88" width="40" height="4" class="f5 s5" stroke-width="0"/><rect x="76" y="100" width="40" height="4" class="f5 s5" stroke-width="0"/><text x="122" y="102" class="sv-tit f6" text-anchor="start" font-size="16">8C</text><line x1="96" y1="104" x2="96" y2="136" class="s4" stroke-width="2"/><rect x="68" y="136" width="56" height="40" class="fc1 sc3" stroke-width="2"/><rect x="67" y="135" width="2" height="2" class="f0"/><rect x="123" y="135" width="2" height="2" class="f0"/><rect x="67" y="175" width="2" height="2" class="f0"/><rect x="123" y="175" width="2" height="2" class="f0"/><text x="96" y="153" class="sv-tit f6" text-anchor="middle" font-size="16">llave</text><text x="96" y="171" class="sv-lbl fc3" text-anchor="middle" font-size="16">MSB</text><line x1="96" y1="176" x2="96" y2="192" class="s4" stroke-width="2"/><line x1="176" y1="56" x2="176" y2="88" class="s4" stroke-width="2"/><rect x="156" y="88" width="40" height="4" class="f5 s5" stroke-width="0"/><rect x="156" y="100" width="40" height="4" class="f5 s5" stroke-width="0"/><text x="202" y="102" class="sv-tit f6" text-anchor="start" font-size="16">4C</text><line x1="176" y1="104" x2="176" y2="136" class="s4" stroke-width="2"/><rect x="148" y="136" width="56" height="40" class="f1 sc3" stroke-width="2"/><rect x="147" y="135" width="2" height="2" class="f0"/><rect x="203" y="135" width="2" height="2" class="f0"/><rect x="147" y="175" width="2" height="2" class="f0"/><rect x="203" y="175" width="2" height="2" class="f0"/><text x="176" y="162" class="sv-tit f6" text-anchor="middle" font-size="16">llave</text><line x1="176" y1="176" x2="176" y2="192" class="s4" stroke-width="2"/><line x1="256" y1="56" x2="256" y2="88" class="s4" stroke-width="2"/><rect x="236" y="88" width="40" height="4" class="f5 s5" stroke-width="0"/><rect x="236" y="100" width="40" height="4" class="f5 s5" stroke-width="0"/><text x="282" y="102" class="sv-tit f6" text-anchor="start" font-size="16">2C</text><line x1="256" y1="104" x2="256" y2="136" class="s4" stroke-width="2"/><rect x="228" y="136" width="56" height="40" class="f1 sc3" stroke-width="2"/><rect x="227" y="135" width="2" height="2" class="f0"/><rect x="283" y="135" width="2" height="2" class="f0"/><rect x="227" y="175" width="2" height="2" class="f0"/><rect x="283" y="175" width="2" height="2" class="f0"/><text x="256" y="162" class="sv-tit f6" text-anchor="middle" font-size="16">llave</text><line x1="256" y1="176" x2="256" y2="192" class="s4" stroke-width="2"/><line x1="336" y1="56" x2="336" y2="88" class="s4" stroke-width="2"/><rect x="316" y="88" width="40" height="4" class="f5 s5" stroke-width="0"/><rect x="316" y="100" width="40" height="4" class="f5 s5" stroke-width="0"/><text x="362" y="102" class="sv-tit f6" text-anchor="start" font-size="16">C</text><line x1="336" y1="104" x2="336" y2="136" class="s4" stroke-width="2"/><rect x="308" y="136" width="56" height="40" class="f1 sc3" stroke-width="2"/><rect x="307" y="135" width="2" height="2" class="f0"/><rect x="363" y="135" width="2" height="2" class="f0"/><rect x="307" y="175" width="2" height="2" class="f0"/><rect x="363" y="175" width="2" height="2" class="f0"/><text x="336" y="153" class="sv-tit f6" text-anchor="middle" font-size="16">llave</text><text x="336" y="171" class="sv-lbl fc3" text-anchor="middle" font-size="16">LSB</text><line x1="336" y1="176" x2="336" y2="192" class="s4" stroke-width="2"/><line x1="416" y1="56" x2="416" y2="88" class="s4" stroke-width="2"/><rect x="396" y="88" width="40" height="4" class="f5 s5" stroke-width="0"/><rect x="396" y="100" width="40" height="4" class="f5 s5" stroke-width="0"/><text x="442" y="102" class="sv-tit f6" text-anchor="start" font-size="16">C</text><line x1="416" y1="104" x2="416" y2="136" class="s4" stroke-width="2"/><rect x="388" y="136" width="56" height="40" class="f1 sc3" stroke-width="2"/><rect x="387" y="135" width="2" height="2" class="f0"/><rect x="443" y="135" width="2" height="2" class="f0"/><rect x="387" y="175" width="2" height="2" class="f0"/><rect x="443" y="175" width="2" height="2" class="f0"/><text x="416" y="153" class="sv-tit f6" text-anchor="middle" font-size="16">llave</text><text x="416" y="171" class="sv-lbl fc3" text-anchor="middle" font-size="16">term.</text><line x1="416" y1="176" x2="416" y2="192" class="s4" stroke-width="2"/><line x1="72" y1="208" x2="440" y2="208" class="sa3" stroke-width="2"/><text x="64" y="213" class="sv-lbl fa3" text-anchor="end" font-size="16">Vin</text><line x1="72" y1="232" x2="440" y2="232" class="sc3" stroke-width="2"/><text x="64" y="237" class="sv-lbl fc3" text-anchor="end" font-size="16">Vref</text><line x1="72" y1="256" x2="440" y2="256" class="s3" stroke-width="2"/><text x="64" y="261" class="sv-lbl f4" text-anchor="end" font-size="16">GND</text><line x1="96" y1="192" x2="96" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="176" y1="192" x2="176" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="256" y1="192" x2="256" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="336" y1="192" x2="336" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="416" y1="192" x2="416" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><polyline points="488,32 488,104 552,68 488,32" class="f1 sd3" stroke-width="2"/><text x="500" y="60" class="sv-tit f6" text-anchor="start" font-size="16">−</text><text x="500" y="92" class="sv-tit f6" text-anchor="start" font-size="16">+</text><line x1="464" y1="56" x2="488" y2="56" class="sd3" stroke-width="2"/><line x1="476" y1="92" x2="488" y2="92" class="sd3" stroke-width="2"/><line x1="476" y1="92" x2="476" y2="112" class="s4" stroke-width="2"/><text x="476" y="128" class="sv-lbl f4" text-anchor="middle" font-size="16">GND</text><line x1="552" y1="68" x2="582" y2="68" class="sd3" stroke-width="2"/><rect x="582" y="60" width="2" height="16" class="fd3"/><rect x="584" y="62" width="2" height="12" class="fd3"/><rect x="586" y="64" width="2" height="8" class="fd3"/><rect x="588" y="66" width="2" height="4" class="fd3"/><rect x="590" y="67" width="2" height="2" class="fd3"/><rect x="544" y="144" width="88" height="56" class="fc1 sc3" stroke-width="2"/><rect x="543" y="143" width="2" height="2" class="f0"/><rect x="631" y="143" width="2" height="2" class="f0"/><rect x="543" y="199" width="2" height="2" class="f0"/><rect x="631" y="199" width="2" height="2" class="f0"/><text x="588" y="169" class="sv-tit f6" text-anchor="middle">Lógica</text><text x="588" y="187" class="sv-lbl fc3" text-anchor="middle">SAR</text><line x1="600" y1="68" x2="600" y2="144" class="sd3" stroke-width="2"/><polyline points="588,200 588,224 456,224 456,194" class="fn sc3" stroke-width="2"/><rect x="448" y="192" width="16" height="2" class="fc3"/><rect x="450" y="190" width="12" height="2" class="fc3"/><rect x="452" y="188" width="8" height="2" class="fc3"/><rect x="454" y="186" width="4" height="2" class="fc3"/><rect x="455" y="184" width="2" height="2" class="fc3"/><text x="560" y="244" class="sv-lbl fc3" text-anchor="middle" font-size="16">mueve las llaves</text>
   </svg>
-  <figcaption><b>fig 3.1</b>El corazón de un SAR moderno es un DAC de capacitores pesados en potencias de dos (acá, 4 bits). Al muestrear, todas las placas de abajo van a V<sub>in</sub> y la carga queda atrapada en el nodo común. Después la lógica prueba cada capacitor contra V<sub>ref</sub>, del más grande al más chico, y el comparador dice si conservarlo. No hay resistencias, así que no hay corriente continua: solo se consume al conmutar.</figcaption>
+  <figcaption><b>fig 3.3</b>Un DAC de capacitores pesados en potencias de dos (acá, 4 bits). Al muestrear, todas las placas de abajo van a V<sub>in</sub> y la carga queda atrapada en el nodo común. Después la lógica prueba cada capacitor contra V<sub>ref</sub>, del más grande al más chico, y el comparador dice si conservarlo. No hay resistencias, así que no hay corriente continua: solo se consume al conmutar.</figcaption>
 </figure>
+
+<p>La secuencia de una conversión tiene tres momentos:</p>
 
 <ol>
-  <li><strong>Muestreo.</strong> El nodo común va a masa y todas las placas de abajo a V<sub>in</sub>. La carga del nodo queda en −2<sup>N</sup> × C × V<sub>in</sub>.</li>
-  <li><strong>Retención.</strong> Se suelta el nodo (queda flotando, la carga no se puede ir) y las placas de abajo pasan a masa. El nodo salta a −V<sub>in</sub>.</li>
-  <li><strong>Búsqueda.</strong> El capacitor más grande pasa a V<sub>ref</sub>: el nodo sube V<sub>ref</sub>/2. Si queda por debajo de cero, V<sub>in</sub> es mayor que V<sub>ref</sub>/2: el bit vale 1 y el capacitor se queda en V<sub>ref</sub>. Si no, vuelve a masa. Se repite con el siguiente, que suma V<sub>ref</sub>/4, y así hasta el LSB.</li>
+  <li><strong>Muestreo.</strong> El nodo común va a masa y todas las placas de abajo a V<sub>in</sub>. Los capacitores se cargan con la entrada.</li>
+  <li><strong>Retención.</strong> Se suelta el nodo, que queda flotando: la carga no se puede ir. Las placas de abajo pasan a masa y el nodo salta a −V<sub>in</sub>.</li>
+  <li><strong>Búsqueda.</strong> El capacitor más grande pasa a V<sub>ref</sub>: el divisor que forma con el total suma V<sub>ref</sub>/2 al nodo. Si el nodo queda por debajo de cero, V<sub>in</sub> es mayor que V<sub>ref</sub>/2: el bit vale 1 y el capacitor se queda en V<sub>ref</sub>. Si no, vuelve a masa. Se repite con el siguiente, que suma V<sub>ref</sub>/4, y así hasta el LSB.</li>
 </ol>
 
-<p>Al final, las posiciones de las llaves <em>son</em> el resultado. Como los capacitores del mismo chip varían juntos con la temperatura, lo que importa, la relación entre ellos, se mantiene muy estable.</p>
+<p>Al final, las posiciones de las llaves <em>son</em> el resultado. La figura 3.4 recorre esos pasos con una entrada que podés mover.</p>
 
-<figure class="diagrama" data-titulo="fig-3.2 interactivo">
+<figure class="diagrama" data-titulo="fig-3.4 interactivo">
   <canvas data-motor="per-sar"></canvas>
   <div class="controles" data-ctl="sar"></div>
-  <figcaption><b>fig 3.2</b>Conversión paso a paso. Cada barra es el valor que prueba el DAC interno; la línea horizontal es la tensión de entrada. Si la barra queda por debajo de la línea, el bit se conserva (barra llena); si la pasa, se descarta (tramado). Abajo se arma el resultado, del bit más significativo al menos significativo. Movés la entrada con el deslizador.</figcaption>
+  <figcaption><b>fig 3.4</b>Conversión paso a paso. Cada barra es el valor que prueba el DAC interno; la línea horizontal es la tensión de entrada. Si la barra queda por debajo de la línea, el bit se conserva (barra llena); si la pasa, se descarta (tramado). Abajo se arma el resultado, del bit más significativo al menos significativo. Movés la entrada con el deslizador.</figcaption>
 </figure>
-
-<div class="caja analogia">
-  <h4>analogía: la balanza de dos platillos</h4>
-  <p>Tenés pesas de 2048, 1024, 512… gramos. Probás la más grande: si el objeto pesa más, la dejás; si no, la sacás. Después la siguiente. Con 12 pesadas ajustás el peso al último gramo, sin probar las 4096 combinaciones.</p>
-</div>
 
 <p>El <strong>comparador</strong> es la única pieza con ganancia del lazo. Tiene un preamplificador que reduce el offset y un latch regenerativo que amplifica una diferencia de milivolts hasta un 0 o un 1 lógico. Cuando la diferencia es de una fracción de LSB, tarda más en decidir y su propio ruido pesa: por eso los últimos bits son los más frágiles.</p>
 
-<h2>La fuente importa</h2>
+<h3>El precio de cada familia</h3>
 
-<p>Un ADC no es un voltímetro de impedancia infinita. Al cerrar la llave de muestreo, el capacitor interno se conecta de golpe al pin y se carga a través de la resistencia de la fuente y la de la propia llave. Ese tirón de corriente se llama <strong>patada de carga</strong> (<em>kickback</em>): el capacitor trae la carga de la muestra anterior y, en el instante en que la llave se cierra, la reparte con el pin. Si la fuente no la repone a tiempo, la lectura queda a mitad de camino entre el canal anterior y el actual.</p>
+<p>Con un reloj de 1 MHz y un ciclo de reloj por paso, una conversión de 12 bits tendría estos números.</p>
 
-<figure class="diagrama" data-titulo="fig-3.3">
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Arquitectura</th><th>pasos de reloj</th><th>tiempo</th><th>comparadores</th></tr></thead>
+  <tbody>
+    <tr><td><b>Flash</b></td><td>1 (una sola comparación)</td><td>un paso, limitado por el retardo de los comparadores</td><td>4095</td></tr>
+    <tr><td><b>SAR</b></td><td>12</td><td>12 µs</td><td>1</td></tr>
+    <tr><td><b>Contador</b></td><td>2<sup>12</sup> = 4096</td><td>4,1 ms</td><td>1</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>La tabla muestra que la elección no es de «mejor y peor» sino de qué se paga. El flash paga hardware, el contador paga tiempo, y el SAR queda en el medio: un comparador y un tiempo que crece linealmente con los bits.</p>
+
+<p>Por eso el SAR domina en micros: poca área, poco consumo y ninguna latencia de «pipeline» entre una muestra y otra, así que se puede saltar de un canal a otro sin arrastrar la muestra anterior. El tiempo del flash no va en microsegundos porque depende del retardo de los comparadores.</p>
+
+<h2>La fuente forma parte del circuito</h2>
+
+<p>Dijimos que durante la adquisición el capacitor sigue a la entrada. Falta ver con qué rapidez lo hace, porque no se carga a través de un cable ideal sino a través de la resistencia de la fuente, y eso impone un tiempo mínimo.</p>
+
+<p>El circuito es un resistor <var>R</var> (la fuente más la resistencia de la llave) que carga un capacitor <var>C</var> hasta <var>V</var><sub>in</sub>. La tensión del capacitor sigue una exponencial, con <var>τ</var> = <var>R</var> · <var>C</var>:</p>
+
+<p class="formula"><var>v</var>(<var>t</var>) = <var>V</var><sub>in</sub> · (1 − e<sup>−<var>t</var>/<var>τ</var></sup>)</p>
+
+<figure class="diagrama" data-titulo="fig-3.5">
   <svg viewBox="0 0 640 256" role="img" aria-label="Circuito equivalente de la entrada: la fuente con su resistencia, la capacidad del pin, la resistencia de la llave interna y el capacitor de muestreo; al lado, la curva de carga que necesita unas nueve constantes de tiempo para llegar a medio LSB de 12 bits">
     <text x="16" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">fuera del micro</text><text x="208" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">dentro del micro</text><rect x="200" y="32" width="136" height="176" class="fn s4" stroke-width="2" stroke-dasharray="4 4"/><rect x="16" y="72" width="56" height="48" class="f0 sa3" stroke-width="2"/><rect x="15" y="71" width="2" height="2" class="f0"/><rect x="71" y="71" width="2" height="2" class="f0"/><rect x="15" y="119" width="2" height="2" class="f0"/><rect x="71" y="119" width="2" height="2" class="f0"/><text x="44" y="102" class="sv-tit f6" text-anchor="middle">Vs</text><line x1="44" y1="120" x2="44" y2="184" class="sa3" stroke-width="2"/><line x1="44" y1="184" x2="312" y2="184" class="sa3" stroke-width="2"/><line x1="72" y1="96" x2="88" y2="96" class="sa3" stroke-width="2"/><rect x="88" y="80" width="64" height="32" class="f1 s3" stroke-width="2"/><rect x="87" y="79" width="2" height="2" class="f0"/><rect x="151" y="79" width="2" height="2" class="f0"/><rect x="87" y="111" width="2" height="2" class="f0"/><rect x="151" y="111" width="2" height="2" class="f0"/><text x="120" y="102" class="sv-tit f6" text-anchor="middle" font-size="16">Rs</text><line x1="152" y1="96" x2="184" y2="96" class="sa3" stroke-width="2"/><rect x="184" y="88" width="16" height="16" class="fa1 sa3" stroke-width="2"/><text x="186" y="130" class="sv-lbl fa3" text-anchor="middle" font-size="16">pin</text><line x1="200" y1="96" x2="216" y2="96" class="sa3" stroke-width="2"/><rect x="216" y="80" width="64" height="32" class="fa1 sa3" stroke-width="2"/><rect x="215" y="79" width="2" height="2" class="f0"/><rect x="279" y="79" width="2" height="2" class="f0"/><rect x="215" y="111" width="2" height="2" class="f0"/><rect x="279" y="111" width="2" height="2" class="f0"/><text x="248" y="102" class="sv-tit f6" text-anchor="middle" font-size="16">Rsw</text><line x1="280" y1="96" x2="312" y2="96" class="sa3" stroke-width="2"/><line x1="312" y1="96" x2="312" y2="132" class="sa3" stroke-width="2"/><rect x="296" y="132" width="32" height="4" class="f5" stroke-width="2"/><rect x="296" y="144" width="32" height="4" class="f5" stroke-width="2"/><line x1="312" y1="148" x2="312" y2="184" class="s4" stroke-width="2"/><text x="290" y="146" class="sv-tit f6" text-anchor="end" font-size="16">Cs</text><line x1="384" y1="200" x2="624" y2="200" class="s4" stroke-width="2"/><line x1="384" y1="200" x2="384" y2="40" class="s4" stroke-width="2"/><polyline points="384,200 390,165 396,138 402,116 408,99 414,86 420,76 426,68 432,62 438,57 444,54 450,51 456,48 462,47 468,45 474,44 480,43 486,43 492,42 498,42 504,42 510,41 516,41 522,41 528,41 534,41 540,41 546,41 552,41 558,41 564,41 570,41 576,41 582,41 588,41 594,41 600,41 606,41 612,41 618,41 624,41" class="fn sb3" stroke-width="2"/><line x1="408" y1="200" x2="408" y2="206" class="sb3" stroke-width="2"/><text x="408" y="222" class="sv-lbl fb3" text-anchor="middle" font-size="16">1 RC</text><line x1="456" y1="200" x2="456" y2="206" class="sb3" stroke-width="2"/><text x="456" y="222" class="sv-lbl fb3" text-anchor="middle" font-size="16">3 RC</text><line x1="600" y1="200" x2="600" y2="206" class="sb3" stroke-width="2"/><text x="600" y="222" class="sv-lbl fb3" text-anchor="middle" font-size="16">9 RC</text><text x="414" y="104" class="sv-lbl fb3" text-anchor="start" font-size="16">63 %</text><text x="600" y="32" class="sv-lbl fd3" text-anchor="middle" font-size="16">½ LSB</text><line x1="600" y1="44" x2="600" y2="200" class="sd3" stroke-width="2" stroke-dasharray="2 4"/><text x="384" y="24" class="sv-lbl fb3" text-anchor="start" font-size="16">tensión en Cs</text>
   </svg>
-  <figcaption><b>fig 3.3</b>Mientras la llave de muestreo está cerrada, la fuente carga C<sub>s</sub> a través de su propia resistencia y de la de la llave. La carga es exponencial: al cabo de una constante de tiempo llega al 63 %, y para quedar a menos de medio LSB de 12 bits hacen falta unas 9 constantes de tiempo.</figcaption>
+  <figcaption><b>fig 3.5</b>Mientras la llave de muestreo está cerrada, la fuente carga C<sub>s</sub> a través de su propia resistencia y de la de la llave. La carga es exponencial: al cabo de una constante de tiempo llega al 63 %, y para quedar a menos de medio LSB de 12 bits hacen falta unas 9 constantes de tiempo.</figcaption>
 </figure>
 
-<p>Para que el error quede por debajo de medio LSB con N bits, la llave tiene que estar cerrada al menos (N + 1) × ln 2 constantes de tiempo: <strong>unas 9 τ para 12 bits</strong>. Un ejemplo: un divisor de 100 kΩ + 100 kΩ para medir una batería presenta 50 kΩ. Con un capacitor interno del orden de 15 pF, τ ≈ 0,8 µs y hacen falta unos 7 µs de muestreo. Si el ADC muestrea menos tiempo, lee de menos, y además arrastra la tensión del canal anterior.</p>
+<p>¿Cuánto hay que esperar? Lo que queda por cargar es la fracción e<sup>−<var>t</var>/<var>τ</var></sup>, y tiene que ser menor que ½ LSB, o sea menor que 1/2<sup><var>N</var>+1</sup> de la escala. Entonces:</p>
 
-<p>Dos soluciones clásicas:</p>
+<p class="formula">e<sup>−<var>t</var>/<var>τ</var></sup> ≤ 1 / 2<sup><var>N</var>+1</sup> &nbsp;→&nbsp; <var>t</var> ≥ (<var>N</var> + 1) · ln 2 · <var>τ</var></p>
+
+<p>Para <var>N</var> = 12 resulta <var>t</var> ≥ 13 · 0,693 · <var>τ</var> ≈ 9 <var>τ</var>: el tiempo de adquisición debe ser unas nueve constantes de tiempo, y cada bit extra suma 0,69 <var>τ</var>.</p>
+
+<h3>Un ejemplo con números supuestos</h3>
+
+<p>Los valores que siguen no son de un chip en particular. Una fuente de 50 kΩ, 1 kΩ de la llave y un capacitor de muestreo de 15 pF dan <var>τ</var> = 51 kΩ · 15 pF ≈ 0,77 µs, y el tiempo mínimo es 9 · 0,77 µs ≈ 7 µs.</p>
+
+<p>Si el ADC solo muestrea durante 2 µs, el capacitor llega a 1 − e<sup>−2,6</sup> ≈ 93 % de la tensión de entrada: la lectura queda 7 % corta, un error mucho mayor que los 0,81 mV de un LSB.</p>
+
+<p>Este planteo es el mismo que usa Walsh en Analog Dialogue: asentamiento exponencial, con el número de constantes de tiempo igual al logaritmo natural del cociente entre el escalón a asentar y el error permitido, ½ LSB. Si el escalón es la escala completa, ese logaritmo es ln(2<sup><var>N</var></sup> · LSB / (½ LSB)) = ln 2<sup><var>N</var>+1</sup> = (<var>N</var> + 1) · ln 2, la expresión de arriba.</p>
+
+<p>Es el peor caso: la entrada acaba de cambiar de un extremo al otro, por ejemplo al pasar de un canal a otro en un multiplexor. Walsh agrega una precisión útil: con un capacitor externo de unos pocos nanofarads, el escalón que la fuente debe reponer es el que provoca la conmutación del DAC interno (del orden de 100 mV como mínimo en señales lentas), y no la escala completa.</p>
+
+<h3>Qué hacer con esto</h3>
+
+<p>Hay dos consecuencias prácticas, y las dos salen de lo mismo:</p>
+
 <ul>
-  <li><strong>Un seguidor con amplificador operacional</strong> entre la fuente y el pin: impedancia de entrada altísima, de salida casi nula.</li>
-  <li><strong>Un capacitor de 100 nF</strong> del pin a masa, pegado al micro. Durante el muestreo le presta carga al capacitor interno sin caer apreciablemente (hace falta que sea unas 2<sup>N+1</sup> veces mayor), y entre muestras la fuente lo repone despacio. Sirve para señales lentas; los datasheets de los dos micros miden su ADC así.</li>
+  <li><strong>Impedancia de la fuente.</strong> Cuanto mayor es <var>R</var>, mayor es <var>τ</var>. Con fuentes de alta impedancia hay que alargar el muestreo o bajar <var>R</var> con un seguidor con amplificador operacional.</li>
+  <li><strong>Un capacitor en el pin.</strong> Un capacitor externo mucho mayor que el interno (del orden de 2<sup><var>N</var>+1</sup> veces) le presta carga al interno durante la adquisición sin variar su tensión de forma apreciable. La fuente repone esa carga despacio, entre muestras. Sirve para señales lentas, y la resistencia de la fuente con ese capacitor forma además un pasabajos que ayuda contra el solapamiento.</li>
 </ul>
 
-<div class="caja analogia">
-  <h4>analogía: la probeta y el capilar</h4>
-  <p>El capacitor interno es una probeta que tenés que llenar al nivel de un tanque unido por un capilar fino. Si cerrás la válvula enseguida, la probeta queda a medio llenar. Un barril al lado de la válvula (el capacitor externo) la llena de golpe, y el capilar tiene todo el tiempo del mundo para rellenar el barril.</p>
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Medís una batería con un divisor de 100 kΩ + 100 kΩ y las lecturas dan de menos y cambian según el canal leído antes. ¿Qué hacés?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El divisor presenta 50 kΩ y el capacitor interno no llega a cargarse durante el muestreo. El capacitor externo le presta la carga al instante y el divisor lo repone entre muestras. Para señales rápidas, la alternativa es un seguidor con operacional.">Pongo un capacitor de 100 nF del pin a masa, pegado al micro.</button>
+    <button type="button" data-por-que="Más bits no ayudan si el capacitor interno no se carga: el error viene de la impedancia de la fuente, no de la resolución.">Subo la resolución a 12 bits para ganar exactitud.</button>
+    <button type="button" data-por-que="Cambiar de canal no cambia el circuito de entrada: la fuente sigue siendo de 50 kΩ y el capacitor interno sigue sin cargarse.">Cambio a otro canal del mismo ADC.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
 </div>
 
-<h2>Los errores de un ADC real</h2>
+<h2>Errores de un ADC real</h2>
 
-<figure class="diagrama" data-titulo="fig-3.4">
+<p>Un ADC ideal tiene una característica de transferencia que es una escalera perfecta: escalones de exactamente 1 LSB que siguen una recta. Uno real se desvía de ese ideal de cuatro maneras. Las dos primeras son como en un amplificador, porque la recta es <var>D</var> = <var>K</var> + <var>G</var> · <var>A</var>, donde <var>D</var> es el código, <var>A</var> la entrada y <var>K</var> y <var>G</var> son constantes.</p>
+
+<figure class="diagrama" data-titulo="fig-3.6">
   <svg viewBox="0 0 640 288" role="img" aria-label="Función de transferencia de un ADC: la recta ideal y una curva real con zona muerta cerca de cero, curvatura en el medio y saturación antes de la tensión máxima">
     <line x1="96" y1="256" x2="592" y2="256" class="s4" stroke-width="2"/><line x1="96" y1="256" x2="96" y2="32" class="s4" stroke-width="2"/><text x="592" y="280" class="sv-lbl f4" text-anchor="end" font-size="16">tensión de entrada</text><text x="88" y="44" class="sv-lbl f4" text-anchor="end" font-size="16">4095</text><text x="88" y="260" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><text x="88" y="144" class="sv-lbl f4" text-anchor="end" font-size="16">código</text><line x1="96" y1="256" x2="592" y2="32" class="s4" stroke-width="2" stroke-dasharray="4 4"/><text x="463" y="128" class="sv-lbl f4" text-anchor="start" font-size="16">ideal</text><polyline points="96,256 104,256 112,256 120,256 128,255 136,249 144,243 152,237 160,231 168,226 176,220 184,215 192,210 200,205 208,200 216,196 224,191 232,187 240,183 248,179 256,175 264,171 272,167 280,163 288,159 296,156 304,152 312,148 320,144 328,140 336,136 344,132 352,128 360,124 368,119 376,115 384,110 392,106 400,101 408,96 416,91 424,86 432,81 440,77 448,72 456,67 464,62 472,57 480,52 488,47 496,42 504,38 512,33 520,32 528,32 536,32 544,32 552,32 560,32 568,32 576,32 584,32 592,32" class="fn sa3" stroke-width="4"/><text x="100" y="280" class="sv-lbl fd3" text-anchor="start" font-size="16">zona muerta</text><text x="512" y="24" class="sv-lbl fd3" text-anchor="middle" font-size="16">satura</text><text x="319" y="180" class="sv-lbl fd3" text-anchor="start" font-size="16">curvatura (INL)</text>
   </svg>
-  <figcaption><b>fig 3.4</b>La recta punteada es el ADC ideal. La curva real (en acento) tiene los defectos típicos: una <strong>zona muerta</strong> cerca de 0 V (offset), una <strong>curvatura</strong> que ninguna recta corrige (no linealidad integral) y una <strong>saturación</strong> antes de llegar al máximo. Es un dibujo exagerado a propósito: el ESP32 muestra los tres; el S3, mucho menos.</figcaption>
+  <figcaption><b>fig 3.6</b>La recta punteada es el ADC ideal. La curva real (en naranja) tiene los defectos típicos: una <strong>zona muerta</strong> cerca de 0 V (offset), una <strong>curvatura</strong> que ninguna recta corrige (no linealidad integral) y una <strong>saturación</strong> antes de llegar al máximo. Es un dibujo exagerado a propósito.</figcaption>
 </figure>
 
 <ul>
-  <li><strong>Offset:</strong> la curva corrida en paralelo. Si es positivo, las tensiones chicas leen cero.</li>
-  <li><strong>Error de ganancia:</strong> la pendiente distinta de la ideal; empeora hacia el fondo de escala.</li>
-  <li><strong>DNL</strong> (no linealidad diferencial): cuánto se aparta cada escalón de 1 LSB. Con DNL = −1 LSB un código desaparece: el ADC nunca lo devuelve.</li>
-  <li><strong>INL</strong> (no linealidad integral): la suma acumulada de la DNL, la curvatura global. Una recta no la corrige; hace falta un polinomio o una tabla.</li>
+  <li><strong>Error de offset:</strong> cuánto se aparta <var>K</var> de su valor ideal. La recta queda corrida en paralelo. Si es positivo, las tensiones pequeñas leen cero.</li>
+  <li><strong>Error de ganancia:</strong> cuánto se aparta <var>G</var> de su valor ideal, en general en porcentaje. La pendiente es distinta y el error crece hacia el fondo de escala.</li>
 </ul>
 
-<p>Además está el <strong>ruido</strong>. Cuantizar solo ya agrega un ruido de LSB/√12, y un ADC ideal de N bits tiene una relación señal-ruido de 6,02 × N + 1,76 dB: 74 dB para 12 bits. En un micro con Wi-Fi, flash a 80 MHz y núcleos a 240 MHz, el ruido que se acopla por el sustrato domina, y los bits efectivos (ENOB) quedan varios por debajo de 12. Por eso los dos datasheets recomiendan <strong>promediar muestras</strong>.</p>
+<p>Estos dos se corrigen con una recta, porque son errores de <var>K</var> y de <var>G</var>. Esa es la calibración de uno o dos puntos. Los otros dos miden cuánto se aparta la escalera de una recta, y una recta no los corrige:</p>
 
-<div class="caja dato">
-  <h4>dato: 12 bits son resolución, no exactitud</h4>
-  <p>Son tres palabras distintas. La <strong>resolución</strong> es el tamaño del escalón. La <strong>exactitud</strong> es cuán cerca queda la lectura del valor real; la degradan el offset, la ganancia y la INL. La <strong>repetibilidad</strong> (lo que en metrología se llama precisión) es cuánto se parecen dos lecturas de la misma tensión; la degrada el ruido. Un ADC puede dar siempre el mismo código y estar lejos del valor real, o acertar en promedio con mucha dispersión. En los dos micros, después de calibrar, el error total en el rango más amplio es de decenas de milivolts.</p>
+<ul>
+  <li><strong>No linealidad diferencial (DNL):</strong> cuánto se aparta cada escalón de 1 LSB, tomando el peor de todos. Si algún escalón queda con ancho menor que 0 LSB (DNL por debajo de −1 LSB), un código no aparece nunca: es un <strong>código perdido</strong>. Un ADC es <strong>monótono</strong> cuando el código sube siempre que la entrada sube, sin retrocesos.</li>
+  <li><strong>No linealidad integral (INL):</strong> la mayor desviación de la característica real respecto de una recta.</li>
+</ul>
+
+<div class="caja ojo">
+  <h4>ojo: dos formas de trazar la recta de la INL</h4>
+  <p>La recta de <strong>extremos</strong> va del origen al fondo de escala. La de <strong>mejor ajuste</strong> pasa por el medio de la curva y da, en general, solo el 50 % del valor. La segunda produce hojas de datos más lindas pero sirve menos para presupuestar errores de medición. Antes de comparar dos ADC conviene ver qué método usó cada fabricante.</p>
 </div>
+
+<h3>Qué significan esos números en volts</h3>
+
+<p>Supongamos un ADC de 12 bits sobre 3,3 V con una INL de ±4 LSB (valor ilustrativo, no de un chip). Un LSB es 0,81 mV, así que el error de linealidad llega a ±4 · 0,81 mV ≈ ±3,2 mV.</p>
+
+<p>En fracción de la escala son ±0,1 %: un intervalo de incertidumbre de 8 LSB / 4096 ≈ 0,2 %, que es el escalón de un ADC de 9 bits (1/512 ≈ 0,2 %). El cálculo responde una pregunta concreta, ¿para qué sirven los bits de más? En exactitud estática, aquí, para nada: los últimos 3 bits dan resolución (el ADC distingue cambios finos) pero no exactitud (el valor absoluto es incierto).</p>
+
+<h3>Resolución, exactitud y repetibilidad</h3>
+
+<p>Son tres palabras distintas, y es lo que más se confunde:</p>
+
+<ul>
+  <li><strong>Resolución:</strong> el tamaño del escalón. La fija el número de bits.</li>
+  <li><strong>Exactitud:</strong> cuán cerca queda la lectura del valor verdadero. La degradan el offset, la ganancia y la INL.</li>
+  <li><strong>Repetibilidad:</strong> cuánto se parecen dos lecturas de la misma tensión. La degrada el ruido.</li>
+</ul>
+
+<p>Un ADC puede dar siempre el mismo código y estar lejos del valor real (muy repetible, poco exacto), o acertar en promedio con mucha dispersión (exacto, poco repetible). La calibración arregla lo primero en parte, y promediar muestras arregla lo segundo, pero ninguna arregla la INL con una recta. Para eso hace falta una curva de corrección o una tabla.</p>
 
 <div class="caja quiz" data-ok="1">
   <h4>repaso rápido</h4>
@@ -153,122 +443,35 @@
   <p class="feedback" aria-live="polite"></p>
 </div>
 
-<h2>Atenuadores: medir más de un volt</h2>
-
-<p>Los transistores finos del núcleo no aguantan 3,3 V, así que el SAR trabaja con una referencia interna de alrededor de <strong>1,1 V</strong>. Para medir más, la entrada pasa por un <strong>atenuador</strong> programable. El costo: la señal se achica pero el ruido del núcleo no, así que la resolución en volts empeora; el divisor agrega resistencia en serie y algo de curvatura; y cerca del techo la cadena se comprime y satura antes de 3,3 V.</p>
-
-<div class="caja ojo">
-  <h4>ojo: el ADC mide una relación, no volts</h4>
-  <p>El código es la fracción V<sub>in</sub> / V<sub>ref</sub>. Si el sensor se alimenta de la misma tensión que usa el ADC como referencia, una variación de esa tensión mueve las dos cosas juntas y se cancela: es una medición <strong>ratiométrica</strong>. En estos micros la referencia es interna y el potenciómetro o el divisor cuelgan de la alimentación, así que no se cancela nada: el ruido de la fuente, por ejemplo las caídas cuando transmite la radio, aparece entero en la lectura.</p>
-</div>
-
-<div class="tabla-scroll">
-<table>
-  <thead><tr><th>Atenuación</th><th>ESP32: rango / error tras calibrar</th><th>ESP32-S3: rango / error tras calibrar</th></tr></thead>
-  <tbody>
-    <tr><td>0 dB</td><td>100 a 950 mV / ±23 mV</td><td>0 a 850 mV / ±5 mV</td></tr>
-    <tr><td>2,5 dB</td><td>100 a 1250 mV / ±30 mV</td><td>0 a 1100 mV / ±6 mV</td></tr>
-    <tr><td>6 dB</td><td>150 a 1750 mV / ±40 mV</td><td>0 a 1600 mV / ±10 mV</td></tr>
-    <tr><td>11 dB (ESP32) / 12 dB (S3)</td><td>150 a 2450 mV / ±60 mV</td><td>0 a 2900 mV / ±50 mV</td></tr>
-  </tbody>
-</table>
-</div>
-
-<p>En ninguno de los dos se llega a 3,3 V: para medir una señal de 3,3 V hace falta un divisor externo (con su capacitor, por lo visto antes).</p>
-
-<h2>Calibración</h2>
-
-<p>La referencia interna varía de un micro a otro: en el ESP32, sin calibrar, las lecturas difieren del orden de ±6 % entre micros. Por eso Espressif mide cada micro en fábrica y graba datos en <strong>eFuses</strong>:</p>
-<ul>
-  <li><strong>V<sub>ref</sub> medida</strong> (ESP32): corrige la ganancia con una recta.</li>
-  <li><strong>Dos puntos</strong> (ESP32, en los micros que la traen): dos tensiones conocidas fijan pendiente y offset.</li>
-  <li><strong>Ajuste de curva</strong> (S3): un polinomio que además endereza buena parte de la curvatura.</li>
-</ul>
-
-<h2>Dos formas de disparar el ADC</h2>
-
-<ul>
-  <li><strong>Controlador RTC:</strong> conversiones sueltas a pedido, de bajo consumo. Es el que puede usar el coprocesador ULP con los núcleos dormidos.</li>
-  <li><strong>Controlador digital:</strong> muestreo continuo a ritmo fijo, marcado por hardware. Recorre una <strong>tabla de patrones</strong> (canal y atenuación de cada paso) y entrega las muestras por <strong>DMA</strong> (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) a la RAM, con el número de canal pegado a cada una. La CPU solo se entera cuando se llena un bloque. En el S3 suma filtros IIR y un monitor de umbrales que interrumpe solo si la señal sale de una banda.</li>
-</ul>
-
-<h2>Muestrear a ritmo fijo: el aliasing</h2>
-
-<p>Entre una muestra y la siguiente, el ADC no ve nada. Si la señal tiene componentes por encima de la mitad de la frecuencia de muestreo (la <strong>frecuencia de Nyquist</strong>), sus muestras coinciden con las de una señal más lenta. La componente rápida se <strong>pliega</strong> y aparece dentro de la banda como una frecuencia que no existe: el <strong>alias</strong>.</p>
-
-<p>Una vez muestreado, el alias es idéntico a una señal real de baja frecuencia. Ningún filtro digital lo separa después, y promediar baja el ruido pero no saca un alias que ya entró. Por eso el filtro <strong>antialiasing</strong> es analógico y va antes del pin: un pasabajos que atenúe lo que esté por encima de Nyquist. Como un filtro real no corta de golpe, en la práctica se muestrea bastante por encima del doble de la frecuencia más alta que interesa. El capacitor del pin junto con la resistencia de la fuente ya es un pasabajos: ayuda contra el alias, y a la vez limita qué tan rápido puede cambiar la señal que medís.</p>
-
-<div class="caja analogia">
-  <h4>analogía: las aspas en el video</h4>
-  <p>En un video, las aspas de un helicóptero parecen girar despacio o quedarse quietas: la cámara saca pocos cuadros por segundo y entre uno y otro el aspa dio casi una vuelta entera. Ningún programa de edición recupera la velocidad real a partir del archivo; la información se perdió al filmar. Para verla bien hay que filmar más rápido o, en el ADC, sacar lo rápido antes de muestrear.</p>
-</div>
-
-<h2>ADC2 y la radio</h2>
-
-<figure class="diagrama" data-titulo="fig-3.5">
-  <svg viewBox="0 0 640 176" role="img" aria-label="El núcleo de ADC2 lo comparten la radio y la CPU a través de un árbitro; la radio tiene prioridad">
-    <rect x="16" y="24" width="176" height="48" class="fa1 sa3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="191" y="23" width="2" height="2" class="f0"/><rect x="15" y="71" width="2" height="2" class="f0"/><rect x="191" y="71" width="2" height="2" class="f0"/><text x="104" y="45" class="sv-tit f6" text-anchor="middle">Radio Wi-Fi / BT</text><text x="104" y="63" class="sv-lbl fa3" text-anchor="middle">detector de potencia</text><rect x="16" y="104" width="176" height="48" class="fb1 sb3" stroke-width="2"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="191" y="103" width="2" height="2" class="f0"/><rect x="15" y="151" width="2" height="2" class="f0"/><rect x="191" y="151" width="2" height="2" class="f0"/><text x="104" y="125" class="sv-tit f6" text-anchor="middle">CPU o controlador</text><text x="104" y="143" class="sv-lbl fb3" text-anchor="middle">lectura de un pin</text><rect x="256" y="56" width="128" height="64" class="f1 sc3" stroke-width="2"/><rect x="255" y="55" width="2" height="2" class="f0"/><rect x="383" y="55" width="2" height="2" class="f0"/><rect x="255" y="119" width="2" height="2" class="f0"/><rect x="383" y="119" width="2" height="2" class="f0"/><text x="320" y="85" class="sv-tit f6" text-anchor="middle">Árbitro</text><text x="320" y="103" class="sv-lbl fc3" text-anchor="middle">prioridad: radio</text><rect x="448" y="56" width="176" height="64" class="f0 s4" stroke-width="2"/><rect x="447" y="55" width="2" height="2" class="f0"/><rect x="623" y="55" width="2" height="2" class="f0"/><rect x="447" y="119" width="2" height="2" class="f0"/><rect x="623" y="119" width="2" height="2" class="f0"/><text x="536" y="85" class="sv-tit f6" text-anchor="middle">ADC2</text><text x="536" y="103" class="sv-lbl f4" text-anchor="middle">un solo núcleo</text><polyline points="192,48 224,48 224,72 246,72" class="fn sa3" stroke-width="2"/><rect x="246" y="64" width="2" height="16" class="fa3"/><rect x="248" y="66" width="2" height="12" class="fa3"/><rect x="250" y="68" width="2" height="8" class="fa3"/><rect x="252" y="70" width="2" height="4" class="fa3"/><rect x="254" y="71" width="2" height="2" class="fa3"/><polyline points="192,128 224,128 224,104 246,104" class="fn sb3" stroke-width="2"/><rect x="246" y="96" width="2" height="16" class="fb3"/><rect x="248" y="98" width="2" height="12" class="fb3"/><rect x="250" y="100" width="2" height="8" class="fb3"/><rect x="252" y="102" width="2" height="4" class="fb3"/><rect x="254" y="103" width="2" height="2" class="fb3"/><line x1="384" y1="88" x2="438" y2="88" class="sc3" stroke-width="2"/><rect x="438" y="80" width="2" height="16" class="fc3"/><rect x="440" y="82" width="2" height="12" class="fc3"/><rect x="442" y="84" width="2" height="8" class="fc3"/><rect x="444" y="86" width="2" height="4" class="fc3"/><rect x="446" y="87" width="2" height="2" class="fc3"/><text x="320" y="150" class="sv-lbl fd3" text-anchor="middle" font-size="16">si la radio lo usa, la lectura falla</text>
-  </svg>
-  <figcaption><b>fig 3.5</b>ADC2 no es solo tuyo: el circuito que mide la potencia de transmisión de la radio usa el mismo convertidor, y un árbitro de hardware le da prioridad. Con el Wi-Fi activo, una lectura de ADC2 puede fallar o devolver basura.</figcaption>
-</figure>
-
-<p>Regla práctica en los dos micros: si hay Wi-Fi o Bluetooth, <strong>todo lo analógico importante va a ADC1</strong>. En el S3 hay una razón más: según su errata, el controlador digital no funciona bien con ADC2, así que ADC2 solo sirve para lecturas sueltas.</p>
-
-<h2>En el ESP32 y en el ESP32-S3</h2>
-
-<div class="tabla-scroll">
-<table>
-  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
-  <tbody>
-    <tr><td><b>Unidades y canales</b></td><td>ADC1: 8 (GPIO32 a 39); ADC2: 10 (GPIO0, 2, 4, 12 a 15, 25 a 27)</td><td>ADC1: 10 (GPIO1 a 10); ADC2: 10 (GPIO11 a 20)</td></tr>
-    <tr><td><b>Resolución</b></td><td>9 a 12 bits, configurable</td><td>12 bits</td></tr>
-    <tr><td><b>Velocidad</b></td><td>200 kmuestras/s (controlador RTC); 2 Mmuestras/s (digital)</td><td>100 kmuestras/s</td></tr>
-    <tr><td><b>No linealidad</b></td><td>DNL ±7 LSB, INL ±12 LSB</td><td>DNL ±4 LSB, INL ±8 LSB</td></tr>
-    <tr><td><b>Cerca de 0 V</b></td><td>rango útil desde 100 a 150 mV</td><td>útil desde 0 V</td></tr>
-    <tr><td><b>Calibración</b></td><td>V<sub>ref</sub> o dos puntos, lineal</td><td>ajuste de curva</td></tr>
-    <tr><td><b>Extras del controlador digital</b></td><td>—</td><td>filtros IIR y monitor de umbrales</td></tr>
-    <tr><td><b>ADC2</b></td><td>choca con la radio</td><td>choca con la radio y solo admite lecturas sueltas</td></tr>
-  </tbody>
-</table>
-</div>
-<p>Las cifras de no linealidad de los dos datasheets se midieron con 100 nF en el pin y la radio apagada.</p>
-
 <div class="caja clave">
   <h4>para llevar</h4>
   <ul>
-    <li>El SAR muestrea sobre un arreglo de capacitores y hace una búsqueda binaria: N comparaciones para N bits.</li>
-    <li>La fuente carga el capacitor interno a través de su resistencia: 12 bits piden unas 9 τ; un seguidor o 100 nF en el pin lo resuelven.</li>
-    <li>Offset y ganancia se corrigen con una recta; la INL necesita una curva. Los 12 bits son resolución, no exactitud.</li>
-    <li>El atenuador amplía el rango a costa de ruido y curvatura; ninguno de los dos micros llega a 3,3 V.</li>
-    <li>Con la radio encendida, lo importante va a ADC1. El S3 es más lineal y calibra con una curva; el ESP32 es más rápido pero menos exacto.</li>
+    <li>Un ADC hace dos cortes independientes: muestrear (tiempo) y cuantizar (amplitud). Cada uno tira información.</li>
+    <li>Una frecuencia por encima de <var>f</var><sub>s</sub>/2 se disfraza de otra más baja. El filtro antialiasing es analógico y va antes del convertidor.</li>
+    <li>El ruido de cuantización es <var>q</var>/√12 y da una SNR ideal de 6,02 · <var>N</var> + 1,76 dB. Con la SINAD medida se calculan los bits efectivos.</li>
+    <li>El SAR resuelve un bit por paso con una búsqueda binaria sobre un DAC de capacitores: <var>N</var> pasos para <var>N</var> bits.</li>
+    <li>La fuente carga el capacitor de muestreo a través de su resistencia: 12 bits piden unas 9 <var>τ</var>.</li>
+    <li>Offset y ganancia se corrigen con una recta; la INL y la DNL no. Los bits dan resolución, no exactitud.</li>
   </ul>
 </div>
 
-<div class="caja quiz" data-ok="0">
-  <h4>repaso</h4>
-  <p class="pregunta">Medís una batería con un divisor de 100 kΩ + 100 kΩ y las lecturas dan de menos y cambian según el canal leído antes. ¿Qué hacés?</p>
-  <div class="opciones">
-    <button type="button" data-por-que="El divisor presenta 50 kΩ y el capacitor interno no llega a cargarse durante el muestreo. El capacitor externo le presta la carga al instante y el divisor lo repone entre muestras. Para señales rápidas, la alternativa es un seguidor con operacional.">Pongo un capacitor de 100 nF del pin a masa, pegado al micro.</button>
-    <button type="button" data-por-que="Más bits no ayudan si el capacitor interno no se carga: el error viene de la impedancia de la fuente, no de la resolución.">Subo la resolución a 12 bits para ganar exactitud.</button>
-    <button type="button" data-por-que="ADC2 tiene el mismo circuito de entrada, así que el problema sigue, y además choca con la radio.">Cambio a un canal de ADC2.</button>
-  </div>
-  <p class="feedback" aria-live="polite"></p>
-</div>
+<p>Para ver cómo aplican esto el ESP32, el ESP32-S3 y el RP2040 (referencia, atenuación, calibración, controladores y el choque de ADC2 con la radio), seguí en <a href="03b-adc-esp32.html">«El ADC del ESP32, del ESP32-S3 y del RP2040»</a>.</p>
 
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
-    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>. <a href="https://documentation.espressif.com/esp32_datasheet_en.pdf">documentation.espressif.com/esp32_datasheet_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP32 Technical Reference Manual</em>. <a href="https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf">documentation.espressif.com/esp32_technical_reference_manual_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>. <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
-    <li>Espressif Systems. <em>ESP32-S3 Series SoC Errata</em>. <a href="https://docs.espressif.com/projects/esp-chip-errata/en/latest/esp32s3/">docs.espressif.com/projects/esp-chip-errata/…/esp32s3/</a></li>
-    <li>Espressif Systems. <em>ESP-IDF Programming Guide: ADC Calibration Driver (ESP32)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc_calibration.html">docs.espressif.com/…/adc_calibration.html</a></li>
-    <li>Analog Devices. <em>MT-021: Successive Approximation ADCs</em>. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-021.pdf">analog.com/…/MT-021.pdf</a></li>
-    <li>Analog Devices. <em>MT-002: What the Nyquist Criterion Means to Your Sampled Data System Design</em>. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-002.pdf">analog.com/…/MT-002.pdf</a></li>
-    <li>IEEE. <em>IEEE Std 1241-2023: Standard for Terminology and Test Methods for Analog-to-Digital Converters</em> (definiciones de offset, ganancia, DNL, INL y ENOB). <a href="https://standards.ieee.org/ieee/1241/6797/">standards.ieee.org/ieee/1241/6797/</a></li>
+    <li>Taub, H. y Schilling, D. <em>Electrónica digital integrada</em>. Marcombo, Barcelona (traducción de <em>Digital Integrated Electronics</em>, McGraw-Hill, 1977), cap. 14: cuantificación, convertidor por aproximaciones sucesivas y comparación de convertidores.</li>
+    <li>Kester, W. <em>MT-001: Taking the Mystery out of the Infamous Formula, «SNR = 6.02N + 1.76dB», and Why You Should Care</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-001.pdf">analog.com/…/MT-001.pdf</a></li>
+    <li>Kester, W. <em>MT-002: What the Nyquist Criterion Means to Your Sampled Data System Design</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-002.pdf">analog.com/…/MT-002.pdf</a></li>
+    <li>Kester, W. <em>MT-003: Understand SINAD, ENOB, SNR, THD, THD + N, and SFDR so You Don't Get Lost in the Noise Floor</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-003.pdf">analog.com/…/MT-003.pdf</a></li>
+    <li>Kester, W. <em>MT-010: The Importance of Data Converter Static Specifications</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-010.pdf">analog.com/…/MT-010.pdf</a></li>
+    <li>Kester, W. <em>MT-020: ADC Architectures I: The Flash Converter</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-020.pdf">analog.com/…/MT-020.pdf</a></li>
+    <li>Kester, W. <em>MT-021: ADC Architectures II: Successive Approximation ADCs</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-021.pdf">analog.com/…/MT-021.pdf</a></li>
+    <li>Kester, W. <em>MT-022: ADC Architectures III: Sigma-Delta ADC Basics</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-022.pdf">analog.com/…/MT-022.pdf</a></li>
+    <li>Walsh, A. <em>Front-End Amplifier and RC Filter Design for a Precision SAR Analog-to-Digital Converter</em>. Analog Dialogue 46-12, Analog Devices. <a href="https://www.analog.com/library/analogdialogue/archives/46-12/sar_front_end.html">analog.com/library/analogdialogue/archives/46-12/sar_front_end.html</a></li>
+    <li>Valvano, J. <em>Embedded Systems: Introduction to Arm Cortex-M Microcontrollers</em>, cap. 14: ADC, adquisición de datos y control. Universidad de Texas en Austin. <a href="http://users.ece.utexas.edu/~valvano/Volume1/E-Book/C14_ADCdataAcquisition.htm">users.ece.utexas.edu/~valvano/Volume1/E-Book/C14_ADCdataAcquisition.htm</a></li>
   </ol>
-  <p class="nota">El valor del capacitor de muestreo interno, la resistencia de la llave y los bits efectivos no figuran en los datasheets; los cálculos usan órdenes de magnitud típicos de un SAR integrado.</p>
+  <p class="nota">Los valores de la fuente de 50 kΩ, la llave de 1 kΩ, el capacitor de 15 pF y la INL de ±4 LSB son supuestos para ilustrar el cálculo, no datos de un chip. La tabla de polos usa la pendiente asintótica de 6 dB por octava por polo, con la regla de Kester (MT-002). El argumento de que la búsqueda binaria alcanza con N pasos es propio. El tiempo de un flash no se da en microsegundos porque depende del retardo de los comparadores.</p>
 </section>
 
 <div data-nav-niveles></div>

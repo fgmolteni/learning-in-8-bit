@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nivel 5: Generar y contar pulsos</title>
-<meta name="description" content="Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir.">
+<meta name="description" content="Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir. Un contador también mide una capacidad, como la de un dedo sobre un pad táctil.">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Apuntes en bits">
 <meta property="og:title" content="Nivel 5: Generar y contar pulsos">
-<meta property="og:description" content="Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir.">
+<meta property="og:description" content="Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir. Un contador también mide una capacidad, como la de un dedo sobre un pad táctil.">
 <link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../../assets/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,9 +23,9 @@
 
 <main class="leccion">
 <header>
-  <span class="nivel-chip" data-n="05">nivel 05, 14 min de lectura</span>
+  <span class="nivel-chip" data-n="05">nivel 05, 18 min de lectura</span>
   <h1>Generar y contar pulsos</h1>
-  <p class="bajada">Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir.</p>
+  <p class="bajada">Dos periféricos que liberan a la CPU del cronómetro: el RMT reproduce y graba trenes de pulsos con precisión de hardware, y el PCNT cuenta flancos, incluso en cuadratura, sin interrumpir. Un contador también mide una capacidad, como la de un dedo sobre un pad táctil.</p>
 </header>
 
 <div class="caja objetivos">
@@ -35,6 +35,7 @@
     <li>Describir el <strong>símbolo</strong> del RMT y codificar los bits de un LED WS2812.</li>
     <li>Explicar la <strong>portadora</strong> de un control remoto infrarrojo.</li>
     <li>Configurar mentalmente un <strong>PCNT</strong> para leer un encoder en cuadratura con cuatro cuentas por ranura.</li>
+    <li>Explicar cómo un oscilador de relajación convierte una capacidad en una frecuencia, y por qué medirla con un contador cambia velocidad por sensibilidad.</li>
   </ul>
 </div>
 
@@ -128,6 +129,57 @@
   <p>El PCNT es un molinete que cuenta pasajeros y distingue si entran o salen según qué barra se empuja primero. El guardia (la CPU) no mira cada pasada: solo recibe un aviso cuando el andén se llena.</p>
 </div>
 
+<h2>Contar para medir: el sensor táctil</h2>
+
+<p>El PCNT cuenta pulsos que ya existen. Pero un contador también sirve para medir una magnitud que no es un pulso, si antes se la convierte en una frecuencia. El sensor táctil capacitivo hace eso con una capacidad muy chica: la de un pad de cobre, que aumenta un poco cuando un dedo se acerca desde el otro lado de un vidrio o un plástico.</p>
+
+<h3>Del capacitor a una frecuencia</h3>
+
+<p>La conversión es un oscilador de relajación. Una fuente de corriente constante <var>I</var> carga el pad hasta un umbral alto y lo descarga hasta uno bajo, y así sigue. Con corriente constante la tensión del pad es una rampa, porque <var>I</var> = <var>C</var> · d<var>V</var>/d<var>t</var>, y cada tramo toma un tiempo <var>C</var> · Δ<var>V</var> / <var>I</var>, donde Δ<var>V</var> es la diferencia entre los dos umbrales.</p>
+
+<p class="formula"><var>T</var> = 2 · <var>C</var> · Δ<var>V</var> / <var>I</var> &nbsp;→&nbsp; <var>f</var> = <var>I</var> / (2 · <var>C</var> · Δ<var>V</var>)</p>
+
+<p>Esto supone que la carga y la descarga usan la misma corriente, y los manuales hablan de una fuente de corriente fija sin más detalle. La conclusión no depende de eso: la frecuencia es inversamente proporcional a la capacidad. Si el dedo la aumenta, la rampa se vuelve más lenta y la frecuencia baja. Una nota de aplicación de Texas Instruments ubica estas frecuencias entre 100 kHz y 1 MHz, según el diseño.</p>
+
+<figure class="diagrama" data-titulo="fig-5.6 interactivo">
+  <canvas data-motor="per-tactil"></canvas>
+  <figcaption><b>fig 5.6</b>El pad se carga y descarga con corriente constante entre dos umbrales. Cada cuatro segundos se acerca un dedo (zona tramada): agrega capacidad y la rampa se vuelve más lenta. Las frecuencias están bajadas para que se vean.</figcaption>
+</figure>
+
+<h3>Cuánto hay que contar</h3>
+
+<p>El problema es que el cambio de capacidad es chico. La nota de Texas Instruments lo dice como el desafío central de esta técnica. Se ve con un ejemplo, con valores supuestos: un oscilador de 500 kHz, y un dedo que cambia la capacidad un 3 %, por lo que la frecuencia cambia más o menos un 3 %.</p>
+
+<p>Si se cuentan los pulsos en una ventana de tiempo fija, el contador tiene un error de ±1 cuenta. Para que el cambio se distinga con algo de margen, digamos 3 cuentas, hace falta contar al menos 100 pulsos, porque el 3 % de 100 es 3. Con 500 kHz, 100 pulsos son:</p>
+
+<p class="formula">ventana = 100 / 500 kHz = 200 µs</p>
+
+<p>Y si el cambio fuera de 1 %, harían falta 300 pulsos y una ventana de 600 µs. Es una relación inversa entre velocidad y sensibilidad: la nota de TI la nombra igual. Medir cambios más chicos obliga a una ventana más larga, y una ventana más larga son menos lecturas por segundo.</p>
+
+<h3>Dos formas de medir lo mismo</h3>
+
+<p>El ESP32 mide de la manera de arriba: cuenta los pulsos de salida del oscilador en una ventana fija y compara con la cuenta de referencia. Un dedo baja la frecuencia, así que la cuenta baja. El ESP32-S3 invierte el planteo: deja pasar un número fijo <var>N</var> de pulsos y mide cuánto tarda, con un contador de tiempo. Un dedo alarga el tiempo, así que la lectura sube.</p>
+
+<p>Son las dos medidas de la nota de TI. La segunda saca partido de un contador de tiempo de buena resolución: su ejemplo mide solo 8 pulsos con un timer de 4 ns. Con 500 kHz, 8 pulsos duran 16 µs, y un paso de 4 ns es 4 ns / 16 µs = 0,025 % de ese tiempo, más de cien pasos para un cambio del 3 %, en una ventana de 16 µs en lugar de 200 µs. (El reloj del contador del S3 no figura en las fuentes que revisé; el 4 ns es del timer del ejemplo de TI.)</p>
+
+<h3>Ruido, agua y dedos que se acercan</h3>
+
+<p>El pad es un nodo de alta impedancia, así que también capta ruido. El S3 trae varias defensas en hardware, según su manual:</p>
+
+<ul>
+  <li>Un canal interno, T0, que no sale a ningún pin y mide el ruido del propio chip. Su valor se resta de las lecturas de los otros canales.</li>
+  <li>Un filtro de promedio (IIR) opcional sobre una serie de lecturas, para que un pico de ruido no dispare un falso toque.</li>
+  <li>Tolerancia a la humedad, que mitiga el efecto de gotas chicas, y rechazo de agua, que detecta si la superficie del panel está cubierta de agua y corta la lectura.</li>
+  <li>Hasta tres canales en modo de proximidad, para detectar un dedo que se acerca sin tocar.</li>
+</ul>
+
+<p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador ULP recorra los pads sin despertarla.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el táctil de Espressif tiene un límite documentado</h4>
+  <p>Los manuales de los dos micros avisan que su sensor táctil todavía no pasó la prueba de susceptibilidad conducida (CS), y que por eso tiene escenarios de aplicación limitados. Un ruido que llega por los cables, como el de una fuente conmutada mal filtrada, puede dar toques falsos.</p>
+</div>
+
 <h2>En el ESP32 y en el ESP32-S3</h2>
 
 <div class="tabla-scroll">
@@ -139,6 +191,7 @@
     <tr><td><b>DMA del RMT</b></td><td>no: las secuencias largas se recargan por interrupción, de a media memoria</td><td>sí, en el canal 3 (transmisión) y el 7 (recepción)</td></tr>
     <tr><td><b>Unidades de PCNT</b></td><td>8</td><td>4</td></tr>
     <tr><td><b>Contador y filtro</b></td><td colspan="2">16 bits por unidad, dos canales, filtro de hasta 1023 ciclos de APB, límites y umbrales</td></tr>
+    <tr><td><b>Táctil</b></td><td>10 canales (GPIO0, 2, 4, 12 a 15, 27, 32 y 33); mide la cuenta en una ventana fija: al tocar, baja</td><td>14 canales (GPIO1 a 14) más T0 interno de ruido; mide el tiempo de un número fijo de pulsos: al tocar, sube; filtro IIR, proximidad, tolerancia al agua</td></tr>
   </tbody>
 </table>
 </div>
@@ -153,6 +206,7 @@
     <li>El PCNT suma o resta flancos según una tabla y solo interrumpe en límites o umbrales.</li>
     <li>Un encoder en cuadratura se lee con los dos canales de una unidad: cuatro cuentas por ranura y el sentido de giro gratis.</li>
     <li>El ESP32 tiene más unidades (8 PCNT) y canales de RMT flexibles; el S3 agrega DMA al RMT.</li>
+    <li>El sensor táctil convierte una capacidad en una frecuencia con un oscilador de relajación, <var>f</var> = <var>I</var> / (2 · <var>C</var> · Δ<var>V</var>), y la mide con un contador: contar más pulsos da más sensibilidad y menos lecturas por segundo.</li>
   </ul>
 </div>
 
@@ -175,9 +229,10 @@
     <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>. <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: RMT (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/rmt.html">docs.espressif.com/…/rmt.html</a></li>
     <li>Espressif Systems. <em>ESP-IDF Programming Guide: Pulse Counter (ESP32-S3)</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/pcnt.html">docs.espressif.com/…/pcnt.html</a></li>
+    <li>Texas Instruments. <em>Two-Dimensional Capacitive-Touch Implementation Using the High-Resolution Timer_D of the MSP430F5132</em>, Application Report SLAA481A. <a href="https://www.ti.com/lit/an/slaa481/slaa481.pdf">ti.com/lit/an/slaa481/slaa481.pdf</a></li>
     <li>Worldsemi. <em>WS2812B Intelligent control LED integrated light source</em> (datasheet). Página del fabricante: <a href="http://www.world-semi.com/ws2812-family/">world-semi.com/ws2812-family</a>; Worldsemi no publica un enlace directo al PDF, que se consigue en copias de distribuidores como <a href="https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf">cdn-shop.adafruit.com/datasheets/WS2812B.pdf</a></li>
   </ol>
-  <p class="nota">Los tiempos del WS2812 varían entre revisiones del chip (por ejemplo, el reset va de 50 a 280 µs); conviene consultar el datasheet del LED que uses.</p>
+  <p class="nota">Los tiempos del WS2812 varían entre revisiones del chip (por ejemplo, el reset va de 50 a 280 µs); conviene consultar el datasheet del LED que uses. En el táctil, el oscilador de 500 kHz, el cambio de capacidad del 3 % y las ventanas de 200 y 600 µs son supuestos para ilustrar el cálculo. La fórmula del período supone la misma corriente de carga y descarga. Los manuales de Espressif no dan el reloj del contador de tiempo del S3, y la nota de TI describe un microcontrolador distinto: sirve para el principio, no para las cifras del ESP32.</p>
 </section>
 
 <div data-nav-niveles></div>

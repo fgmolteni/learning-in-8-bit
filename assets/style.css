@@ -598,7 +598,7 @@ a.libro:hover .lomo { border-color: var(--a3); }
 .objetivos { margin: var(--e4) 0; }
 /* caja de cálculo: fórmula en su línea, datos, resultado e interpretación (h4 "cálculo: …"). Borde azul: canal b, el de las magnitudes */
 .caja.calculo { border-left: 4px solid var(--b3); }
-.caja.calculo .formula {
+.formula {
   margin: 0 0 var(--e2); padding: .5rem .75rem; overflow-x: auto; white-space: nowrap;
   background: var(--n1); border: 1px solid var(--linea);
   font-family: var(--f-mono); font-size: 1rem; line-height: 1.75; color: var(--tinta);

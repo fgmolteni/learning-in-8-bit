@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.26";
+const VERSION = "0.1.27";
 
 const CURSOS = {
   micro: {
@@ -21,8 +21,8 @@ const CURSOS = {
     niveles: [
       { f: "01-pin.html", t: "El pin por dentro", d: "La celda de E/S, push-pull y open-drain, la matriz de GPIO y los pines de arranque." },
       { f: "02-temporizadores-pwm.html", t: "Temporizadores y PWM", d: "Contador, prescaler y comparador: PWM, tiempo muerto y puentes en H." },
-      { f: "03-adc.html", t: "El ADC", d: "Aproximaciones sucesivas por dentro, errores, atenuación y calibración." },
-      { f: "04-dac-touch.html", t: "DAC y sensor táctil", d: "Redes resistivas, sigma-delta y el oscilador de relajación que siente un dedo." },
+      { f: "03-adc.html", t: "Del voltaje al número", d: "Muestreo, cuantización, aproximaciones sucesivas, tiempo de adquisición y errores de un convertidor." },
+      { f: "04-dac.html", t: "De número a tensión", d: "La escalera del DAC, cuánta exactitud pide cada bit, el glitch y el PWM y el sigma-delta como DAC de un bit." },
       { f: "05-rmt-pcnt.html", t: "Generar y contar pulsos", d: "RMT para trenes de pulsos e infrarrojo; PCNT para encoders en cuadratura." },
     ],
   },
