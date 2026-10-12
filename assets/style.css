@@ -390,6 +390,8 @@ a:hover { text-decoration-color: var(--a3); }
 .sb-niveles > li > a i { margin-left: auto; padding-left: .4rem; font-style: normal; font-family: var(--f-mono); color: var(--a3); }
 .sb-niveles > li.actual > a { border-left-color: var(--a3); background: var(--relleno); color: var(--tinta); font-weight: 600; }
 .sb-secciones { margin: .25rem 0 .6rem 1.75rem; border-left: 1px solid var(--linea-fuerte); }
+.sidebar .sb-niveles .sb-comp { display: block; margin: .15rem 0 .35rem 1.75rem; padding: .2rem .6rem; border-left: 2px solid transparent; font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave); }
+.sidebar .sb-niveles .sb-comp[aria-current] { border-left-color: var(--a3); color: var(--tinta); }
 .sidebar .sb-secciones a { display: block; margin-left: -1px; padding: .2rem .6rem; border-left: 2px solid transparent; font-size: .875rem; color: var(--texto-suave); }
 .sidebar .sb-secciones a[aria-current] { border-left-color: var(--a3); color: var(--tinta); }
 .sb-tomos { display: flex; justify-content: space-between; margin: 1.2rem 0 0; padding-top: .8rem; border-top: 1px solid var(--linea); font-family: var(--f-mono); font-size: .75rem; }

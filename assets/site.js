@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.28";
+const VERSION = "0.1.29";
 
 const CURSOS = {
   micro: {
@@ -21,8 +21,8 @@ const CURSOS = {
     niveles: [
       { f: "01-pin.html", t: "El pin por dentro", d: "La celda de E/S, push-pull y open-drain, la matriz de GPIO y los pines de arranque." },
       { f: "02-temporizadores-pwm.html", t: "Temporizadores y PWM", d: "Contador, prescaler y comparador: PWM, tiempo muerto y puentes en H." },
-      { f: "03-adc.html", t: "Del voltaje al número", d: "Muestreo, cuantización, aproximaciones sucesivas, tiempo de adquisición y errores de un convertidor." },
-      { f: "04-dac.html", t: "De número a tensión", d: "La escalera del DAC, cuánta exactitud pide cada bit, el glitch y el PWM y el sigma-delta como DAC de un bit." },
+      { f: "03-adc.html", t: "Del voltaje al número", d: "Muestreo, cuantización, aproximaciones sucesivas, tiempo de adquisición y errores de un convertidor.", c: { f: "03b-adc-esp32.html", t: "El ADC del ESP32, del ESP32-S3 y del RP2040" } },
+      { f: "04-dac.html", t: "De número a tensión", d: "La escalera del DAC, cuánta exactitud pide cada bit, el glitch y el PWM y el sigma-delta como DAC de un bit.", c: { f: "04b-dac-esp32.html", t: "El DAC del ESP32 y las alternativas sin DAC" } },
       { f: "05-rmt-pcnt.html", t: "Generar y contar pulsos", d: "RMT para trenes de pulsos e infrarrojo; PCNT para encoders en cuadratura." },
     ],
   },
@@ -237,7 +237,7 @@ function montarTemario() {
       <a class="panel" href="${n.f}">
         <h3>${n.t}</h3>
         <p>${n.d}</p>
-        <span class="meta">${hechos.includes(n.f) ? "[✓] completado" : "[ ] pendiente"}</span>
+        <span class="meta">${hechos.includes(n.f) ? "[✓] completado" : "[ ] pendiente"}${n.c ? " · con página de componentes" : ""}</span>
       </a>
     </li>`).join("");
   const total = document.querySelector("[data-avance]");
@@ -257,13 +257,19 @@ function montarAvancePortada() {
   });
 }
 
+// data-nivel "3" es la página de concepto del nivel 3; "3b" es su página de componentes (campo opcional c en CURSOS)
+function nivelDeLaPagina(b) {
+  const m = /^(\d+)(b?)$/.exec(b.nivel || "");
+  return m ? { i: Number(m[1]) - 1, comp: m[2] === "b" } : { i: NaN, comp: false };
+}
+
 // ---- sidebar de los niveles: niveles del tomo; el nivel abierto despliega sus secciones y marca la que se lee ----
 const SECCIONES = { micro: "Microcontroladores", ia: "IA en el borde" };
 function montarSidebar() {
   const b = document.body.dataset, curso = CURSOS[b.curso];
   if (!curso || !b.nivel) return;
   const ids = Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === curso.seccion), t = ids.indexOf(b.curso);
-  const hechos = LS.get(clave(b.curso), []), actual = Number(b.nivel) - 1;
+  const hechos = LS.get(clave(b.curso), []), { i: actual, comp } = nivelDeLaPagina(b);
   const hs = [...document.querySelectorAll(".leccion > h2")];   // las fuentes quedan afuera (van dentro de su section)
   hs.forEach((h) => {
     if (h.id) return;
@@ -277,7 +283,7 @@ function montarSidebar() {
     <p class="sb-eyebrow">${SECCIONES[curso.seccion]}, Tomo ${t + 1}</p>
     <a class="sb-tomo" href="index.html">${curso.titulo}</a>
     <ol class="sb-niveles">${curso.niveles.map((n, k) => `
-      <li${k === actual ? ' class="actual"' : ""}><a href="${n.f}"${k === actual ? ' aria-current="page"' : ""}><span>${String(k + 1).padStart(2, "0")}</span>${n.t}${hechos.includes(n.f) ? '<i title="completado">✓</i>' : ""}</a>${k === actual ? '<ol class="sb-secciones"></ol>' : ""}</li>`).join("")}
+      <li${k === actual ? ' class="actual"' : ""}><a href="${n.f}"${k === actual && !comp ? ' aria-current="page"' : ""}><span>${String(k + 1).padStart(2, "0")}</span>${n.t}${hechos.includes(n.f) ? '<i title="completado">✓</i>' : ""}</a>${k === actual && !comp ? '<ol class="sb-secciones"></ol>' : ""}${n.c ? `<a class="sb-comp" href="${n.c.f}"${k === actual && comp ? ' aria-current="page"' : ""}>↳ componentes</a>` : ""}${k === actual && comp ? '<ol class="sb-secciones"></ol>' : ""}</li>`).join("")}
     </ol>
     <p class="sb-tomos">${t > 0 ? `<a href="../${ids[t - 1]}/index.html">← Tomo ${t}</a>` : "<span></span>"}${t < ids.length - 1 ? `<a href="../${ids[t + 1]}/index.html">Tomo ${t + 2} →</a>` : ""}</p>`;
   const ol = aside.querySelector(".sb-secciones");
@@ -320,9 +326,10 @@ function montarNavLeccion() {
   const curso = CURSOS[b.curso];
   const cont = document.querySelector("[data-nav-niveles]");
   if (!curso || !cont) return;
-  const i = Number(b.nivel) - 1;
+  const { i, comp } = nivelDeLaPagina(b);
   if (!curso.niveles[i]) return;   // data-nivel fuera de CURSOS: que no corte el quiz ni lo que sigue
-  const ant = curso.niveles[i - 1], sig = curso.niveles[i + 1];
+  // la página de componentes vuelve a su concepto y sigue con el nivel siguiente; no marca avance
+  const ant = comp ? curso.niveles[i] : curso.niveles[i - 1], sig = curso.niveles[i + 1];
   const f = curso.niveles[i].f;
   const hechos = LS.get(clave(b.curso), []);
   // último nivel: ofrece el primer nivel del tomo siguiente (misma profundidad de carpetas)
@@ -332,15 +339,16 @@ function montarNavLeccion() {
     ? `<a href="../${idProx}/${prox.niveles[0].f}"><small>siguiente tomo →</small><span>${prox.titulo}</span></a>`
     : `<a href="index.html"><small>fin del tomo →</small><span>Temario</span></a>`;
 
-  cont.innerHTML = `
+  cont.innerHTML = `${comp ? "" : `
     <div class="completar">
       <button class="btn" type="button" data-completar>${hechos.includes(f) ? "[✓] nivel completado" : "[ ] marcar nivel como completado"}</button>
-    </div>
+    </div>`}
     <nav class="nav-niveles" aria-label="Niveles">
-      ${ant ? `<a href="${ant.f}"><small>← anterior</small><span>${ant.t}</span></a>` : `<a href="index.html"><small>← volver</small><span>Temario</span></a>`}
+      ${ant ? `<a href="${ant.f}"><small>${comp ? "← el concepto" : "← anterior"}</small><span>${ant.t}</span></a>` : `<a href="index.html"><small>← volver</small><span>Temario</span></a>`}
       ${sig ? `<a href="${sig.f}"><small>siguiente →</small><span>${sig.t}</span></a>` : finTomo}
     </nav>`;
-  cont.querySelector("[data-completar]").onclick = (e) => {
+  const btnCompletar = cont.querySelector("[data-completar]");
+  if (btnCompletar) btnCompletar.onclick = (e) => {
     let h = LS.get(clave(b.curso), []);
     const hecho = !h.includes(f);
     h = hecho ? [...h, f] : h.filter((x) => x !== f);
