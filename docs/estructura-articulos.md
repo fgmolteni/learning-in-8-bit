@@ -76,3 +76,43 @@ Los títulos `h2` son descriptivos. No llevan el nombre de la parte («Definici�
 - Cada resultado lleva su unidad. No se mezclan ciclos y tiempo en una misma igualdad.
 - Las comparaciones usan la misma base: el lazo completo frente al lazo completo, no una parte frente al todo.
 - Cada número de un cálculo se puede rastrear: dato del sitio, dato de la hoja de datos o supuesto declarado.
+
+## Notas al margen
+
+Definen al paso lo que el texto nombra sin explicar, para que el lector entienda la referencia sin salir del párrafo.
+
+Página piloto: `temas/mundo/02-temporizadores-pwm.html`.
+
+Marcado: el término lleva `class="ref"` y `data-nota`; la nota es un `span` al final de la misma oración, dentro del
+mismo `p` o `li`, con `id="nota-<clave>"` y el atributo `popover`. El rótulo va en minúsculas; para un acrónimo, la expansión en inglés.
+
+```html
+<p>El <span class="ref" data-nota="pll">PLL</span> que lleva … propio.<span class="nota-margen" popover id="nota-pll"><b>pll · phase-locked loop</b>Lazo de enganche de fase…</span></p>
+```
+
+Se ve así: desde 1300 px de ancho, la nota flota en el margen derecho a la altura de su oración y aparece con un
+fundido cuando entra en pantalla al hacer scroll; después queda fija. La columna de esas páginas se corre a la
+izquierda para dejar el margen libre. Si varias notas caen juntas se apilan, y la de abajo se aleja de su línea: por
+eso, notas cortas. Cada nota tiene una X que la cierra hasta recargar la página. En pantallas más angostas (tablet, celular), tocar el término abre la nota como tarjeta abajo de
+la pantalla; se cierra tocando afuera o con Esc (popover nativo, `montarNotas()` en `site.js`).
+
+Cuándo se usan: **siempre** que el cuerpo del artículo nombre por primera vez uno de estos elementos.
+
+| Tipo | Ejemplos | Qué dice la nota |
+|---|---|---|
+| Sigla o acrónimo | PLL, DAC, CPU, PWM, VDD | Expansión en inglés en el rótulo y qué es, en castellano. |
+| Concepto rápido | flip-flop, jitter, puente en H, filtro RC | Qué es y para qué sirve, sin profundizar. |
+| Marca o fabricante | Espressif, Arm, LEDC (nombre propio de un periférico) | Quién es o de quién es el nombre, y qué hace. |
+| Estándar o norma | IEEE 1139, I2C, USB | Quién lo publica y qué define. |
+
+Reglas:
+
+- Una nota por término y por página, en la primera mención dentro de un `p` o un `li` del cuerpo. No van en el
+  título, la bajada, los objetivos, los `h2`/`h3`, las figuras, las tablas ni las fuentes. Si el término aparece
+  primero en uno de esos lugares, la nota va en su primera mención en un párrafo.
+- Si la misma oración ya da la expansión y el significado («partes por millón (ppm)»), no lleva nota.
+- Si el párrafo explica el concepto pero no la sigla (el PWM), la nota da la expansión y una línea de qué es.
+- De 1 a 3 oraciones, unas 40 palabras como máximo. Qué es y para qué sirve, no cómo se calcula.
+- Cifras solo verificadas, con «del orden de» si son aproximadas. Una nota no reemplaza una fuente.
+- Si el término se explica más adelante en la página, la nota lo dice («se define más abajo, en …»).
+- `.nota-margen` y no `.nota`: `.nota` ya existe en `section.fuentes`.

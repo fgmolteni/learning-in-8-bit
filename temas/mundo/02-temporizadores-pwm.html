@@ -38,7 +38,7 @@
   </ul>
 </div>
 
-<p>Medir el tiempo con un bucle de software es mala idea: la CPU queda ocupada esperando, cualquier interrupción estira la espera y el consumo no baja. Un <strong>temporizador de hardware</strong> es un circuito que cuenta pulsos de reloj por su cuenta, mientras la CPU hace otra cosa o duerme, y avisa en el instante exacto. Casi todo lo que tiene que ver con tiempo en un micro (el tic del sistema operativo, un PWM, una frecuencia de muestreo) sale de uno de estos contadores.</p>
+<p>Medir el tiempo con un bucle de software es mala idea: la <span class="ref" data-nota="cpu">CPU</span> queda ocupada esperando, cualquier interrupción estira la espera y el consumo no baja.<span class="nota-margen" popover id="nota-cpu"><b>cpu · central processing unit</b>Unidad central de proceso: el núcleo que lee y ejecuta las instrucciones del programa.</span> Un <strong>temporizador de hardware</strong> es un circuito que cuenta pulsos de reloj por su cuenta, mientras la CPU hace otra cosa o duerme, y avisa en el instante exacto. Casi todo lo que tiene que ver con tiempo en un micro (el tic del sistema operativo, un PWM, una frecuencia de muestreo) sale de uno de estos contadores.</p>
 
 <h2>El temporizador por dentro</h2>
 
@@ -51,9 +51,9 @@
 
 <ul>
   <li><strong>Prescaler.</strong> Divide el reloj base: con 80 MHz y DIV = 80, cada tick dura 1 µs. Define la resolución temporal.</li>
-  <li><strong>Contador.</strong> Una cadena de flip-flops que suma (o resta) uno por tick. Puede contar en diente de sierra (sube y vuelve a cero) o en triángulo (sube y baja), que es el modo preferido en control de motores.</li>
+  <li><strong>Contador.</strong> Una cadena de <span class="ref" data-nota="flipflop">flip-flops</span> que suma (o resta) uno por tick.<span class="nota-margen" popover id="nota-flipflop"><b>flip-flop</b>Celda que guarda un bit y solo lo cambia en el flanco del reloj. Encadenados, forman registros y contadores.</span> Puede contar en diente de sierra (sube y vuelve a cero) o en triángulo (sube y baja), que es el modo preferido en control de motores.</li>
   <li><strong>Comparador.</strong> Lógica que compara el contador con un registro de alarma. En el ciclo en que coinciden dispara una interrupción o una señal directa hacia un pin u otro periférico.</li>
-  <li><strong>Recarga automática.</strong> Al llegar a la alarma, el contador vuelve a su valor inicial en el mismo ciclo. Si lo tuviera que recargar la CPU, la latencia de la interrupción variaría el período (<em>jitter</em>).</li>
+  <li><strong>Recarga automática.</strong> Al llegar a la alarma, el contador vuelve a su valor inicial en el mismo ciclo. Si lo tuviera que recargar la CPU, la latencia de la interrupción variaría el período (<em class="ref" data-nota="jitter">jitter</em>).<span class="nota-margen" popover id="nota-jitter"><b>jitter</b>Variación del instante de cada flanco alrededor de su lugar ideal. Se define más abajo, en «El temporizador es tan exacto como su reloj».</span></li>
 </ul>
 
 <p>El tiempo máximo antes de desbordar es 2<sup>N</sup> ticks. Un contador de 16 bits a 1 MHz da la vuelta cada 65,5 ms; uno de 54 bits, a la misma frecuencia, tardaría del orden de 570 años.</p>
@@ -71,11 +71,11 @@
   <li><strong>Jitter</strong>. Cada flanco cae un poco antes o un poco después de su lugar ideal, al azar, por el ruido térmico y el de la alimentación. En promedio la frecuencia es correcta y el error <strong>no se acumula</strong>, pero un flanco aislado no es confiable. Importa cuando se muestrea rápido o se mide un intervalo corto. Es el mismo nombre que la variación de período que evita la recarga automática: en los dos casos el flanco no cae donde debería.</li>
 </ul>
 
-<p>El PLL que lleva la frecuencia del cristal a la del sistema <strong>multiplica, no corrige</strong>: hereda la deriva del cristal en ppm y puede sumar jitter propio. Para ganar exactitud hace falta un oscilador mejor, como un cristal compensado en temperatura, o corregir el reloj contra una referencia externa.</p>
+<p>El <span class="ref" data-nota="pll">PLL</span> que lleva la frecuencia del cristal a la del sistema <strong>multiplica, no corrige</strong>: hereda la deriva del cristal en ppm y puede sumar jitter propio.<span class="nota-margen" popover id="nota-pll"><b>pll · phase-locked loop</b>Lazo de enganche de fase: un oscilador que el lazo corrige hasta que su frecuencia es N veces la del cristal. En el ESP32-S3, el cristal es de 40 MHz.</span> Para ganar exactitud hace falta un oscilador mejor, como un <span class="ref" data-nota="tcxo">cristal compensado en temperatura</span>, o corregir el reloj contra una referencia externa.<span class="nota-margen" popover id="nota-tcxo"><b>tcxo</b>Temperature-Compensated Crystal Oscillator: cristal con un circuito que corrige su variación con la temperatura. Deriva del orden de 1 ppm, contra decenas en un cristal común.</span></p>
 
 <h2>PWM: una tensión hecha de ceros y unos</h2>
 
-<p>Para regular la potencia de una carga se puede usar un transistor en su zona lineal, pero disipa mucho calor. El <strong>PWM</strong> hace lo contrario: el transistor solo está cortado (no pasa corriente) o saturado (casi no cae tensión), y en los dos casos disipa poco. Lo que se regula es qué fracción del período pasa encendido, el <strong>ciclo de trabajo</strong> D. El valor medio es D × V<sub>pico</sub>, y si la carga es lenta (la inercia de un motor, la masa térmica de un calefactor, el ojo frente a un LED) responde a ese promedio.</p>
+<p>Para regular la potencia de una carga se puede usar un transistor en su zona lineal, pero disipa mucho calor. El <strong class="ref" data-nota="pwm">PWM</strong> hace lo contrario: el transistor solo está cortado (no pasa corriente) o saturado (casi no cae tensión), y en los dos casos disipa poco.<span class="nota-margen" popover id="nota-pwm"><b>pwm · pulse-width modulation</b>Modulación por ancho de pulso: una onda cuadrada de frecuencia fija en la que se varía cuánto tiempo de cada período está en alto.</span> Lo que se regula es qué fracción del período pasa encendido, el <strong>ciclo de trabajo</strong> D. El valor medio es D × V<sub>pico</sub>, y si la carga es lenta (la inercia de un motor, la masa térmica de un calefactor, el ojo frente a un <span class="ref" data-nota="led">LED</span>) responde a ese promedio.<span class="nota-margen" popover id="nota-led"><b>led · light-emitting diode</b>Diodo emisor de luz. Emite al conducir en directa y su brillo sigue a la corriente.</span></p>
 
 <p>El circuito es un temporizador: un contador que recorre de 0 a 2<sup>bits</sup> − 1 y un comparador que mantiene la salida en alto mientras el contador esté por debajo del umbral.</p>
 
@@ -119,7 +119,7 @@
 
 <h2>LEDC: el PWM de propósito general</h2>
 
-<p>El bloque <strong>LEDC</strong> separa dos cosas: los <strong>timers</strong>, que fijan frecuencia y resolución, y los <strong>canales</strong>, que fijan el ciclo de trabajo de cada pin. Varios canales pueden compartir un timer, así quedan sincronizados en fase con distinto brillo cada uno (una tira RGB, por ejemplo). Dos detalles de hardware:</p>
+<p>El bloque <strong class="ref" data-nota="ledc">LEDC</strong> separa dos cosas: los <strong>timers</strong>, que fijan frecuencia y resolución, y los <strong>canales</strong>, que fijan el ciclo de trabajo de cada pin.<span class="nota-margen" popover id="nota-ledc"><b>ledc · led pwm controller</b>Periférico PWM de Espressif. Nació para el brillo de los LED, pero sirve para cualquier PWM.</span> Varios canales pueden compartir un timer, así quedan sincronizados en fase con distinto brillo cada uno (una tira <span class="ref" data-nota="rgb">RGB</span>, por ejemplo).<span class="nota-margen" popover id="nota-rgb"><b>rgb · red, green, blue</b>LED con tres emisores, rojo, verde y azul. Mezclando sus brillos da otros colores.</span> Dos detalles de hardware:</p>
 
 <ul>
   <li><strong>Divisor fraccionario.</strong> El divisor se expresa como A + B/256: el circuito alterna entre dividir por A y por A + 1 para que el promedio dé la frecuencia pedida, aunque no sea una división entera del reloj.</li>
@@ -139,7 +139,7 @@
 
 <h2>MCPWM y el tiempo muerto</h2>
 
-<p>Para puentes en H, inversores y fuentes conmutadas hay un bloque más completo, el <strong>MCPWM</strong>. Cada unidad tiene tres timers y tres operadores; cada operador da un <strong>par de salidas</strong> (A y B) para los dos transistores de una rama.</p>
+<p>Para <span class="ref" data-nota="puente-h">puentes en H</span>, inversores y fuentes conmutadas hay un bloque más completo, el <strong class="ref" data-nota="mcpwm">MCPWM</strong>.<span class="nota-margen" popover id="nota-puente-h"><b>puente en h</b>Cuatro transistores en dos ramas, con la carga en el medio. Según qué par conduce, la carga ve +V o −V: así se invierte el giro de un motor.</span><span class="nota-margen" popover id="nota-mcpwm"><b>mcpwm · motor control pwm</b>Nombre de Espressif para su periférico de PWM orientado al control de motores y convertidores de potencia.</span> Cada unidad tiene tres timers y tres operadores; cada operador da un <strong>par de salidas</strong> (A y B) para los dos transistores de una rama.</p>
 
 <figure class="diagrama" data-titulo="fig-2.4">
   <svg viewBox="0 0 640 264" role="img" aria-label="Medio puente H con un transistor alto y uno bajo; cronograma de sus compuertas con intervalos de tiempo muerto en los que ambos están apagados">
@@ -159,7 +159,7 @@
 
 <h2>De PWM a tensión: el filtro RC</h2>
 
-<p>Un PWM seguido de un filtro pasa-bajos es un DAC barato. Una onda cuadrada de ciclo D tiene una componente continua D × VDD más armónicos en la frecuencia del PWM y sus múltiplos; el RC deja pasar la continua y atenúa el resto.</p>
+<p>Un PWM seguido de un filtro pasa-bajos es un <span class="ref" data-nota="dac">DAC</span> barato.<span class="nota-margen" popover id="nota-dac"><b>dac · digital-to-analog converter</b>Conversor digital-analógico: convierte un número de N bits en una tensión de 2<sup>N</sup> escalones.</span> Una onda cuadrada de ciclo D tiene una componente continua D × <span class="ref" data-nota="vdd">VDD</span> más armónicos en la frecuencia del PWM y sus múltiplos; el <span class="ref" data-nota="rc">RC</span> deja pasar la continua y atenúa el resto.<span class="nota-margen" popover id="nota-vdd"><b>vdd</b>Tensión de alimentación positiva del circuito. La doble D viene del drenador (<em>drain</em>) de los MOSFET.</span><span class="nota-margen" popover id="nota-rc"><b>filtro rc</b>Un resistor en serie y un capacitor a masa: pasa-bajos de primer orden, con constante de tiempo τ = R × C.</span></p>
 
 <figure class="diagrama" data-titulo="fig-2.5">
   <svg viewBox="0 0 640 224" role="img" aria-label="Salida PWM que cambia de 25 % a 75 % de ciclo de trabajo y su versión filtrada por un RC: la tensión sube exponencialmente hacia el nuevo valor medio y conserva un pequeño rizado">
