@@ -366,6 +366,37 @@ function montarQuiz() {
   });
 }
 
+// ---- notas al margen: <span class="ref" data-nota="x"> + <span class="nota-margen" id="nota-x" popover>.
+// Desde 1300 px el CSS las pone en el margen y aparecen al entrar en pantalla; más angosto, el término las abre
+// como tarjeta emergente ----
+function montarNotas() {
+  const ancha = matchMedia("(min-width: 1300px)");
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".ref[data-nota]").forEach((ref) => {
+    const nota = document.getElementById("nota-" + ref.dataset.nota);
+    if (!nota?.showPopover) return;
+    io.observe(nota);
+    nota.setAttribute("role", "note");
+    nota.insertAdjacentHTML("afterbegin", '<button type="button" class="nota-cerrar" aria-label="cerrar nota">×</button>');
+    nota.firstChild.onclick = () => (nota.matches(":popover-open") ? nota.hidePopover() : nota.classList.add("cerrada"));
+    nota.addEventListener("toggle", (e) => ref.setAttribute("aria-expanded", e.newState === "open"));
+    const abrir = () => { if (!ancha.matches) nota.showPopover(); };
+    ref.onclick = abrir;
+    ref.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } };
+    const modo = () => {   // en pantalla ancha el término no es un botón: la nota ya está a la vista
+      if (ancha.matches) { ["tabindex", "role", "aria-controls", "aria-expanded"].forEach((a) => ref.removeAttribute(a)); return; }
+      ref.tabIndex = 0;
+      ref.setAttribute("role", "button");
+      ref.setAttribute("aria-controls", nota.id);
+      ref.setAttribute("aria-expanded", "false");
+    };
+    modo();
+    ancha.addEventListener("change", () => { if (nota.matches(":popover-open")) nota.hidePopover(); modo(); });
+  });
+}
+
 // ---- utilidades para diagramas animados ----
 // Reproduce/pausa animaciones SMIL de un svg según visibilidad (ahorra CPU).
 // Con prefers-reduced-motion quedan quietas en su primer cuadro (el CSS no detiene SMIL).
@@ -395,5 +426,6 @@ document.addEventListener("DOMContentLoaded", () => {
   montarSidebar();
   montarNavLeccion();
   montarQuiz();
+  montarNotas();
   pausarFueraDePantalla();
 });

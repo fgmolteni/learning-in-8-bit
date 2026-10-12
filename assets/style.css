@@ -55,6 +55,7 @@
   --ancho-figura: 640px;
   --ancho-codigo: 60ch;   /* bloques de código: 60 caracteres por línea como máximo */
   --sb-w: 16rem;   /* ancho de la sidebar de niveles (ver más abajo) */
+  --nota-w: 16rem; /* ancho de las notas al margen (ver más abajo) */
   color-scheme: dark;
 }
 
@@ -618,6 +619,47 @@ a.libro:hover .lomo { border-color: var(--a3); }
 }
 .objetivos ul { margin: 0; }
 .leccion h2 { scroll-margin-top: 3rem; } /* que la barra fija no tape el título al saltar desde la sidebar */
+
+/* ---------- Notas al margen: <span class="ref" data-nota="x"> en el texto + <span class="nota-margen" id="nota-x" popover>
+   al final de la oración. Desde 1300 px flotan en el margen derecho, a la altura de su línea (margen negativo: no ocupan
+   lugar en la columna), y aparecen con un fundido cuando entran en pantalla al hacer scroll (site.js les pone .visible);
+   la columna de esas páginas se corre a la izquierda y el par columna + notas queda centrado.
+   Más angosto: tocar el término abre la nota como tarjeta emergente abajo de la pantalla (popover nativo). */
+.ref { border-bottom: 1px dotted var(--a3); }
+.nota-margen {
+  margin: 0; padding: .5rem .75rem .6rem;
+  background: var(--panel); border: 1px solid var(--linea-fuerte); border-left: 2px solid var(--a3);
+  font-size: .9375rem; line-height: 1.47; font-weight: 400; font-style: normal; color: var(--texto); text-align: left;
+}
+.nota-margen { position: relative; }
+.nota-margen.cerrada { display: none; }
+.nota-cerrar {   /* X que cierra la nota (site.js la agrega) */
+  position: absolute; top: .2rem; right: .3rem; padding: 0 .35rem; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--f-mono); font-size: 1rem; line-height: 1.5; color: var(--texto-suave);
+}
+.nota-cerrar:hover, .nota-cerrar:focus-visible { color: var(--a3); }
+.nota-margen b { padding-right: 1.5rem; display: block; font-family: var(--f-mono); font-weight: 500; font-size: .8125rem; color: var(--a3); }
+@media (max-width: 1299.98px) {
+  .ref { cursor: pointer; }
+  .ref[aria-expanded="true"] { color: var(--tinta); background: var(--relleno); }
+  .nota-margen:popover-open {
+    position: fixed; inset: auto 1rem 1rem; width: auto; max-width: 34rem; margin: 0 auto;
+    padding: .9rem 1rem 1rem; font-size: 1rem; box-shadow: 2px 2px 0 var(--n3); /* sombra de cromo, como .btn */
+  }
+  .nota-margen::backdrop { background: color-mix(in srgb, var(--fondo) 40%, transparent); }
+}
+@media (min-width: 1300px) {
+  body.con-sidebar:has(.nota-margen) .leccion {
+    margin-left: max(2rem, (100% - var(--ancho-lectura) - 4rem - 2px - 1.5rem - var(--nota-w)) / 2);
+    margin-right: auto;
+  }
+  .nota-margen {
+    display: block; position: relative; inset: auto; overflow: visible; float: right; clear: right; width: var(--nota-w);
+    margin: .3rem calc(-1 * (var(--nota-w) + 3.5rem)) var(--e2) 0;
+    opacity: 0; transform: translateY(.5rem); transition: opacity .5s ease-out, transform .5s ease-out;
+  }
+  .nota-margen.visible { opacity: 1; transform: none; }
+}
 
 /* figuras: la caja ocupa la columna (el margen negativo compensa el relleno); el dibujo va centrado a 640 */
 figure.diagrama { margin: var(--e5) calc(-1rem - 1px); padding: var(--e3) 1rem 1rem; background: var(--n0); clip-path: var(--esc-t); }
