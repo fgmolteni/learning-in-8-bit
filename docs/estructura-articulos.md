@@ -124,7 +124,7 @@ No llevan nombres de registros ni de funciones.
 
 Definen al paso lo que el texto nombra sin explicar, para que el lector entienda la referencia sin salir del párrafo.
 
-Página piloto: `temas/mundo/02-temporizadores-pwm.html`.
+Páginas con notas: `temas/mundo/02-temporizadores-pwm.html` (piloto), `03`, `03b`, `04`, `04b` y `05` del mismo tomo. Cada página que se convierte a v2 las lleva.
 
 Marcado: el término lleva `class="ref"` y `data-nota`; la nota es un `span` al final de la misma oración, dentro del
 mismo `p` o `li`, con `id="nota-<clave>"` y el atributo `popover`. El rótulo va en minúsculas; para un acrónimo, la expansión en inglés.
@@ -136,8 +136,8 @@ mismo `p` o `li`, con `id="nota-<clave>"` y el atributo `popover`. El rótulo va
 Se ve así: desde 1300 px de ancho, la nota flota en el margen derecho a la altura de su oración y aparece con un
 fundido cuando entra en pantalla al hacer scroll; después queda fija. La columna de esas páginas se corre a la
 izquierda para dejar el margen libre. Si varias notas caen juntas se apilan, y la de abajo se aleja de su línea: por
-eso, notas cortas. Cada nota tiene una X que la cierra hasta recargar la página. En pantallas más angostas (tablet, celular), tocar el término abre la nota como tarjeta abajo de
-la pantalla; se cierra tocando afuera o con Esc (popover nativo, `montarNotas()` en `site.js`).
+eso, notas cortas. Cada nota tiene una X que la cierra hasta recargar la página. En pantallas más angostas (tablet, celular), tocar el término —o pasar el mouse por encima— abre la nota como tarjeta abajo de
+la pantalla; se cierra tocando afuera, saliendo con el mouse o con Esc (popover nativo, `montarNotas()` en `site.js`).
 
 Cuándo se usan: **siempre** que el cuerpo del artículo nombre por primera vez uno de estos elementos.
 

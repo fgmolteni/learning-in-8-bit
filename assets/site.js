@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.29";
+const VERSION = "0.1.30";
 
 const CURSOS = {
   micro: {
@@ -376,7 +376,7 @@ function montarQuiz() {
 
 // ---- notas al margen: <span class="ref" data-nota="x"> + <span class="nota-margen" id="nota-x" popover>.
 // Desde 1300 px el CSS las pone en el margen y aparecen al entrar en pantalla; más angosto, el término las abre
-// como tarjeta emergente ----
+// como tarjeta emergente (al tocar, o al pasar el mouse) ----
 function montarNotas() {
   const ancha = matchMedia("(min-width: 1300px)");
   const io = new IntersectionObserver((es) => es.forEach((e) => {
@@ -390,8 +390,16 @@ function montarNotas() {
     nota.insertAdjacentHTML("afterbegin", '<button type="button" class="nota-cerrar" aria-label="cerrar nota">×</button>');
     nota.firstChild.onclick = () => (nota.matches(":popover-open") ? nota.hidePopover() : nota.classList.add("cerrada"));
     nota.addEventListener("toggle", (e) => ref.setAttribute("aria-expanded", e.newState === "open"));
-    const abrir = () => { if (!ancha.matches) nota.showPopover(); };
+    const abrir = () => { if (!ancha.matches && !nota.matches(":popover-open")) nota.showPopover(); };
     ref.onclick = abrir;
+    // con mouse, la nota también aparece al pasar por el término y se va al salir de él o de la tarjeta
+    let espera;
+    const sobre = matchMedia("(hover: hover)");
+    const irse = () => { clearTimeout(espera); espera = setTimeout(() => { if (!ref.matches(":hover") && !nota.matches(":hover")) nota.matches(":popover-open") && nota.hidePopover(); }, 250); };
+    ref.addEventListener("mouseenter", () => { clearTimeout(espera); if (sobre.matches) abrir(); });
+    ref.addEventListener("mouseleave", irse);
+    nota.addEventListener("mouseenter", () => clearTimeout(espera));
+    nota.addEventListener("mouseleave", irse);
     ref.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } };
     const modo = () => {   // en pantalla ancha el término no es un botón: la nota ya está a la vista
       if (ancha.matches) { ["tabindex", "role", "aria-controls", "aria-expanded"].forEach((a) => ref.removeAttribute(a)); return; }

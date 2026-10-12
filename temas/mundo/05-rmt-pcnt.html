@@ -39,11 +39,11 @@
   </ul>
 </div>
 
-<p>Muchos dispositivos no hablan con bytes ni con relojes: hablan con <strong>la duración de los pulsos</strong>. Un control remoto infrarrojo, una tira de LEDs direccionables, un sensor de un solo cable. Y del otro lado, muchos sensores de movimiento responden con <strong>trenes de pulsos para contar</strong>: un encoder en el eje de un motor, un caudalímetro. Este nivel presenta los dos periféricos que resuelven eso sin la CPU: el <strong>RMT</strong>, que genera y captura pulsos, y el <strong>PCNT</strong>, que los cuenta.</p>
+<p>Muchos dispositivos no hablan con bytes ni con relojes: hablan con <strong>la duración de los pulsos</strong>. Un control remoto infrarrojo, una tira de LEDs direccionables, un sensor de un solo cable. Y del otro lado, muchos sensores de movimiento responden con <strong>trenes de pulsos para contar</strong>: un <span class="ref" data-nota="encoder">encoder</span> en el eje de un motor, un <span class="ref" data-nota="caudalimetro">caudalímetro</span>.<span class="nota-margen" popover id="nota-encoder"><b>encoder</b>Sensor que convierte un giro o una posición en pulsos.</span><span class="nota-margen" popover id="nota-caudalimetro"><b>flow meter</b>Medidor del caudal de un fluido.</span> Este nivel presenta los dos periféricos que resuelven eso sin la CPU: el <strong>RMT</strong>, que genera y captura pulsos, y el <strong>PCNT</strong>, que los cuenta.</p>
 
 <h2>Por qué no hacerlo con la CPU</h2>
 
-<p>Mover un pin por software con bucles de espera (<em>bit-banging</em>) funciona en un micro simple, pero no en uno con sistema operativo y radio. Una interrupción del Wi-Fi en medio de un pulso de 400 ns lo estira a microsegundos; un fallo de caché cambia la temporización sin aviso; y el núcleo queda atado a esperar. Contar pulsos con una interrupción por flanco tiene el mismo problema: a 100 kHz serían 100 000 interrupciones por segundo, cada una de cientos de ciclos.</p>
+<p>Mover un pin por software con bucles de espera (<em>bit-banging</em>) funciona en un micro simple, pero no en uno con sistema operativo y radio. Una interrupción del Wi-Fi en medio de un pulso de 400 ns lo estira a microsegundos; un fallo de <span class="ref" data-nota="cache">caché</span> cambia la temporización sin aviso; y el núcleo queda atado a esperar.<span class="nota-margen" popover id="nota-cache"><b>cache</b>Memoria rápida intermedia; un fallo obliga a ir a la lenta y demora de forma impredecible.</span> Contar pulsos con una interrupción por flanco tiene el mismo problema: a 100 kHz serían 100 000 interrupciones por segundo, cada una de cientos de ciclos.</p>
 
 <h2>El RMT: pulsos desde una memoria</h2>
 
@@ -56,13 +56,13 @@
   <figcaption><b>fig 5.1</b>Cada palabra de 32 bits de la memoria del RMT es un <strong>símbolo</strong>: dos tramos, cada uno con un nivel y una duración de 15 bits contada en ticks del reloj del RMT. La máquina de estados los recorre en orden y pone el pin en cada nivel exactamente esa cantidad de ticks. Una duración de cero marca el final.</figcaption>
 </figure>
 
-<p>En <strong>transmisión</strong>, una máquina de estados recorre la memoria y pone el pin en cada nivel la cantidad exacta de ticks, sin huecos entre símbolos. La temporización la da el reloj del RMT dividido por un prescaler: con ticks de 100 ns, una duración de 35 es un pulso de 3,5 µs, siempre igual, haga lo que haga la CPU.</p>
+<p>En <strong>transmisión</strong>, una máquina de estados recorre la memoria y pone el pin en cada nivel la cantidad exacta de ticks, sin huecos entre símbolos. La temporización la da el reloj del RMT dividido por un <span class="ref" data-nota="prescaler">prescaler</span>: con ticks de 100 ns, una duración de 35 es un pulso de 3,5 µs, siempre igual, haga lo que haga la CPU.<span class="nota-margen" popover id="nota-prescaler"><b>prescaler</b>Divisor que baja la frecuencia de un reloj antes de llegar al contador.</span></p>
 
 <p>En <strong>recepción</strong> el camino se invierte: el RMT mide cuánto dura cada nivel y escribe los símbolos en su memoria. Tiene un <strong>filtro</strong> que descarta pulsos más cortos que un umbral y un <strong>umbral de inactividad</strong>: como estos protocolos no tienen una longitud fija, la trama se da por terminada cuando la línea queda quieta más de un tiempo configurado.</p>
 
 <h3>El caso WS2812</h3>
 
-<p>Los LEDs direccionables WS2812 van encadenados por un solo cable. Cada uno se queda con los primeros 24 bits que recibe (verde, rojo y azul) y retransmite el resto al siguiente. Los bits se distinguen por el ancho del pulso alto:</p>
+<p>Los LEDs direccionables <span class="ref" data-nota="ws2812">WS2812</span> van encadenados por un solo cable.<span class="nota-margen" popover id="nota-ws2812"><b>ws2812 · Worldsemi</b>LED RGB con controlador integrado, del fabricante Worldsemi.</span> Cada uno se queda con los primeros 24 bits que recibe (verde, rojo y azul) y retransmite el resto al siguiente. Los bits se distinguen por el ancho del pulso alto:</p>
 
 <figure class="diagrama" data-titulo="fig-5.2">
   <svg viewBox="0 0 640 208" role="img" aria-label="Cronograma de un 0 y un 1 del LED WS2812: el 0 es 0,4 µs alto y 0,85 µs bajo; el 1 es 0,8 µs alto y 0,45 µs bajo; los dos duran 1,25 µs">
@@ -131,7 +131,7 @@
 
 <h2>Contar para medir: el sensor táctil</h2>
 
-<p>El PCNT cuenta pulsos que ya existen. Pero un contador también sirve para medir una magnitud que no es un pulso, si antes se la convierte en una frecuencia. El sensor táctil capacitivo hace eso con una capacidad muy chica: la de un pad de cobre, que aumenta un poco cuando un dedo se acerca desde el otro lado de un vidrio o un plástico.</p>
+<p>El PCNT cuenta pulsos que ya existen. Pero un contador también sirve para medir una magnitud que no es un pulso, si antes se la convierte en una frecuencia. El sensor táctil capacitivo hace eso con una capacidad muy chica: la de un <span class="ref" data-nota="pad">pad</span> de cobre, que aumenta un poco cuando un dedo se acerca desde el otro lado de un vidrio o un plástico.<span class="nota-margen" popover id="nota-pad"><b>pad</b>Área de cobre que hace de electrodo.</span></p>
 
 <h3>Del capacitor a una frecuencia</h3>
 
@@ -139,7 +139,7 @@
 
 <p class="formula"><var>T</var> = 2 · <var>C</var> · Δ<var>V</var> / <var>I</var> &nbsp;→&nbsp; <var>f</var> = <var>I</var> / (2 · <var>C</var> · Δ<var>V</var>)</p>
 
-<p>Esto supone que la carga y la descarga usan la misma corriente, y los manuales hablan de una fuente de corriente fija sin más detalle. La conclusión no depende de eso: la frecuencia es inversamente proporcional a la capacidad. Si el dedo la aumenta, la rampa se vuelve más lenta y la frecuencia baja. Una nota de aplicación de Texas Instruments ubica estas frecuencias entre 100 kHz y 1 MHz, según el diseño.</p>
+<p>Esto supone que la carga y la descarga usan la misma corriente, y los manuales hablan de una fuente de corriente fija sin más detalle. La conclusión no depende de eso: la frecuencia es inversamente proporcional a la capacidad. Si el dedo la aumenta, la rampa se vuelve más lenta y la frecuencia baja. Una nota de aplicación de <span class="ref" data-nota="ti">Texas Instruments</span> ubica estas frecuencias entre 100 kHz y 1 MHz, según el diseño.<span class="nota-margen" popover id="nota-ti"><b>texas instruments</b>Fabricante estadounidense de semiconductores.</span></p>
 
 <figure class="diagrama" data-titulo="fig-5.6 interactivo">
   <canvas data-motor="per-tactil"></canvas>
@@ -168,12 +168,12 @@
 
 <ul>
   <li>Un canal interno, T0, que no sale a ningún pin y mide el ruido del propio chip. Su valor se resta de las lecturas de los otros canales.</li>
-  <li>Un filtro de promedio (IIR) opcional sobre una serie de lecturas, para que un pico de ruido no dispare un falso toque.</li>
+  <li>Un filtro de promedio (<span class="ref" data-nota="iir">IIR</span>) opcional sobre una serie de lecturas, para que un pico de ruido no dispare un falso toque.<span class="nota-margen" popover id="nota-iir"><b>iir · infinite impulse response</b>Filtro recursivo; acá hace de promedio móvil.</span></li>
   <li>Tolerancia a la humedad, que mitiga el efecto de gotas chicas, y rechazo de agua, que detecta si la superficie del panel está cubierta de agua y corta la lectura.</li>
   <li>Hasta tres canales en modo de proximidad, para detectar un dedo que se acerca sin tocar.</li>
 </ul>
 
-<p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador ULP recorra los pads sin despertarla.</p>
+<p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads sin despertarla.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span></p>
 
 <div class="caja ojo">
   <h4>ojo: el táctil de Espressif tiene un límite documentado</h4>
@@ -196,7 +196,7 @@
 </table>
 </div>
 
-<p>Para una tira de 500 LEDs (12 000 bits) la diferencia se nota: en el ESP32 el RMT necesita que la CPU le recargue la memoria a mitad de camino muchas veces; en el S3 el DMA (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) la alimenta desde la RAM.</p>
+<p>Para una tira de 500 LEDs (12 000 bits) la diferencia se nota: en el ESP32 el RMT necesita que la CPU le recargue la memoria a mitad de camino muchas veces; en el S3 el <span class="ref" data-nota="dma">DMA</span> (<a href="../datos/04-dma.html">Tomo 3, nivel 4</a>) la alimenta desde la RAM.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span></p>
 
 <div class="caja clave">
   <h4>para llevar</h4>
@@ -204,7 +204,7 @@
     <li>El RMT reproduce pares nivel-duración desde su memoria: la temporización es de hardware y no la afectan las interrupciones.</li>
     <li>En recepción mide duraciones, filtra glitches y cierra la trama cuando la línea queda quieta.</li>
     <li>El PCNT suma o resta flancos según una tabla y solo interrumpe en límites o umbrales.</li>
-    <li>Un encoder en cuadratura se lee con los dos canales de una unidad: cuatro cuentas por ranura y el sentido de giro gratis.</li>
+    <li>Un encoder en <span class="ref" data-nota="cuadratura">cuadratura</span> se lee con los dos canales de una unidad: cuatro cuentas por ranura y el sentido de giro gratis.<span class="nota-margen" popover id="nota-cuadratura"><b>quadrature</b>Dos señales desfasadas 90° que dan el sentido del giro.</span></li>
     <li>El ESP32 tiene más unidades (8 PCNT) y canales de RMT flexibles; el S3 agrega DMA al RMT.</li>
     <li>El sensor táctil convierte una capacidad en una frecuencia con un oscilador de relajación, <var>f</var> = <var>I</var> / (2 · <var>C</var> · Δ<var>V</var>), y la mide con un contador: contar más pulsos da más sensibilidad y menos lecturas por segundo.</li>
   </ul>

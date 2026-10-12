@@ -98,13 +98,13 @@
 
 <p>Las cuentas son las mismas. La primera imagen está en <var>f</var><sub>c</sub> − <var>f</var>, y entre <var>f</var> y ese punto el filtro tiene que bajar lo que haga falta. Para una señal de 1 kHz y 60 dB de atenuación, la tabla de polos del nivel anterior vale igual: actualizar el DAC a 2,5 kHz pide 18 polos; a 4 kHz, 7.</p>
 
-<p>Si la señal llega en bloques, se puede actualizar el DAC más rápido que los datos, insertando valores interpolados con un filtro digital. Con eso las imágenes se van más arriba y el filtro analógico se relaja: cada vez que se duplica la tasa, la SNR mejora 3 dB, igual que al sobremuestrear un ADC.</p>
+<p>Si la señal llega en bloques, se puede actualizar el DAC más rápido que los datos, insertando valores <span class="ref" data-nota="interpolados">interpolados</span> con un filtro digital.<span class="nota-margen" popover id="nota-interpolados"><b>interpolated</b>Valores calculados entre las muestras originales con un filtro digital.</span> Con eso las imágenes se van más arriba y el filtro analógico se relaja: cada vez que se duplica la tasa, la SNR mejora 3 dB, igual que al <span class="ref" data-nota="sobremuestrear">sobremuestrear</span> un ADC.<span class="nota-margen" popover id="nota-sobremuestrear"><b>oversampling</b>Muestrear o actualizar a una tasa mayor que la mínima que pide Nyquist.</span></p>
 
 <h2>Cuánta exactitud pide cada bit</h2>
 
 <p>Ahora, ¿cómo se arma esa tensión? Hay varias estructuras, y la forma de entenderlas es una sola pregunta: ¿cuánta exactitud tiene que tener cada bit?</p>
 
-<p>Tomemos el salto de mitad de escala, de 0111…1 a 1000…0. Antes, la salida es la suma de los <var>N</var> − 1 bits bajos: 2<sup><var>N</var>−1</sup> − 1 LSB. Después, solo el MSB: 2<sup><var>N</var>−1</sup> LSB. En un DAC ideal la diferencia es exactamente 1 LSB.</p>
+<p>Tomemos el salto de mitad de escala, de 0111…1 a 1000…0. Antes, la salida es la suma de los <var>N</var> − 1 bits bajos: 2<sup><var>N</var>−1</sup> − 1 LSB. Después, solo el <span class="ref" data-nota="msb">MSB</span>: 2<sup><var>N</var>−1</sup> LSB.<span class="nota-margen" popover id="nota-msb"><b>msb · most significant bit</b>El bit de mayor peso del código.</span> En un DAC ideal la diferencia es exactamente 1 LSB.</p>
 
 <p>Si el MSB real pesa <var>ε</var> LSB menos que lo ideal, el escalón de ese salto vale 1 − <var>ε</var> LSB. Si <var>ε</var> supera 1 LSB, el escalón es negativo: el código sube y la salida baja. Se dice que el DAC no es <strong>monótono</strong>. Para evitarlo hace falta <var>ε</var> ≤ 1 LSB, y como el MSB pesa 2<sup><var>N</var>−1</sup> LSB, su error relativo máximo es</p>
 
@@ -131,13 +131,13 @@
 
 <p>La cadena (o divisor de Kelvin, de mediados del 1800) esquiva la pregunta. Son 2<sup><var>N</var></sup> resistencias iguales en serie y una llave por derivación; el código cierra una sola llave y la salida toma esa tensión.</p>
 
-<p>Ningún bit pesa más que otro: cada escalón es un resistor. Por eso es <strong>monótona por construcción</strong>, incluso si una resistencia se cortocircuita accidentalmente, porque la derivación <var>n</var> no puede superar a la <var>n</var> + 1. El costo es el tamaño: 256 resistencias para 8 bits, 4096 para 12. Por eso las cadenas puras se limitan a 8 o 10 bits, y son la base de los potenciómetros digitales (Kester, MT-014).</p>
+<p>Ningún bit pesa más que otro: cada escalón es un resistor. Por eso es <strong>monótona por construcción</strong>, incluso si una resistencia se cortocircuita accidentalmente, porque la derivación <var>n</var> no puede superar a la <var>n</var> + 1. El costo es el tamaño: 256 resistencias para 8 bits, 4096 para 12. Por eso las cadenas puras se limitan a 8 o 10 bits, y son la base de los <span class="ref" data-nota="potdig">potenciómetros digitales</span> (Kester, MT-014).<span class="nota-margen" popover id="nota-potdig"><b>digital potentiometer</b>Resistencia variable cuyo cursor se mueve con un código digital en lugar de una perilla.</span></p>
 
 <h3>Escalera R-2R: dos valores y una ganancia en cada nodo</h3>
 
 <p>La escalera R-2R usa solo dos valores de resistencia, en relación 2 a 1, y del orden de 2 · <var>N</var> resistencias. Mirando hacia atrás desde cada nodo se ve la misma resistencia, así que la corriente se parte a la mitad en cada paso y cada bit pesa el doble que el anterior, sin necesidad de resistencias de valores muy distintos.</p>
 
-<p>En el modo de tensión, cada brazo se conmuta entre <var>V</var><sub>ref</sub> y masa, y la impedancia de salida no depende del código. En el modo de corriente, o «invertido», los brazos conmutan sobre una línea a tierra virtual; se usa en los DAC multiplicadores, pero produce un glitch mayor (Kester, MT-015). En los dos, el MSB sigue pidiendo la exactitud de la tabla de arriba, así que esta estructura baja la cantidad de relaciones difíciles, no el requisito.</p>
+<p>En el modo de tensión, cada brazo se conmuta entre <var>V</var><sub>ref</sub> y masa, y la impedancia de salida no depende del código. En el modo de corriente, o «invertido», los brazos conmutan sobre una línea a <span class="ref" data-nota="tierra-virtual">tierra virtual</span>; se usa en los DAC multiplicadores, pero produce un <span class="ref" data-nota="glitch">glitch</span> mayor (Kester, MT-015).<span class="nota-margen" popover id="nota-tierra-virtual"><b>virtual ground</b>Nodo que un amplificador operacional mantiene a 0 V sin conectarlo a masa.</span><span class="nota-margen" popover id="nota-glitch"><b>glitch</b>Pico breve e indeseado en una señal; se define más abajo, en la sección del glitch.</span> En los dos, el MSB sigue pidiendo la exactitud de la tabla de arriba, así que esta estructura baja la cantidad de relaciones difíciles, no el requisito.</p>
 
 <figure class="diagrama" data-titulo="fig-4.2">
   <svg viewBox="0 0 640 320" role="img" aria-label="Dos DAC de 3 bits: a la izquierda una cadena de ocho resistencias iguales con una llave cerrada que toma una derivación; a la derecha una escalera R-2R con una llave por bit">
@@ -205,11 +205,11 @@
 
 <h2>Un solo bit: PWM y sigma-delta</h2>
 
-<p>El DAC más simple es una llave que conecta la salida a <var>V</var><sub>ref</sub> o a masa: un DAC de 1 bit (Kester, MT-014). Sola solo da dos tensiones. Pero si conmuta rápido y se filtra, el valor medio sale proporcional al tiempo que pasó en <var>V</var><sub>ref</sub>. Así funcionan el PWM y el sigma-delta, y son las alternativas de los micros que no tienen un DAC propio.</p>
+<p>El DAC más simple es una llave que conecta la salida a <var>V</var><sub>ref</sub> o a masa: un DAC de 1 bit (Kester, MT-014). Sola solo da dos tensiones. Pero si conmuta rápido y se filtra, el valor medio sale proporcional al tiempo que pasó en <var>V</var><sub>ref</sub>. Así funcionan el <span class="ref" data-nota="pwm">PWM</span> y el <span class="ref" data-nota="sigma-delta">sigma-delta</span>, y son las alternativas de los micros que no tienen un DAC propio.<span class="nota-margen" popover id="nota-pwm"><b>pwm · pulse-width modulation</b>Pulsos de ancho variable a frecuencia fija: el valor medio sigue el ancho.</span><span class="nota-margen" popover id="nota-sigma-delta"><b>sigma-delta</b>Tren de pulsos de 1 bit cuya densidad de unos representa el valor; se explica más abajo.</span></p>
 
 <h3>PWM con un filtro RC</h3>
 
-<p>Con un ciclo de trabajo <var>D</var> y una frecuencia <var>f</var>, el valor medio es <var>D</var> · <var>V</var><sub>ref</sub>. Un filtro RC lo extrae, pero deja un rizado. Mientras la llave está en <var>V</var><sub>ref</sub> durante <var>D</var> · <var>T</var>, el capacitor se carga con una corriente de aproximadamente (<var>V</var><sub>ref</sub> − <var>V</var><sub>o</sub>) / <var>R</var>, y con <var>V</var><sub>o</sub> = <var>D</var> · <var>V</var><sub>ref</sub>, y un RC mucho mayor que el período, el rizado pico a pico es</p>
+<p>Con un ciclo de trabajo <var>D</var> y una frecuencia <var>f</var>, el valor medio es <var>D</var> · <var>V</var><sub>ref</sub>. Un filtro RC lo extrae, pero deja un <span class="ref" data-nota="rizado">rizado</span>.<span class="nota-margen" popover id="nota-rizado"><b>ripple</b>Variación residual de una tensión que debería ser continua.</span> Mientras la llave está en <var>V</var><sub>ref</sub> durante <var>D</var> · <var>T</var>, el capacitor se carga con una corriente de aproximadamente (<var>V</var><sub>ref</sub> − <var>V</var><sub>o</sub>) / <var>R</var>, y con <var>V</var><sub>o</sub> = <var>D</var> · <var>V</var><sub>ref</sub>, y un RC mucho mayor que el período, el rizado pico a pico es</p>
 
 <p class="formula">Δ<var>V</var> ≈ <var>V</var><sub>ref</sub> · <var>D</var> · (1 − <var>D</var>) / (<var>f</var> · <var>R</var> · <var>C</var>)</p>
 

@@ -54,7 +54,7 @@
 </table>
 </div>
 
-<p>Las cifras de Espressif se midieron con 100 nF en el pin, a 25 °C, con una señal continua y el Wi-Fi apagado (en el ESP32, también el Bluetooth). El ENOB del RP2040 se midió a 250 kmuestras/s, con una senoide de 997 Hz y una referencia de bajo ruido en la placa. Con la radio encendida o una fuente más ruidosa, los números empeoran.</p>
+<p>Las cifras de <span class="ref" data-nota="espressif">Espressif</span> se midieron con 100 nF en el pin, a 25 °C, con una señal continua y el Wi-Fi apagado (en el ESP32, también el Bluetooth).<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> El ENOB del <span class="ref" data-nota="rp2040">RP2040</span> se midió a 250 kmuestras/s, con una senoide de 997 Hz y una referencia de bajo ruido en la placa.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span> Con la radio encendida o una fuente más ruidosa, los números empeoran.</p>
 
 <h2>La referencia y la atenuación</h2>
 
@@ -62,7 +62,7 @@
 
 <p class="formula"><var>V</var><sub>dato</sub> = (<var>V</var><sub>ref</sub> / <var>k</var>) · <var>dato</var> / 4095</p>
 
-<p>Esto dice algo útil: al atenuar, el fondo de escala sube a <var>V</var><sub>ref</sub> / <var>k</var>, pero el escalón de 1 LSB crece en la misma proporción. Medir más rango cuesta resolución.</p>
+<p>Esto dice algo útil: al atenuar, el <span class="ref" data-nota="fondo-escala">fondo de escala</span> sube a <var>V</var><sub>ref</sub> / <var>k</var>, pero el escalón de 1 LSB crece en la misma proporción.<span class="nota-margen" popover id="nota-fondo-escala"><b>full scale</b>La mayor tensión que el convertidor llega a medir.</span> Medir más rango cuesta resolución.</p>
 
 <p>Calculemos cuánto vale un LSB para cada atenuación, y cuántos LSB de error representa el error total calibrado del datasheet:</p>
 
@@ -104,7 +104,7 @@
 
 <p>Si el código es <var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub> y <var>V</var><sub>ref</sub> cambia de un chip a otro, entonces cambia la ganancia de todo el convertidor. Es lo que pasa: el datasheet del ESP32 dice que, por defecto, <strong>las lecturas difieren ±6 % entre chips</strong>. A 1 V de entrada, eso son ±60 mV. Ninguna especificación de linealidad arregla algo así si no se mide el chip.</p>
 
-<p>Por eso los parámetros de calibración se graban en eFuses. El ESP32 usa un esquema de ajuste lineal basado en esos datos; si los bits no están grabados, el driver usa un valor de referencia por defecto que da el usuario. El S3 usa un ajuste de curva, con parámetros que Espressif dice grabar durante la fabricación del módulo. Para los dos, la documentación de ESP-IDF dice que el objetivo es minimizar el efecto de las distintas tensiones de referencia. No explica el algoritmo interno, y acá no lo voy a inventar.</p>
+<p>Por eso los parámetros de calibración se graban en <span class="ref" data-nota="efuse">eFuses</span>.<span class="nota-margen" popover id="nota-efuse"><b>efuse · electronic fuse</b>Memoria que se programa una sola vez; guarda datos de fábrica, como los de calibración.</span> El ESP32 usa un esquema de ajuste lineal basado en esos datos; si los bits no están grabados, el driver usa un valor de referencia por defecto que da el usuario. El S3 usa un ajuste de curva, con parámetros que Espressif dice grabar durante la fabricación del módulo. Para los dos, la documentación de <span class="ref" data-nota="espidf">ESP-IDF</span> dice que el objetivo es minimizar el efecto de las distintas tensiones de referencia.<span class="nota-margen" popover id="nota-espidf"><b>esp-idf · Espressif IoT Development Framework</b>Entorno de desarrollo oficial de Espressif para sus micros.</span> No explica el algoritmo interno, y acá no lo voy a inventar.</p>
 
 <p>Lo que sí se ve en las tablas: tras calibrar, el error cae a ±5 mV en el S3 con 0 dB y a ±23 mV en el ESP32. Según la página anterior, una recta corrige offset y ganancia, y la INL necesita una curva. Que el S3 calibre con una curva sugiere que corrige parte de la INL, pero esa es una inferencia y no una afirmación de las fuentes.</p>
 
@@ -133,9 +133,9 @@
 </figure>
 
 <ul>
-  <li><strong>Controladores RTC:</strong> conversiones sueltas, a pedido, con consumo mínimo. Funcionan incluso con el micro en sueño profundo y los puede manejar el coprocesador ULP.</li>
-  <li><strong>Controlador digital</strong> (ESP32: dos, y solo uno con DMA; S3: uno, solo para ADC1): un temporizador marca el ritmo y el hardware recorre una <strong>tabla de patrones</strong>, que dice qué canal y con qué atenuación en cada paso. Las muestras van por DMA a memoria y la CPU se entera al terminar un barrido. En el S3 suma dos filtros de coeficiente configurable y dos monitores de umbral: se produce una interrupción solo si la señal pasa por encima o por debajo de un nivel prefijado.</li>
-  <li><strong>Controlador de potencia (PWDET):</strong> es de uso interno de la radio, para medir su potencia de transmisión.</li>
+  <li><strong>Controladores <span class="ref" data-nota="rtc">RTC</span>:</strong> conversiones sueltas, a pedido, con consumo mínimo.<span class="nota-margen" popover id="nota-rtc"><b>rtc · real-time clock</b>Dominio de bajo consumo que sigue activo con el micro dormido.</span> Funcionan incluso con el micro en sueño profundo y los puede manejar el coprocesador <span class="ref" data-nota="ulp">ULP</span>.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span></li>
+  <li><strong>Controlador digital</strong> (ESP32: dos, y solo uno con DMA; S3: uno, solo para ADC1): un temporizador marca el ritmo y el hardware recorre una <strong>tabla de patrones</strong>, que dice qué canal y con qué atenuación en cada paso. Las muestras van por <span class="ref" data-nota="dma">DMA</span> a memoria y la CPU se entera al terminar un barrido.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span> En el S3 suma dos filtros de coeficiente configurable y dos monitores de umbral: se produce una interrupción solo si la señal pasa por encima o por debajo de un nivel prefijado.</li>
+  <li><strong>Controlador de potencia (<span class="ref" data-nota="pwdet">PWDET</span>):</strong> es de uso interno de la radio, para medir su potencia de transmisión.<span class="nota-margen" popover id="nota-pwdet"><b>pwdet · power detect</b>Circuito de la radio que mide su propia potencia de transmisión.</span></li>
 </ul>
 
 <p>El ESP32 permite además que sus dos SAR conviertan al mismo tiempo (muestreo simultáneo).</p>
@@ -153,7 +153,7 @@
 
 <p>El manual del S3 da el mecanismo. El árbitro puede trabajar por turnos o con prioridad fija configurable, y con prioridad el controlador más prioritario <strong>puede cortar una conversión en curso</strong> del otro y empezar la suya. Una lectura de ADC2 se pierde o da basura no por un defecto del convertidor, sino porque otro controlador lo necesitó en ese momento.</p>
 
-<p>El S3 tiene además un problema propio. Según su manual, el controlador digital de ADC2 no funciona bien (hay una errata), así que ADC2 solo sirve para lecturas sueltas.</p>
+<p>El S3 tiene además un problema propio. Según su manual, el controlador digital de ADC2 no funciona bien (hay una <span class="ref" data-nota="errata">errata</span>), así que ADC2 solo sirve para lecturas sueltas.<span class="nota-margen" popover id="nota-errata"><b>errata</b>Lista de fallos conocidos de un micro, publicada por el fabricante.</span></p>
 
 <div class="caja clave">
   <h4>regla práctica</h4>
@@ -224,13 +224,13 @@
 
 <p class="formula">96 / 48 MHz = 2 µs por muestra, o sea 500 kmuestras/s</p>
 
-<p>Un temporizador de ritmo, una FIFO con DMA y un recorrido por turnos entre canales permiten muestrear varias entradas sin que la CPU intervenga. Es el mismo problema que resuelve la tabla de patrones del S3, con otro mecanismo.</p>
+<p>Un temporizador de ritmo, una <span class="ref" data-nota="fifo">FIFO</span> con DMA y un recorrido por turnos entre canales permiten muestrear varias entradas sin que la CPU intervenga.<span class="nota-margen" popover id="nota-fifo"><b>fifo · first in, first out</b>Cola donde sale primero lo que entró primero.</span> Es el mismo problema que resuelve la tabla de patrones del S3, con otro mecanismo.</p>
 
 <p>Su capacitor de muestreo es de apenas unos 1 pF, más lo que aporten el encapsulado y la placa. El datasheet afirma que no hace falta tiempo de asentamiento al cambiar de canal ni buffer para medidas de continua. Es lo que anticipa la página anterior: <var>τ</var> = <var>R</var> · <var>C</var>, y con <var>C</var> chico, <var>τ</var> también.</p>
 
 <h3>Un ENOB de 8,7 con 12 bits</h3>
 
-<p>El datasheet mide una SINAD de 54,0 dB y una SNR de 61,5 dB. Con la fórmula de la página anterior:</p>
+<p>El datasheet mide una <span class="ref" data-nota="sinad">SINAD</span> de 54,0 dB y una SNR de 61,5 dB.<span class="nota-margen" popover id="nota-sinad"><b>sinad · signal-to-noise-and-distortion</b>Relación entre la señal y el ruido más la distorsión, en decibeles.</span> Con la fórmula de la página anterior:</p>
 
 <p class="formula">ENOB = (54,0 − 1,76) / 6,02 ≈ 8,68</p>
 

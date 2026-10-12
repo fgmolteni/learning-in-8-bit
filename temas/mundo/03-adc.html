@@ -147,7 +147,7 @@
   <figcaption><b>fig 3.1</b>Una senoide de 900 Hz (naranja) muestreada a 1000 muestras por segundo. Las muestras (puntos azules) caen exactamente sobre una senoide de 100 Hz (magenta): desde los números, las dos señales son idénticas.</figcaption>
 </figure>
 
-<p>Eso es el <strong>solapamiento</strong> (<em>aliasing</em>): una frecuencia por encima de <var>f</var><sub>s</sub>/2 aparece disfrazada de otra más baja. La regla general: una señal de frecuencia <var>f</var><sub>a</sub> produce imágenes en</p>
+<p>Eso es el <strong>solapamiento</strong> (<em>aliasing</em>): una frecuencia por encima de <var>f</var><sub>s</sub>/2 aparece disfrazada de otra más baja. La regla general: una señal de frecuencia <var>f</var><sub>a</sub> produce <span class="ref" data-nota="imagenes">imágenes</span> en<span class="nota-margen" popover id="nota-imagenes"><b>imágenes · copias del espectro</b>Al muestrear, la señal aparece repetida en múltiplos de la frecuencia de muestreo, más y menos la frecuencia original.</span></p>
 
 <p class="formula">|± <var>K</var> · <var>f</var><sub>s</sub> ± <var>f</var><sub>a</sub>|, con <var>K</var> = 1, 2, 3, …</p>
 
@@ -159,7 +159,7 @@
 
 <p>Después de muestrear, un alias es indistinguible de una señal real de esa frecuencia. Ningún procesamiento posterior lo separa: promediar reduce el ruido, pero no saca un 300 Hz que ya entró. Por eso el filtro <strong>antialiasing</strong> es analógico y va antes del convertidor: un pasabajos que atenúe todo lo que esté por encima de Nyquist antes de muestrear.</p>
 
-<p>Acá aparece el costo real. Un filtro no corta de golpe: pasa de «deja pasar» a «atenúa lo suficiente» a lo largo de una <strong>banda de transición</strong>. Cada polo agrega unos 6 dB de atenuación por octava (cada vez que se duplica la frecuencia).</p>
+<p>Acá aparece el costo real. Un filtro no corta de golpe: pasa de «deja pasar» a «atenúa lo suficiente» a lo largo de una <strong>banda de transición</strong>. Cada <span class="ref" data-nota="polo">polo</span> agrega unos 6 dB de atenuación por octava (cada vez que se duplica la frecuencia).<span class="nota-margen" popover id="nota-polo"><b>polo · de un filtro</b>Cada polo suma una pendiente de 6 dB por octava a la atenuación, pasada la frecuencia de corte.</span></p>
 
 <p>Supongamos que la señal útil llega hasta <var>f</var><sub>a</sub> = 1 kHz y queremos que lo aliasado quede 60 dB abajo. El primer alias dañino viene de <var>f</var><sub>s</sub> − <var>f</var><sub>a</sub>, así que la transición va de 1 kHz a <var>f</var><sub>s</sub> − <var>f</var><sub>a</sub>. La tabla cuenta cuántos polos hacen falta según la <var>f</var><sub>s</sub> elegida.</p>
 
@@ -222,7 +222,7 @@
 
 <p>Esta deducción supone que el error no está correlacionado con la señal. Con señales muy repetitivas, o con un reloj sincronizado con la señal, esa suposición falla, pero el valor eficaz sigue siendo cercano.</p>
 
-<p>Este número es el piso de ruido de un ADC perfecto. Ningún ADC real hace mejor, y sirve de vara para medir cuánto peor es uno real.</p>
+<p>Este número es el <span class="ref" data-nota="piso-ruido">piso de ruido</span> de un ADC perfecto.<span class="nota-margen" popover id="nota-piso-ruido"><b>noise floor</b>Nivel de ruido por debajo del cual ya no se distingue la señal.</span> Ningún ADC real hace mejor, y sirve de vara para medir cuánto peor es uno real.</p>
 
 <h3>De ahí sale la relación señal-ruido</h3>
 
@@ -234,7 +234,7 @@
 
 <h3>Bits efectivos: la fórmula al revés</h3>
 
-<p>Un ADC real mide menos que eso, porque además del ruido de cuantización tiene ruido propio y distorsión. Entonces se invierte la fórmula. En lugar de la SNR se usa la <strong>SINAD</strong>, que compara la señal con todo lo demás que aparece en el espectro, armónicos incluidos, y con ella se calcula cuántos bits «se están usando de verdad», el <strong>ENOB</strong>:</p>
+<p>Un ADC real mide menos que eso, porque además del ruido de cuantización tiene ruido propio y distorsión. Entonces se invierte la fórmula. En lugar de la SNR se usa la <strong>SINAD</strong>, que compara la señal con todo lo demás que aparece en el espectro, <span class="ref" data-nota="armonicos">armónicos</span> incluidos, y con ella se calcula cuántos bits «se están usando de verdad», el <strong>ENOB</strong>:<span class="nota-margen" popover id="nota-armonicos"><b>harmonics</b>Componentes de frecuencia múltiplo entero de la de la señal; la distorsión los genera.</span></p>
 
 <p class="formula">ENOB = (SINAD − 1,76 dB) / 6,02 dB</p>
 
@@ -261,7 +261,7 @@
 
 <h2>Cómo se busca el número</h2>
 
-<p>Hasta acá no preguntamos cómo el ADC encuentra el código. Es la pregunta de diseño central, porque hay que encontrar uno entre 2<sup>N</sup> valores, y la forma de buscar decide la velocidad, el costo y el consumo. Las cuatro familias se distinguen por cuántos comparadores usan y cuántos pasos tardan.</p>
+<p>Hasta acá no preguntamos cómo el ADC encuentra el código. Es la pregunta de diseño central, porque hay que encontrar uno entre 2<sup>N</sup> valores, y la forma de buscar decide la velocidad, el costo y el consumo. Las cuatro familias se distinguen por cuántos <span class="ref" data-nota="comparador">comparadores</span> usan y cuántos pasos tardan.<span class="nota-margen" popover id="nota-comparador"><b>comparator</b>Circuito que compara dos tensiones y da un 1 o un 0 según cuál es mayor.</span></p>
 
 <ul>
   <li><strong>Flash (en paralelo).</strong> Compara la entrada con todos los niveles a la vez. Un flash de N bits necesita 2<sup>N</sup> resistores y 2<sup>N</sup> − 1 comparadores y entrega el código casi de inmediato. Para 12 bits serían 4095 comparadores, por eso se usan en 6 u 8 bits y por encima de 1 GS/s.</li>
@@ -289,7 +289,7 @@
 
 <p>En el circuito, las «pesas» son tensiones que genera un <strong>DAC</strong> (convertidor digital-analógico) interno. En un SAR integrado ese DAC es un arreglo de capacitores pesados en potencias de dos: C, C/2, C/4, …, más un capacitor extra del valor del LSB que hace que el total sea 2C. Las placas de arriba se unen en un nodo que va al comparador.</p>
 
-<p>Ese mismo arreglo es el capacitor de muestreo, así que el circuito de muestreo y retención del apartado anterior y el DAC del SAR son la misma pieza. Los capacitores de un mismo chip se parecen mucho entre sí y siguen juntos la temperatura, con menos de 1 ppm/°C de diferencia. Por eso la relación entre ellos, que es lo que importa, es muy estable.</p>
+<p>Ese mismo arreglo es el capacitor de muestreo, así que el circuito de muestreo y retención del apartado anterior y el DAC del SAR son la misma pieza. Los capacitores de un mismo chip se parecen mucho entre sí y siguen juntos la temperatura, con menos de 1 <span class="ref" data-nota="ppm">ppm</span>/°C de diferencia.<span class="nota-margen" popover id="nota-ppm"><b>ppm · parts per million</b>Una parte en un millón: 1 ppm/°C es una millonésima de cambio por cada grado.</span> Por eso la relación entre ellos, que es lo que importa, es muy estable.</p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
   <svg viewBox="0 0 640 272" role="img" aria-label="DAC de capacitores de un SAR de 4 bits: capacitores de 8C, 4C, 2C, C y C de terminación con las placas de arriba unidas al comparador; cada placa de abajo tiene una llave a la entrada, a la referencia o a masa; la lógica SAR lee el comparador y mueve las llaves">
@@ -314,7 +314,7 @@
   <figcaption><b>fig 3.4</b>Conversión paso a paso. Cada barra es el valor que prueba el DAC interno; la línea horizontal es la tensión de entrada. Si la barra queda por debajo de la línea, el bit se conserva (barra llena); si la pasa, se descarta (tramado). Abajo se arma el resultado, del bit más significativo al menos significativo. Movés la entrada con el deslizador.</figcaption>
 </figure>
 
-<p>El <strong>comparador</strong> es la única pieza con ganancia del lazo. Tiene un preamplificador que reduce el offset y un latch regenerativo que amplifica una diferencia de milivolts hasta un 0 o un 1 lógico. Cuando la diferencia es de una fracción de LSB, tarda más en decidir y su propio ruido pesa: por eso los últimos bits son los más frágiles.</p>
+<p>El <strong>comparador</strong> es la única pieza con ganancia del lazo. Tiene un preamplificador que reduce el offset y un <span class="ref" data-nota="latch">latch regenerativo</span> que amplifica una diferencia de milivolts hasta un 0 o un 1 lógico.<span class="nota-margen" popover id="nota-latch"><b>regenerative latch</b>Circuito con realimentación positiva que amplifica una diferencia mínima hasta un 0 o un 1 lógico y lo retiene.</span> Cuando la diferencia es de una fracción de LSB, tarda más en decidir y su propio ruido pesa: por eso los últimos bits son los más frágiles.</p>
 
 <h3>El precio de cada familia</h3>
 
@@ -333,7 +333,7 @@
 
 <p>La tabla muestra que la elección no es de «mejor y peor» sino de qué se paga. El flash paga hardware, el contador paga tiempo, y el SAR queda en el medio: un comparador y un tiempo que crece linealmente con los bits.</p>
 
-<p>Por eso el SAR domina en micros: poca área, poco consumo y ninguna latencia de «pipeline» entre una muestra y otra, así que se puede saltar de un canal a otro sin arrastrar la muestra anterior. El tiempo del flash no va en microsegundos porque depende del retardo de los comparadores.</p>
+<p>Por eso el SAR domina en micros: poca área, poco consumo y ninguna latencia de «<span class="ref" data-nota="pipeline">pipeline</span>» entre una muestra y otra, así que se puede saltar de un canal a otro sin arrastrar la muestra anterior.<span class="nota-margen" popover id="nota-pipeline"><b>pipeline · en etapas</b>Convertidor con etapas en serie: cada una resuelve unos bits y pasa el resto a la siguiente, con varios ciclos de latencia.</span> El tiempo del flash no va en microsegundos porque depende del retardo de los comparadores.</p>
 
 <h2>La fuente forma parte del circuito</h2>
 
@@ -354,7 +354,7 @@
 
 <p class="formula">e<sup>−<var>t</var>/<var>τ</var></sup> ≤ 1 / 2<sup><var>N</var>+1</sup> &nbsp;→&nbsp; <var>t</var> ≥ (<var>N</var> + 1) · ln 2 · <var>τ</var></p>
 
-<p>Para <var>N</var> = 12 resulta <var>t</var> ≥ 13 · 0,693 · <var>τ</var> ≈ 9 <var>τ</var>: el tiempo de adquisición debe ser unas nueve constantes de tiempo, y cada bit extra suma 0,69 <var>τ</var>.</p>
+<p>Para <var>N</var> = 12 resulta <var>t</var> ≥ 13 · 0,693 · <var>τ</var> ≈ 9 <var>τ</var>: el tiempo de adquisición debe ser unas nueve <span class="ref" data-nota="tau">constantes de tiempo</span>, y cada bit extra suma 0,69 <var>τ</var>.<span class="nota-margen" popover id="nota-tau"><b>time constant</b>Es R·C: lo que tarda un circuito RC en llegar al 63 % de su valor final.</span></p>
 
 <h3>Un ejemplo con números supuestos</h3>
 
@@ -388,7 +388,7 @@
 
 <h2>Errores de un ADC real</h2>
 
-<p>Un ADC ideal tiene una característica de transferencia que es una escalera perfecta: escalones de exactamente 1 LSB que siguen una recta. Uno real se desvía de ese ideal de cuatro maneras. Las dos primeras son como en un amplificador, porque la recta es <var>D</var> = <var>K</var> + <var>G</var> · <var>A</var>, donde <var>D</var> es el código, <var>A</var> la entrada y <var>K</var> y <var>G</var> son constantes.</p>
+<p>Un ADC ideal tiene una <span class="ref" data-nota="transferencia">característica de transferencia</span> que es una escalera perfecta: escalones de exactamente 1 LSB que siguen una recta.<span class="nota-margen" popover id="nota-transferencia"><b>transfer characteristic</b>Curva que relaciona la entrada con la salida de un circuito; en un ADC, tensión contra código.</span> Uno real se desvía de ese ideal de cuatro maneras. Las dos primeras son como en un amplificador, porque la recta es <var>D</var> = <var>K</var> + <var>G</var> · <var>A</var>, donde <var>D</var> es el código, <var>A</var> la entrada y <var>K</var> y <var>G</var> son constantes.</p>
 
 <figure class="diagrama" data-titulo="fig-3.6">
   <svg viewBox="0 0 640 288" role="img" aria-label="Función de transferencia de un ADC: la recta ideal y una curva real con zona muerta cerca de cero, curvatura en el medio y saturación antes de la tensión máxima">
@@ -402,7 +402,7 @@
   <li><strong>Error de ganancia:</strong> cuánto se aparta <var>G</var> de su valor ideal, en general en porcentaje. La pendiente es distinta y el error crece hacia el fondo de escala.</li>
 </ul>
 
-<p>Estos dos se corrigen con una recta, porque son errores de <var>K</var> y de <var>G</var>. Esa es la calibración de uno o dos puntos. Los otros dos miden cuánto se aparta la escalera de una recta, y una recta no los corrige:</p>
+<p>Estos dos se corrigen con una recta, porque son errores de <var>K</var> y de <var>G</var>. Esa es la <span class="ref" data-nota="calibracion">calibración</span> de uno o dos puntos.<span class="nota-margen" popover id="nota-calibracion"><b>calibration</b>Medir el error contra un valor conocido y corregirlo.</span> Los otros dos miden cuánto se aparta la escalera de una recta, y una recta no los corrige:</p>
 
 <ul>
   <li><strong>No linealidad diferencial (DNL):</strong> cuánto se aparta cada escalón de 1 LSB, tomando el peor de todos. Si algún escalón queda con ancho menor que 0 LSB (DNL por debajo de −1 LSB), un código no aparece nunca: es un <strong>código perdido</strong>. Un ADC es <strong>monótono</strong> cuando el código sube siempre que la entrada sube, sin retrocesos.</li>
@@ -455,7 +455,7 @@
   </ul>
 </div>
 
-<p>Para ver cómo aplican esto el ESP32, el ESP32-S3 y el RP2040 (referencia, atenuación, calibración, controladores y el choque de ADC2 con la radio), seguí en <a href="03b-adc-esp32.html">«El ADC del ESP32, del ESP32-S3 y del RP2040»</a>.</p>
+<p>Para ver cómo aplican esto el <span class="ref" data-nota="esp32">ESP32</span>, el ESP32-S3 y el <span class="ref" data-nota="rp2040">RP2040</span> (referencia, atenuación, calibración, controladores y el choque de ADC2 con la radio), seguí en <a href="03b-adc-esp32.html">«El ADC del ESP32, del ESP32-S3 y del RP2040»</a>.<span class="nota-margen" popover id="nota-esp32"><b>esp32 · Espressif</b>Familia de micros de Espressif Systems con Wi-Fi y Bluetooth integrados.</span><span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span></p>
 
 <section class="fuentes">
   <h2>Fuentes</h2>

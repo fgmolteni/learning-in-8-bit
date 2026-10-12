@@ -49,11 +49,11 @@
 </table>
 </div>
 
-<p>Los datasheets de Espressif no dan la corriente de salida del DAC, su DNL o INL, ni su tiempo de asentamiento. Lo que sigue se limita a lo que dicen los manuales.</p>
+<p>Los datasheets de <span class="ref" data-nota="espressif">Espressif</span> no dan la corriente de salida del DAC, su DNL o INL, ni su tiempo de asentamiento.<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> Lo que sigue se limita a lo que dicen los manuales.</p>
 
 <h2>El DAC del ESP32</h2>
 
-<p>Según el datasheet, cada canal es una cadena de resistencias con un búfer, la estructura que describe el nivel 4 como monótona por construcción y limitada a 8 o 10 bits por tamaño. Que sea de 8 bits calza justo con esa limitación.</p>
+<p>Según el datasheet, cada canal es una cadena de resistencias con un <span class="ref" data-nota="bufer">búfer</span>, la estructura que describe el nivel 4 como monótona por construcción y limitada a 8 o 10 bits por tamaño.<span class="nota-margen" popover id="nota-bufer"><b>buffer</b>Amplificador seguidor: copia la tensión y la entrega con baja impedancia de salida.</span> Que sea de 8 bits calza justo con esa limitación.</p>
 
 <p>Usa la alimentación como referencia. El manual da la relación exacta:</p>
 
@@ -65,11 +65,11 @@
 
 <p>Como la referencia es <var>V</var><sub>DD</sub>, cualquier variación de la alimentación se multiplica por el código, igual que el código por la referencia en la medición ratiométrica del ADC. A mitad de escala, <var>D</var> / 255 ≈ ½, así que una variación de la alimentación aparece a la salida reducida a la mitad.</p>
 
-<p>Un ejemplo con un valor supuesto: si <var>V</var><sub>DD</sub> tiene 50 mV de ruido, a mitad de escala la salida recibe unos 25 mV, o sea 25 / 12,9 ≈ 2 LSB. Es más que el escalón: en un DAC con referencia de la alimentación, el desacople de <var>V</var><sub>DD</sub> es parte de la exactitud.</p>
+<p>Un ejemplo con un valor supuesto: si <var>V</var><sub>DD</sub> tiene 50 mV de ruido, a mitad de escala la salida recibe unos 25 mV, o sea 25 / 12,9 ≈ 2 LSB. Es más que el escalón: en un DAC con referencia de la alimentación, el <span class="ref" data-nota="desacople">desacople</span> de <var>V</var><sub>DD</sub> es parte de la exactitud.<span class="nota-margen" popover id="nota-desacople"><b>decoupling</b>Capacitores cerca del chip que dan carga rápida y filtran el ruido de la alimentación.</span></p>
 
 <h3>Quién le da el valor</h3>
 
-<p>El valor del DAC puede venir de tres fuentes, según el manual: el generador de coseno, un registro que escribe el programa, o el DMA. La conversión se dispara por software o por la máquina de estados del ADC, y el coprocesador ULP puede controlarlo por completo. Con el DMA, el reloj y los datos del I2S se conectan al DAC, y se reproducen muestras de 8 bits desde la RAM sin la CPU.</p>
+<p>El valor del DAC puede venir de tres fuentes, según el manual: el generador de coseno, un registro que escribe el programa, o el DMA. La conversión se dispara por software o por la máquina de estados del ADC, y el coprocesador <span class="ref" data-nota="ulp">ULP</span> puede controlarlo por completo.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span> Con el DMA, el reloj y los datos del <span class="ref" data-nota="i2s">I2S</span> se conectan al DAC, y se reproducen muestras de 8 bits desde la RAM sin la CPU.<span class="nota-margen" popover id="nota-i2s"><b>i2s · Inter-IC Sound</b>Bus serie para audio digital, definido por Philips.</span></p>
 
 <h2>El generador de coseno</h2>
 
@@ -109,12 +109,12 @@
 <ul>
   <li><strong>PWM con un filtro RC.</strong> El del <a href="02-temporizadores-pwm.html">nivel 2</a>. Es lo más simple, con el costo de asentamiento que calcula el nivel 4.</li>
   <li><strong>El modulador sigma-delta.</strong> Es lo que sigue.</li>
-  <li><strong>Un DAC externo,</strong> por I2S para audio (<a href="../datos/03-i2s.html">Tomo 3, nivel 3</a>) o por I2C o SPI para tensiones de precisión (<a href="../datos/02-spi-i2c.html">Tomo 3, nivel 2</a>).</li>
+  <li><strong>Un DAC externo,</strong> por I2S para audio (<a href="../datos/03-i2s.html">Tomo 3, nivel 3</a>) o por <span class="ref" data-nota="i2c">I2C</span> o <span class="ref" data-nota="spi">SPI</span> para tensiones de precisión (<a href="../datos/02-spi-i2c.html">Tomo 3, nivel 2</a>).<span class="nota-margen" popover id="nota-i2c"><b>i2c · Inter-Integrated Circuit</b>Bus de dos hilos para chips cercanos, definido por Philips.</span><span class="nota-margen" popover id="nota-spi"><b>spi · Serial Peripheral Interface</b>Bus serie con reloj y selección de chip, de Motorola.</span></li>
 </ul>
 
 <h3>El modulador sigma-delta del S3</h3>
 
-<p>Ocho de las salidas de periféricos del S3 tienen un modulador sigma-delta de 1 bit y segundo orden, que se puede llevar a cualquier pin por la matriz de GPIO. Su función de transferencia, según el manual, es</p>
+<p>Ocho de las salidas de periféricos del S3 tienen un modulador sigma-delta de 1 bit y segundo orden, que se puede llevar a cualquier pin por la matriz de GPIO. Su <span class="ref" data-nota="funcion-transferencia">función de transferencia</span>, según el manual, es<span class="nota-margen" popover id="nota-funcion-transferencia"><b>transfer function</b>Relación entre la salida y la entrada de un sistema, según la frecuencia.</span></p>
 
 <p class="formula"><var>H</var>(<var>z</var>) = <var>X</var>(<var>z</var>) · <var>z</var><sup>−1</sup> + <var>E</var>(<var>z</var>) · (1 − <var>z</var><sup>−1</sup>)<sup>2</sup></p>
 
@@ -124,11 +124,11 @@
 
 <p>Si miramos una frecuencia de la señal cien veces menor que la tasa de pulsos, <var>f</var> = <var>f</var><sub>p</sub> / 100, el módulo es 2π / 100 ≈ 0,063. En un modulador de primer orden, cuyo factor es (1 − <var>z</var><sup>−1</sup>), el ruido baja por ese factor: 20 log<sub>10</sub> 0,063 ≈ −24 dB. En uno de segundo orden se aplica al cuadrado, 0,063² ≈ 0,0039, o sea −48 dB. Cada orden agrega una potencia más del factor, y por eso un segundo orden filtra bastante mejor la banda de la señal.</p>
 
-<p>La entrada es un número con signo de 8 bits, de −128 a 127, y la fracción de unos es (entrada + 128) / 256. Con −128 la salida está casi siempre en cero; con 0, cerca de la mitad; con 127, casi siempre en uno. El manual define esa fracción sobre un período estadístico de varios pulsos, por ejemplo 256. Ahí está el mismo compromiso del PWM: para distinguir 256 valores hay que promediar del orden de 256 pulsos, o sea resolución a cambio de tiempo. El reloj del modulador sale del reloj APB dividido por un valor de 1 a 256, y un ciclo de ese reloj es un pulso.</p>
+<p>La entrada es un número con signo de 8 bits, de −128 a 127, y la fracción de unos es (entrada + 128) / 256. Con −128 la salida está casi siempre en cero; con 0, cerca de la mitad; con 127, casi siempre en uno. El manual define esa fracción sobre un período estadístico de varios pulsos, por ejemplo 256. Ahí está el mismo compromiso del PWM: para distinguir 256 valores hay que promediar del orden de 256 pulsos, o sea resolución a cambio de tiempo. El reloj del modulador sale del reloj <span class="ref" data-nota="apb">APB</span> dividido por un valor de 1 a 256, y un ciclo de ese reloj es un pulso.<span class="nota-margen" popover id="nota-apb"><b>apb · Advanced Peripheral Bus</b>Bus de periféricos de la familia AMBA de Arm; da el nombre al reloj de periféricos.</span></p>
 
 <h2>El RP2040 tampoco tiene DAC</h2>
 
-<p>El RP2040 no tiene un DAC propio; tiene 16 canales PWM. Su datasheet, al describir lo que puede hacer el bloque PIO, menciona la salida de video VGA «mediante un DAC de resistencias»: un DAC armado afuera con resistencias, que es la forma de generar una tensión analógica de varios bits cuando solo se dispone de pines digitales. Es el mismo principio de la cadena y de la R-2R, con los pines del micro en el lugar de las llaves.</p>
+<p>El RP2040 no tiene un DAC propio; tiene 16 canales PWM. Su datasheet, al describir lo que puede hacer el bloque <span class="ref" data-nota="pio">PIO</span>, menciona la salida de video <span class="ref" data-nota="vga">VGA</span> «mediante un DAC de resistencias»: un DAC armado afuera con resistencias, que es la forma de generar una tensión analógica de varios bits cuando solo se dispone de pines digitales.<span class="nota-margen" popover id="nota-pio"><b>pio · programmable I/O</b>Bloque del RP2040 con máquinas de estado propias para generar y leer señales.</span><span class="nota-margen" popover id="nota-vga"><b>vga · Video Graphics Array</b>Estándar de video analógico de IBM.</span> Es el mismo principio de la cadena y de la R-2R, con los pines del micro en el lugar de las llaves.</p>
 
 <div class="caja quiz" data-ok="2">
   <h4>repaso rápido</h4>
