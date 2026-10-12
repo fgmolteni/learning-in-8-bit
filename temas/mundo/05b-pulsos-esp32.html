@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 5, componentes: el RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040</title>
+<meta name="description" content="El RMT, el contador de pulsos y el sensor táctil de los micros de Espressif, y el bloque PIO del RP2040 como contraste: cuántos canales, cuánta memoria, qué DMA y qué dicen sus manuales.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 5, componentes: el RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040">
+<meta property="og:description" content="El RMT, el contador de pulsos y el sensor táctil de los micros de Espressif, y el bloque PIO del RP2040 como contraste: cuántos canales, cuánta memoria, qué DMA y qué dicen sus manuales.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="5b">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="05b">nivel 05, componentes, 9 min de lectura</span>
+  <h1>El RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040</h1>
+  <p class="bajada">Cómo aplican tres micros lo que explica <a href="05-rmt-pcnt.html">«Pulsos con precisión de hardware»</a>: cuántos canales tienen, cuánta memoria, qué DMA, y cómo resuelve el RP2040 el mismo problema con otra arquitectura. Todo viene de sus manuales.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar esta página vas a poder…</h4>
+  <ul>
+    <li>Comparar el RMT, el contador de pulsos y el sensor táctil de los dos micros de Espressif.</li>
+    <li>Calcular cuántos LEDs WS2812 entran en la memoria del RMT y qué implica refrescarla.</li>
+    <li>Explicar qué agrega el DMA del ESP32-S3 al RMT.</li>
+    <li>Describir cómo resuelve el RP2040 el mismo problema con máquinas de estado programables.</li>
+  </ul>
+</div>
+
+<h2>Qué trae cada micro</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>RP2040</th></tr></thead>
+  <tbody>
+    <tr><td><b>RMT: canales</b></td><td>8, cada uno con un transmisor y un receptor, pero solo uno activo por canal</td><td>8 fijos: 4 transmisores (0 a 3) y 4 receptores (4 a 7)</td><td>no tiene</td></tr>
+    <tr><td><b>RMT: memoria</b></td><td>512 palabras de 32 bits compartidas, en ocho bloques de 64</td><td>384 palabras de 32 bits compartidas, 48 por canal</td><td>—</td></tr>
+    <tr><td><b>RMT: DMA</b></td><td>no figura</td><td>sí, en el canal 3 (transmisión) y en el 7 (recepción)</td><td>—</td></tr>
+    <tr><td><b>RMT: otros</b></td><td>portadora, filtro y demodulación, modo de recarga cíclica</td><td>portadora, filtro y demodulación, modos de recarga cíclica y de transmisión continua</td><td>—</td></tr>
+    <tr><td><b>PCNT: unidades</b></td><td>8, de dos canales, con un contador de 16 bits con signo</td><td>4, de dos canales</td><td>no tiene; el PWM mide frecuencia y ciclo de trabajo de una entrada</td></tr>
+    <tr><td><b>PCNT: frecuencia máxima</b></td><td>40 MHz</td><td>40 MHz</td><td>—</td></tr>
+    <tr><td><b>PCNT: comparadores</b></td><td>cinco puntos de observación: máximo, mínimo, dos umbrales y cero, con una sola interrupción</td><td>los mismos cinco</td><td>—</td></tr>
+    <tr><td><b>Táctil</b></td><td>10 canales (GPIO0, 2, 4, 12 a 15, 27, 32 y 33); mide la cuenta en una ventana fija: al tocar, baja</td><td>14 canales (GPIO1 a 14) más T0 interno de ruido; mide el tiempo de un número fijo de pulsos: al tocar, sube; filtro IIR, proximidad, tolerancia al agua</td><td>no tiene</td></tr>
+    <tr><td><b>Bloque programable</b></td><td>no</td><td>no</td><td>PIO: 2 bloques de 4 máquinas de estado</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>El RMT: la memoria alcanza para pocos LEDs</h2>
+
+<p>Cada palabra de la memoria del <span class="ref" data-nota="rmt">RMT</span> es un símbolo de dos tramos, y un bit del WS2812 es un símbolo.<span class="nota-margen" popover id="nota-rmt"><b>rmt · remote control</b>Periférico de Espressif, pensado para señales de control remoto infrarrojo, que reproduce y graba trenes de pulsos desde una memoria propia.</span> Con 24 bits por LED, la cuenta de cuántos LEDs entran en la memoria sale directa.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>palabras de memoria</th><th>LEDs que entran (24 palabras por LED)</th></tr></thead>
+  <tbody>
+    <tr><td>ESP32, un bloque de un canal</td><td>64</td><td>2,7</td></tr>
+    <tr><td>ESP32, toda la memoria</td><td>512</td><td>21,3</td></tr>
+    <tr><td>ESP32-S3, un canal</td><td>48</td><td>2</td></tr>
+    <tr><td>ESP32-S3, toda la memoria</td><td>384</td><td>16</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Una tira de 500 LEDs son 500 · 24 = 12 000 símbolos. Con un bloque de 64 palabras del ESP32, la memoria se vacía cada 64 · 1,25 µs = 80 µs, y la CPU tiene que volver a llenarla cada vez, unas 188 veces por trama de 15 ms. Es el modo de recarga cíclica de los dos micros: al llegar al final de la memoria el RMT vuelve al principio, y la CPU tiene que haber escrito lo que sigue antes de que lo lea.</p>
+
+<p>Es el mismo problema de la página anterior: la CPU tiene que atender una interrupción cada pocas decenas de microsegundos, y si llega tarde la tira se interrumpe. El <strong><span class="ref" data-nota="dma">DMA</span></strong> del ESP32-S3 resuelve eso en el canal 3: un controlador mueve los símbolos desde la RAM principal a la memoria del RMT sin pasar por la CPU, y la longitud de la tira deja de depender de los 48 o 384 símbolos de memoria.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span></p>
+
+<h2>El PCNT</h2>
+
+<p>El contador de pulsos del ESP32 tiene ocho unidades y el del ESP32-S3 cuatro. Cada una tiene dos canales que comparten un contador. En el ESP32 ese contador es de 16 bits con signo; el manual del S3 no lo describe de la misma manera, y no lo uso para el cálculo.</p>
+
+<p>Los dos soportan pulsos de hasta 40 MHz. El filtro de glitches usa el reloj del bus de periféricos, así que su alcance depende de la frecuencia de ese reloj: un umbral de 1023 ciclos a 80 MHz descarta pulsos de hasta 12,8 µs. Con un reloj de 80 MHz, 40 MHz de frecuencia máxima son dos ciclos por pulso, y activar el filtro con un umbral grande baja la frecuencia utilizable.</p>
+
+<h2>El sensor táctil</h2>
+
+<p>Los dos micros hacen la medida de la página anterior con un oscilador de relajación: cargan y descargan el pad con una corriente fija entre dos tensiones, y miden la frecuencia. Difieren en qué miden.</p>
+
+<ul>
+  <li><strong>ESP32:</strong> cuenta los pulsos de salida del oscilador en una ventana de tiempo fija y compara con la cuenta de referencia. Al tocar, la cuenta baja. Tiene 10 pads.</li>
+  <li><strong>ESP32-S3:</strong> deja pasar un número fijo de pulsos y mide cuánto tarda. Al tocar, el tiempo sube. Tiene 14 pads más un canal interno, T0, que mide el ruido del propio chip y se resta de las lecturas.</li>
+</ul>
+
+<p>El S3 agrega un filtro de promedio opcional, hasta tres canales en modo de proximidad, tolerancia a la humedad y rechazo de agua. Los dos pueden despertar a la CPU desde el sueño profundo, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span> Los manuales de los dos avisan que su sensor táctil todavía no pasó la prueba de susceptibilidad conducida, y que por eso tiene escenarios de aplicación limitados.</p>
+
+<h2>El RP2040: máquinas de estado en lugar de periféricos</h2>
+
+<p>El <span class="ref" data-nota="rp2040">RP2040</span> no tiene un RMT ni un PCNT.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span> Resuelve el mismo problema con otra arquitectura: el bloque <strong><span class="ref" data-nota="pio">PIO</span></strong>.<span class="nota-margen" popover id="nota-pio"><b>pio · programmable I/O</b>Bloque del RP2040 con máquinas de estado propias para generar y leer señales.</span> Hay dos bloques idénticos, cada uno con cuatro máquinas de estado, que ejecutan programas muy cortos escritos para manejar pines con una temporización precisa y sin intervención de la <span class="ref" data-nota="cpu">CPU</span>.<span class="nota-margen" popover id="nota-cpu"><b>cpu · central processing unit</b>Unidad central de proceso: el núcleo que lee y ejecuta las instrucciones del programa.</span></p>
+
+<p>La diferencia con el RMT está en dónde vive la lógica. En el RMT, la descripción de la señal son datos en una memoria, símbolos de nivel y duración, y la máquina de estados es fija. En el PIO, la lógica es un programa, y los datos que recibe son los bits a enviar. Para el WS2812, el datasheet del RP2040 trae un ejemplo en el que el programa son 4 instrucciones, y por cada bit de dato genera el pulso ancho o angosto que corresponde.</p>
+
+<p>El compromiso se ve en este ejemplo. El RMT tiene que tener memoria para cada símbolo de la señal que no se pueda describir con un prescaler y una portadora; el PIO describe el protocolo una vez y después solo recibe datos. A cambio, hay que escribir un programa para cada protocolo, en lugar de configurar registros.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Querés mandar una trama de 500 LEDs WS2812 desde un ESP32-S3 sin que la CPU tenga que recargar la memoria del RMT. ¿Qué usás?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="La memoria del RMT del S3 es de 384 palabras: 16 LEDs. Con 500 LEDs hay que recargarla por interrupción, que es lo que se quiere evitar.">La memoria del RMT, con los 384 símbolos que tiene.</button>
+    <button type="button" data-por-que="El canal 3 del RMT del S3 acepta DMA: un controlador mueve los símbolos desde la RAM sin pasar por la CPU.">El DMA del canal 3 del RMT.</button>
+    <button type="button" data-por-que="El PCNT cuenta pulsos que entran, no genera una señal de salida.">El PCNT.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>El ESP32 tiene 8 canales de RMT con 512 palabras compartidas; el S3, 4 de transmisión y 4 de recepción con 384, y DMA en dos canales.</li>
+    <li>Una tira de 500 LEDs son 12 000 símbolos: con un bloque de 64 palabras la CPU recarga cada 80 µs. El DMA del S3 evita eso.</li>
+    <li>El PCNT tiene 8 unidades en el ESP32 y 4 en el S3, hasta 40 MHz y cinco comparadores.</li>
+    <li>El táctil del ESP32 cuenta pulsos en una ventana; el del S3 mide el tiempo de un número fijo de pulsos y agrega filtro, proximidad y rechazo de agua.</li>
+    <li>El RP2040 no tiene RMT ni PCNT: usa el PIO, con máquinas de estado programables. El WS2812 son 4 instrucciones.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual v5.8</em>, capítulos 30 (RMT), 23 (PCNT) y 31.2 (sensor táctil). <a href="https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf">documentation.espressif.com/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, capítulos 37 (RMT), 38 (PCNT) y 39.2 (sensores táctiles). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em> y <em>ESP32-S3 Series Datasheet v2.2</em> (táctil). <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2040 Datasheet</em>, capítulo 3 (PIO, sección 3.6.2: WS2812) y 4.5 (PWM). <a href="https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf">datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf</a></li>
+  </ol>
+  <p class="nota">Las tablas salen de los manuales citados. Que el contador del PCNT del S3 sea de 16 bits con signo no figura en el manual del S3 y no lo afirmo. La frecuencia de 80 MHz del bus de periféricos es el valor normal que menciona el manual del ESP32. Las cuentas de LEDs por memoria y de recargas son propias. La comparación entre el RMT y el PIO es una lectura propia a partir de lo que describe cada manual.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, micro-esp, tomo-02, nivel-05, componentes</footer>
+</body>
+</html>
