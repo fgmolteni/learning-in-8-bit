@@ -66,7 +66,7 @@
 <p>Las memorias y las pantallas necesitan más ancho de banda. La solución fue ensanchar el bus en modo semidúplex: <strong>dual</strong> (2 líneas de datos), <strong>quad</strong> (4) y <strong>octal</strong> (8). Además, en <strong>doble tasa (DDR)</strong> se transfiere en los dos flancos del reloj. Un bus octal DDR a 40 MHz mueve 2 bytes por ciclo: 80 MB/s. A esas velocidades, el esclavo acompaña los datos con una señal <strong>DQS</strong> que marca cuándo leerlos.</p>
 
 <h3>El límite: el viaje de ida y vuelta</h3>
-<p>En full-duplex, el maestro emite un flanco de SCK, el reloj viaja hasta el esclavo, el esclavo tarda unos nanosegundos en poner su bit en MISO, el bit vuelve, y todo eso tiene que llegar antes del flanco de muestreo del maestro. A 80 MHz el período es de 12,5 ns: no hay margen para pistas largas ni para los sincronizadores de la matriz de GPIO (<a href="../mundo/01-pin.html">Tomo 2, nivel 1</a>). Por eso las velocidades máximas se dan con pines directos, en semidúplex o con ciclos de espera que le dan tiempo al esclavo.</p>
+<p>En full-duplex, el maestro emite un flanco de SCK, el reloj viaja hasta el esclavo, el esclavo tarda unos nanosegundos en poner su bit en MISO, el bit vuelve, y todo eso tiene que llegar antes del flanco de muestreo del maestro. A 80 MHz el período es de 12,5 ns: no hay margen para pistas largas ni para los sincronizadores de la matriz de GPIO (<a href="../mundo/01b-pin-esp32.html">Tomo 2, nivel 1, componentes</a>). Por eso las velocidades máximas se dan con pines directos, en semidúplex o con ciclos de espera que le dan tiempo al esclavo.</p>
 
 <div class="caja analogia">
   <h4>analogía: dos engranajes y una correa</h4>
