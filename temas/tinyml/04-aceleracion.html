@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 4: Por qué un acelerador es más rápido</title>
+<meta name="description" content="Un acelerador no calcula más rápido cada operación. Hace muchas a la vez y mueve menos datos, que es donde se va la energía.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 4: Por qué un acelerador es más rápido">
+<meta property="og:description" content="Un acelerador no calcula más rápido cada operación. Hace muchas a la vez y mueve menos datos, que es donde se va la energía.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="tinyml" data-nivel="4">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="04">nivel 04, 17 min de lectura</span>
+  <h1>Por qué un acelerador es más rápido</h1>
+  <p class="bajada">Un acelerador no calcula más rápido cada operación. Hace muchas a la vez y mueve menos datos, que es donde se va la energía.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar por qué mover un dato cuesta más energía que calcular con él.</li>
+    <li>Distinguir una instrucción SIMD fija de una vectorial y de una NPU.</li>
+    <li>Calcular cuántos elementos mueve una instrucción vectorial según el ancho y el tipo.</li>
+    <li>Explicar cómo un arreglo sistólico lee la memoria una sola vez.</li>
+    <li>Decidir cuándo un acelerador no ayuda porque el límite es la memoria.</li>
+  </ul>
+</div>
+
+<h2>El problema: mover cuesta más que calcular</h2>
+
+<p>En el nivel 3 los núcleos optimizados dieron 4,6 veces. Todavía así, un MAC costaba más de un ciclo. El límite no está en la multiplicación. Está en llevar los datos hasta la unidad que multiplica.</p>
+
+<p>Horowitz midió el costo por operación en un proceso de 45 nm. Una instrucción de un procesador simple gasta unos 70 <span class="ref" data-nota="pj">pJ</span>, y la suma es una fracción mínima de eso.<span class="nota-margen" popover id="nota-pj"><b>pj · picojoule</b>Una billonésima de joule (10⁻¹² J). Mide la energía de una sola operación dentro de un procesador.</span> Un MAC de enteros de 8 bits gasta 0,23 pJ: 0,2 pJ la multiplicación y 0,03 pJ la suma. Un acceso a la DRAM de 64 bits gasta entre 1,3 nJ y 2,6 nJ.</p>
+
+<p class="formula">1,3 nJ / 0,23 pJ ≈ 5.700 · 2,6 nJ / 0,23 pJ ≈ 11.300</p>
+
+<p>El acceso a la memoria externa cuesta del orden de miles de veces lo que el cálculo. Es deducción propia, con accesos de 64 bits y operaciones de 8 bits. Por eso diseñar un acelerador es sobre todo decidir dónde viven los datos.</p>
+
+<figure class="diagrama" data-titulo="fig-4.1">
+  <svg viewBox="0 0 640 232" role="img" aria-label="Cuatro barras de energía relativa por acceso: registro 1 vez, red entre unidades 2 veces, buffer de 100 a 500 KB 6 veces, DRAM 200 veces."><text x="176" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">registro</text><rect x="192" y="24" width="4" height="32" class="fa1 sa3" stroke-width="2"/><text x="204" y="46" class="sv-lbl fa3" text-anchor="start" font-size="16">1×</text><text x="176" y="90" class="sv-lbl f6" text-anchor="end" font-size="16">red entre PE</text><rect x="192" y="68" width="4" height="32" class="fb1 sb3" stroke-width="2"/><text x="204" y="90" class="sv-lbl fb3" text-anchor="start" font-size="16">2×</text><text x="176" y="134" class="sv-lbl f6" text-anchor="end" font-size="16">buffer 100–500 KB</text><rect x="192" y="112" width="10" height="32" class="fc1 sc3" stroke-width="2"/><text x="210" y="134" class="sv-lbl fc3" text-anchor="start" font-size="16">6×</text><text x="176" y="178" class="sv-lbl f6" text-anchor="end" font-size="16">DRAM</text><rect x="192" y="156" width="320" height="32" class="fd1 sd3" stroke-width="2"/><text x="520" y="178" class="sv-lbl fd3" text-anchor="start" font-size="16">200×</text><text x="16" y="208" class="sv-lbl f4" text-anchor="start" font-size="16">energía de un acceso, relativa a una operación de ALU (Sze et al., fig. 22)</text></svg>
+  <figcaption><b>fig 4.1</b>Leer de la DRAM cuesta unas 200 veces lo que una operación de la ALU. Un registro cuesta 1.</figcaption>
+</figure>
+
+<p>Sze et al. dan la escala dentro de un acelerador (figura 22, p. 14). Un acceso a un registro de la celda cuesta 1. A la red entre celdas, 2. A un buffer de 100 a 500 KB, 6. A la DRAM, 200. Cada nivel que se evita ahorra energía.</p>
+
+<h3>Reutilizar los datos</h3>
+
+<p>La salida es reutilizar. Un peso o un dato de entrada se usa en muchas multiplicaciones. Si se guarda cerca de la unidad, se lee de lejos una sola vez. AlexNet hace 724 millones de MAC. Si cada dato viene de la DRAM, son casi 3.000 millones de accesos. Con reutilización local, Sze et al. los bajan a 61 millones (p. 13–14).</p>
+
+<p class="formula">3.000 M / 61 M ≈ 49 veces menos accesos</p>
+
+<p>Es una cuenta propia sobre dos cifras del paper. Horowitz lo resume (p. 3). Para llegar a 1 pJ por operación hacen falta decenas de operaciones por cada acceso local. Hacen falta unas mil por cada acceso a la DRAM. Una convolución cumple esa condición, porque reutiliza cada peso en toda la imagen (nivel 1).</p>
+
+<h2>Hacer varias cuentas por instrucción: SIMD</h2>
+
+<p>La forma más simple de acelerar es la <span class="ref" data-nota="simd">SIMD</span>: una instrucción opera sobre varios datos.<span class="nota-margen" popover id="nota-simd"><b>simd · single instruction, multiple data</b>Una sola instrucción aplicada a varios datos a la vez, guardados lado a lado en un registro ancho.</span> Las unidades de cálculo comparten el control y los registros (Sze et al., p. 12). Se paga una vez por buscar y decodificar la instrucción y se hacen varias cuentas.</p>
+
+<p>Un caso es CMSIS-NN en un Cortex-M. Los núcleos expanden los datos de 8 a 16 bits. Después usan una instrucción SIMD de MAC de 16 bits (Lai et al., sección 4.1, p. 3). No hay hardware para 8 bits, así que se ensancha el dato.</p>
+
+<p>El ESP32-S3 va un paso más. Su <span class="ref" data-nota="pie">PIE</span> trae registros de 128 bits.<span class="nota-margen" popover id="nota-pie"><b>pie · processor instruction extensions</b>Instrucciones SIMD que Espressif agregó al procesador del ESP32-S3. Trabajan sobre registros de 128 bits.</span> El manual dice que una instrucción hace hasta 16 multiplicaciones y acumulaciones (ESP32-S3 TRM v1.8, sección 1.3.2). Cuadra con la cuenta: un registro de 128 bits tiene 128 / 8 = 16 carriles de 8 bits.</p>
+
+<figure class="diagrama" data-titulo="fig-4.2">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Un registro de 128 bits dividido en 16 carriles de 8 bits para los pesos y otro para las entradas. Una instrucción multiplica los 16 pares a la vez y acumula 16 resultados."><text x="16" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">un registro de 128 bits = 16 carriles de 8 bits</text><rect x="112" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="144" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="176" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="208" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="240" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="272" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="304" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="336" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="368" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="400" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="432" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="464" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="496" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="528" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="560" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><rect x="592" y="40" width="32" height="32" class="fb1 sb3" stroke-width="2"/><text x="104" y="62" class="sv-lbl fb3" text-anchor="end" font-size="16">pesos</text><rect x="112" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="144" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="176" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="208" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="240" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="272" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="304" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="336" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="368" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="400" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="432" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="464" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="496" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="528" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="560" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="592" y="84" width="32" height="32" class="fa1 sa3" stroke-width="2"/><text x="104" y="106" class="sv-lbl fa3" text-anchor="end" font-size="16">entradas</text><line x1="128" y1="120" x2="128" y2="144" class="s4" stroke-width="2"/><polygon points="124,138 132,138 128,146" class="f4"/><line x1="160" y1="120" x2="160" y2="144" class="s4" stroke-width="2"/><polygon points="156,138 164,138 160,146" class="f4"/><line x1="192" y1="120" x2="192" y2="144" class="s4" stroke-width="2"/><polygon points="188,138 196,138 192,146" class="f4"/><line x1="224" y1="120" x2="224" y2="144" class="s4" stroke-width="2"/><polygon points="220,138 228,138 224,146" class="f4"/><line x1="256" y1="120" x2="256" y2="144" class="s4" stroke-width="2"/><polygon points="252,138 260,138 256,146" class="f4"/><line x1="288" y1="120" x2="288" y2="144" class="s4" stroke-width="2"/><polygon points="284,138 292,138 288,146" class="f4"/><line x1="320" y1="120" x2="320" y2="144" class="s4" stroke-width="2"/><polygon points="316,138 324,138 320,146" class="f4"/><line x1="352" y1="120" x2="352" y2="144" class="s4" stroke-width="2"/><polygon points="348,138 356,138 352,146" class="f4"/><line x1="384" y1="120" x2="384" y2="144" class="s4" stroke-width="2"/><polygon points="380,138 388,138 384,146" class="f4"/><line x1="416" y1="120" x2="416" y2="144" class="s4" stroke-width="2"/><polygon points="412,138 420,138 416,146" class="f4"/><line x1="448" y1="120" x2="448" y2="144" class="s4" stroke-width="2"/><polygon points="444,138 452,138 448,146" class="f4"/><line x1="480" y1="120" x2="480" y2="144" class="s4" stroke-width="2"/><polygon points="476,138 484,138 480,146" class="f4"/><line x1="512" y1="120" x2="512" y2="144" class="s4" stroke-width="2"/><polygon points="508,138 516,138 512,146" class="f4"/><line x1="544" y1="120" x2="544" y2="144" class="s4" stroke-width="2"/><polygon points="540,138 548,138 544,146" class="f4"/><line x1="576" y1="120" x2="576" y2="144" class="s4" stroke-width="2"/><polygon points="572,138 580,138 576,146" class="f4"/><line x1="608" y1="120" x2="608" y2="144" class="s4" stroke-width="2"/><polygon points="604,138 612,138 608,146" class="f4"/><rect x="112" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="144" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="176" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="208" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="240" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="272" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="304" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="336" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="368" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="400" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="432" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="464" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="496" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="528" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="560" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><rect x="592" y="148" width="32" height="32" class="fc1 sc3" stroke-width="2"/><text x="104" y="170" class="sv-lbl fc3" text-anchor="end" font-size="16">MAC</text><text x="112" y="208" class="sv-lbl f4" text-anchor="start" font-size="16">16 multiplicaciones y acumulaciones con una instrucción</text></svg>
+  <figcaption><b>fig 4.2</b>Una instrucción trabaja sobre 16 datos de 8 bits. Cada carril es una multiplicación independiente.</figcaption>
+</figure>
+
+<p>El manual no da cuántas instrucciones por ciclo salen. Si fuera una por ciclo a 240 MHz (supuesto), el techo sería 16 · 240 MHz = 3.840 millones de MAC por segundo. Es un máximo teórico, no una medida. La memoria casi nunca deja alcanzarlo (<a href="../borde/03-convolucion-pie.html">IA en el borde, Tomo 2, nivel 3</a>).</p>
+
+<h2>Vectores: el ancho no está en el programa</h2>
+
+<p>La SIMD fija tiene un problema. El ancho va escrito en la instrucción. Un programa para registros de 128 bits no aprovecha uno de 256. La extensión vectorial de RISC-V lo resuelve con otro modelo. El programa pide una cantidad de elementos y el hardware dice cuántos procesa por vuelta (RISC-V «V» 1.0, sección 6).</p>
+
+<p>Tres números definen el máximo. <var>VLEN</var> es el ancho del registro en bits. <var>SEW</var> es el ancho de cada elemento. <var>LMUL</var> agrupa registros. La norma da el máximo por instrucción (p. 12):</p>
+
+<p class="formula"><var>VLMAX</var> = <var>LMUL</var> · <var>VLEN</var> / <var>SEW</var></p>
+
+<p>Con <var>VLEN</var> = 128, <var>SEW</var> = 8 y <var>LMUL</var> = 1 son 128 / 8 = 16 elementos, como el PIE (tabla 4, p. 11). Con <var>LMUL</var> = 4 se agrupan cuatro registros y son 64. El mismo programa corre en un micro con registros de 128 bits y en otro de 512. Solo cambia la cantidad de vueltas. Para micros hay perfiles chicos: Zve32x pide un <var>VLEN</var> mínimo de 32 bits, enteros de 8, 16 y 32 bits y nada de coma flotante (tabla 19, p. 92).</p>
+
+<p>Arm tiene su equivalente para los Cortex-M: la extensión <span class="ref" data-nota="helium">Helium</span>, para el Cortex-M55 y el Cortex-M85.<span class="nota-margen" popover id="nota-helium"><b>helium · extensión vectorial m-profile (mve)</b>Instrucciones vectoriales de Arm para los Cortex-M de Armv8.1-M. Se pensaron para procesamiento de señales y redes.</span> Arm dice «hasta 15 veces» para aprendizaje automático.</p>
+
+<div class="caja ojo">
+  <h4>ojo</h4>
+  <p>Esa cifra de Helium es de la página de producto de Arm. No dice contra qué base compara ni cuántos MAC hace por ciclo. Es una cifra de marketing: no sirve para calcular el rendimiento de tu red.</p>
+</div>
+
+<h2>La NPU: un arreglo que lee la memoria una vez</h2>
+
+<p>Una <span class="ref" data-nota="npu">NPU</span> lleva la idea al extremo.<span class="nota-margen" popover id="nota-npu"><b>npu · neural processing unit</b>Acelerador dedicado a redes neuronales. Tiene muchas unidades de multiplicar y acumular y su propia memoria.</span> En lugar de pocos carriles, tiene una cuadrícula de unidades de MAC. El caso mejor documentado es la TPU de Google. Tiene 256 × 256 = 65.536 MAC de 8 bits a 700 MHz. Lleva 28 MiB de memoria en el chip (Jouppi et al., p. 1 y 3).</p>
+
+<p>Cada MAC cuenta como dos operaciones, una multiplicación y una suma. El pico se calcula así:</p>
+
+<p class="formula">65.536 · 700 MHz · 2 ≈ 91,8 TOPS</p>
+
+<p>El paper declara 92 <span class="ref" data-nota="tops">TOPS</span>, y la cuenta lo confirma.<span class="nota-margen" popover id="nota-tops"><b>tops · tera operaciones por segundo</b>Un billón (10¹²) de operaciones por segundo. Es el pico teórico, no lo que da una red real.</span> La TPU usa ejecución <strong>sistólica</strong> (p. 4). Los datos pasan de una celda a la vecina. Las sumas parciales bajan por las columnas y recién salen a la memoria al final.</p>
+
+<figure class="diagrama" data-titulo="fig-4.3">
+  <svg viewBox="0 0 640 336" role="img" aria-label="Una cuadrícula de 4 por 4 celdas de multiplicar y acumular. Las entradas entran por la izquierda y pasan de celda en celda. Las sumas parciales bajan por las columnas."><text x="16" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">arreglo sistólico 4×4</text><rect x="120" y="40" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="144" y="70" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="168" y1="64" x2="184" y2="64" class="s4" stroke-width="2"/><polygon points="176,59 184,64 176,69" class="f4"/><line x1="144" y1="88" x2="144" y2="104" class="s4" stroke-width="2"/><polygon points="139,96 149,96 144,104" class="f4"/><rect x="184" y="40" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="208" y="70" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="232" y1="64" x2="248" y2="64" class="s4" stroke-width="2"/><polygon points="240,59 248,64 240,69" class="f4"/><line x1="208" y1="88" x2="208" y2="104" class="s4" stroke-width="2"/><polygon points="203,96 213,96 208,104" class="f4"/><rect x="248" y="40" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="272" y="70" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="296" y1="64" x2="312" y2="64" class="s4" stroke-width="2"/><polygon points="304,59 312,64 304,69" class="f4"/><line x1="272" y1="88" x2="272" y2="104" class="s4" stroke-width="2"/><polygon points="267,96 277,96 272,104" class="f4"/><rect x="312" y="40" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="336" y="70" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="336" y1="88" x2="336" y2="104" class="s4" stroke-width="2"/><polygon points="331,96 341,96 336,104" class="f4"/><rect x="120" y="104" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="144" y="134" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="168" y1="128" x2="184" y2="128" class="s4" stroke-width="2"/><polygon points="176,123 184,128 176,133" class="f4"/><line x1="144" y1="152" x2="144" y2="168" class="s4" stroke-width="2"/><polygon points="139,160 149,160 144,168" class="f4"/><rect x="184" y="104" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="208" y="134" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="232" y1="128" x2="248" y2="128" class="s4" stroke-width="2"/><polygon points="240,123 248,128 240,133" class="f4"/><line x1="208" y1="152" x2="208" y2="168" class="s4" stroke-width="2"/><polygon points="203,160 213,160 208,168" class="f4"/><rect x="248" y="104" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="272" y="134" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="296" y1="128" x2="312" y2="128" class="s4" stroke-width="2"/><polygon points="304,123 312,128 304,133" class="f4"/><line x1="272" y1="152" x2="272" y2="168" class="s4" stroke-width="2"/><polygon points="267,160 277,160 272,168" class="f4"/><rect x="312" y="104" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="336" y="134" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="336" y1="152" x2="336" y2="168" class="s4" stroke-width="2"/><polygon points="331,160 341,160 336,168" class="f4"/><rect x="120" y="168" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="144" y="198" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="168" y1="192" x2="184" y2="192" class="s4" stroke-width="2"/><polygon points="176,187 184,192 176,197" class="f4"/><line x1="144" y1="216" x2="144" y2="232" class="s4" stroke-width="2"/><polygon points="139,224 149,224 144,232" class="f4"/><rect x="184" y="168" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="208" y="198" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="232" y1="192" x2="248" y2="192" class="s4" stroke-width="2"/><polygon points="240,187 248,192 240,197" class="f4"/><line x1="208" y1="216" x2="208" y2="232" class="s4" stroke-width="2"/><polygon points="203,224 213,224 208,232" class="f4"/><rect x="248" y="168" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="272" y="198" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="296" y1="192" x2="312" y2="192" class="s4" stroke-width="2"/><polygon points="304,187 312,192 304,197" class="f4"/><line x1="272" y1="216" x2="272" y2="232" class="s4" stroke-width="2"/><polygon points="267,224 277,224 272,232" class="f4"/><rect x="312" y="168" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="336" y="198" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="336" y1="216" x2="336" y2="232" class="s4" stroke-width="2"/><polygon points="331,224 341,224 336,232" class="f4"/><rect x="120" y="232" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="144" y="262" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="168" y1="256" x2="184" y2="256" class="s4" stroke-width="2"/><polygon points="176,251 184,256 176,261" class="f4"/><rect x="184" y="232" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="208" y="262" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="232" y1="256" x2="248" y2="256" class="s4" stroke-width="2"/><polygon points="240,251 248,256 240,261" class="f4"/><rect x="248" y="232" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="272" y="262" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="296" y1="256" x2="312" y2="256" class="s4" stroke-width="2"/><polygon points="304,251 312,256 304,261" class="f4"/><rect x="312" y="232" width="48" height="48" class="fa1 sa3" stroke-width="2"/><text x="336" y="262" class="sv-lbl fa3" text-anchor="middle" font-size="16">MAC</text><line x1="80" y1="64" x2="120" y2="64" class="sb3" stroke-width="2"/><line x1="80" y1="128" x2="120" y2="128" class="sb3" stroke-width="2"/><line x1="80" y1="192" x2="120" y2="192" class="sb3" stroke-width="2"/><line x1="80" y1="256" x2="120" y2="256" class="sb3" stroke-width="2"/><text x="72" y="6" class="sv-lbl f4" text-anchor="start" font-size="16"></text><text x="76" y="52" class="sv-lbl fb3" text-anchor="end" font-size="16">entradas</text><text x="384" y="76" class="sv-lbl f4" text-anchor="start" font-size="16">los datos pasan</text><text x="384" y="98" class="sv-lbl f4" text-anchor="start" font-size="16">de celda a celda</text><text x="384" y="148" class="sv-lbl f4" text-anchor="start" font-size="16">las sumas parciales</text><text x="384" y="170" class="sv-lbl f4" text-anchor="start" font-size="16">bajan sin volver</text><text x="384" y="192" class="sv-lbl f4" text-anchor="start" font-size="16">a la memoria</text><text x="208" y="320" class="sv-lbl f4" text-anchor="middle" font-size="16">se lee la memoria una vez; cada dato alimenta muchas celdas</text></svg>
+  <figcaption><b>fig 4.3</b>Cada dato se lee de la memoria una vez y pasa por muchas celdas. Las sumas parciales no vuelven a la memoria.</figcaption>
+</figure>
+
+<p>Así cada dato leído de la memoria alimenta a muchas celdas. Jouppi et al. lo explican con la energía. Leer una SRAM grande gasta mucho más que la aritmética. La ejecución sistólica reduce esas lecturas y escrituras (p. 4). Sze et al. clasifican cómo reutilizar: dejar fijos los pesos, dejar fija la salida, o fijar una fila (p. 14–16).</p>
+
+<h3>El límite: la memoria</h3>
+
+<p>Un acelerador rápido puede quedarse esperando datos. El modelo <em>roofline</em> lo muestra. El rendimiento es el menor entre el pico de cálculo y lo que la memoria alcanza a entregar. En la TPU, cuatro de las seis aplicaciones medidas estaban limitadas por el ancho de banda de memoria. El quiebre del modelo está en unas 1.350 operaciones por byte de peso (p. 2 y 6, figura 5).</p>
+
+<p>La consecuencia práctica: una red con pocas operaciones por byte de peso, como las capas densas, no aprovecha una NPU. Una convolución, con mucha reutilización, sí. Por eso el nivel 1 contaba operaciones por peso.</p>
+
+<h2>Comparar: qué comparte cada técnica</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Técnica</th><th>Qué comparte</th><th>Dónde está el ancho</th><th>Ejemplo</th></tr></thead>
+  <tbody>
+    <tr><td><b>SIMD fija</b></td><td>el control y los registros</td><td>en la instrucción</td><td>MAC de 16 bits de un Cortex-M, PIE del ESP32-S3</td></tr>
+    <tr><td><b>Vectorial</b></td><td>el control; registros configurables</td><td>en el hardware, no en el programa</td><td>RISC-V «V», Helium de Arm</td></tr>
+    <tr><td><b>NPU sistólica</b></td><td>los datos, entre celdas vecinas</td><td>en la forma del arreglo</td><td>TPU de Google; microNPU Ethos-U de Arm</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Hennessy y Patterson explican por qué esto gana. Las arquitecturas de dominio específico ganan por tres motivos (diapositiva 33). Usan un paralelismo ajustado al problema. Usan memoria que controla el programa, en lugar de cachés. Eliminan la precisión innecesaria, de 32 o 64 bits a 8 o 16.</p>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Un procesador vectorial tiene VLEN de 256 bits. Con elementos de 8 bits y LMUL igual a 2, ¿cuántos elementos procesa una instrucción como máximo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="32 es 256 / 8 con LMUL igual a 1. Falta multiplicar por LMUL.">32.</button>
+    <button type="button" data-por-que="16 es el caso de VLEN de 128 bits con LMUL igual a 1. Acá el registro es más ancho.">16.</button>
+    <button type="button" data-por-que="VLMAX = LMUL · VLEN / SEW = 2 · 256 / 8 = 64.">64.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Por qué un arreglo sistólico gasta menos energía en memoria que una cuenta por cuenta?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Cada dato leído pasa por muchas celdas, y las sumas parciales no vuelven a la memoria. Se hacen menos lecturas por MAC.">Porque cada dato leído alimenta a muchas celdas.</button>
+    <button type="button" data-por-que="La frecuencia no baja la energía por acceso. El ahorro viene de leer menos.">Porque trabaja a una frecuencia más baja.</button>
+    <button type="button" data-por-que="La precisión se reduce en la cuantización, no por el arreglo. Y no es una lectura menos.">Porque no usa números de 8 bits.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Mover un dato desde la memoria externa cuesta del orden de miles de veces lo que calcular con él.</li>
+    <li>SIMD fija hace varias cuentas por instrucción. El PIE hace hasta 16 de 8 bits.</li>
+    <li>La vectorial separa el ancho del programa: VLMAX = LMUL · VLEN / SEW.</li>
+    <li>Una NPU sistólica lee cada dato una vez y lo pasa de celda a celda.</li>
+    <li>Si la red tiene pocas operaciones por byte de peso, el límite es la memoria y el acelerador no ayuda.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Horowitz, M. «1.1 Computing's Energy Problem (and what we can do about it)». <em>ISSCC 2014 Digest of Technical Papers</em>, IEEE: figura 1.1.9 y pp. 2–3 del PDF. Copia de terceros. <a href="https://www.gwern.net/doc/cs/hardware/2014-horowitz-2.pdf">gwern.net/doc/cs/hardware/2014-horowitz-2.pdf</a></li>
+    <li>Sze, V., Chen, Y.-H., Yang, T.-J. y Emer, J. <em>Efficient Processing of Deep Neural Networks: A Tutorial and Survey</em>. arXiv:1703.09039v2, 2017: pp. 12–16 y figura 22. <a href="https://arxiv.org/abs/1703.09039">arxiv.org/abs/1703.09039</a></li>
+    <li>Jouppi, N. et al. <em>In-Datacenter Performance Analysis of a Tensor Processing Unit</em>. ISCA 2017, arXiv:1704.04760: pp. 1–6 y figura 5. <a href="https://arxiv.org/abs/1704.04760">arxiv.org/abs/1704.04760</a></li>
+    <li>Hennessy, J. y Patterson, D. «A New Golden Age for Computer Architecture». Turing Lecture, ISCA 2018 (diapositivas 32–33 y 38). <a href="https://iscaconf.org/isca2018/docs/HennessyPattersonTuringLectureISCA4June2018.pdf">iscaconf.org/isca2018/docs/HennessyPattersonTuringLectureISCA4June2018.pdf</a></li>
+    <li>Lai, L., Suda, N. y Chandra, V. <em>CMSIS-NN</em>. arXiv:1801.06601, 2018: sección 4.1 (p. 3). Artículo del fabricante. <a href="https://arxiv.org/abs/1801.06601">arxiv.org/abs/1801.06601</a></li>
+    <li>RISC-V International. <em>RISC-V «V» Vector Extension</em>, versión 1.0: secciones 3.4 y 6, tabla 4 (p. 11) y tabla 19 (p. 92). <a href="https://github.com/riscv/riscv-v-spec/releases/download/v1.0/riscv-v-spec-1.0.pdf">github.com/riscv/riscv-v-spec</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual</em> v1.8, sección 1.3.2 (PIE). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Arm. <em>Arm Helium technology</em>, página del producto. Sin cifras de MAC por ciclo. <a href="https://www.arm.com/technologies/helium">arm.com/technologies/helium</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, contrastada con las fuentes. Son deducción propia: las razones de energía (miles de veces; 49 veces menos accesos), el techo de 3.840 millones de MAC por segundo (supuesto: una instrucción por ciclo) y el pico de 91,8 TOPS. La TPU es un chip de centro de datos: enseña el principio, no las cifras de un micro. Las cifras de Ethos-U y de MAC por ciclo de Helium no se verificaron y no se usan.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-03, nivel-04</footer>
+</body>
+</html>
