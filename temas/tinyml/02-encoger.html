@@ -76,7 +76,7 @@
 
 <h3>Cómo calcula la red con enteros</h3>
 
-<p>Una capa cuantizada multiplica enteros de 8 bits. El producto de dos int8 ocupa hasta 16 bits y la suma de muchos productos crece más. Por eso el acumulador es de 32 bits. Sze et al. calculan que necesita 2<var>N</var> + <var>M</var> bits, con <var>M</var> entre 10 y 16 en las redes populares (p. 21).</p>
+<p>Una capa cuantizada multiplica enteros de 8 bits. El producto de dos int8 ocupa hasta 16 bits y la suma de muchos productos crece más. Por eso el acumulador es de 32 bits. Sze et al. calculan que necesita 2<var>N</var> + <var>M</var> bits (p. 21). En las redes populares, <var>M</var> va de 10 a 16.</p>
 
 <p>Al final hay que volver a 8 bits. La suma está en la escala <var>S</var><sub>1</sub>·<var>S</var><sub>2</sub> y la salida pide <var>S</var><sub>3</sub>. El factor de cambio es <var>M</var> = <var>S</var><sub>1</sub>·<var>S</var><sub>2</sub> / <var>S</var><sub>3</sub>, siempre entre 0 y 1. Jacob et al. lo escriben como un entero por una potencia de 2 (p. 3): un producto y un desplazamiento, sin float. Así la inferencia entera no usa decimales.</p>
 
@@ -100,7 +100,7 @@
 
 <p>La <span class="ref" data-nota="qat">cuantización durante el entrenamiento</span> (QAT) simula el redondeo mientras la red aprende.<span class="nota-margen" popover id="nota-qat"><b>qat · quantization-aware training</b>Entrenar con el redondeo a enteros simulado en cada paso, para que la red aprenda a tolerarlo.</span> Los pesos se ajustan sabiendo que van a perder precisión. Jacob et al. (p. 9) reportan que restaura la exactitud a niveles «casi idénticos» a los del modelo float. Cuesta más: hay que reentrenar.</p>
 
-<p>La elección muchas veces la fija el contexto. En el benchmark MLPerf Tiny, la división cerrada permite PTQ con los datos de calibración dados. Prohíbe reentrenar (Banbury et al., p. 7). Un caso de ganancia sin pérdida está en Hello Edge. Una red densa (<span class="ref" data-nota="dnn">DNN</span>) de reconocimiento de palabras pasó de 86,66 % con 32 bits a 87,60 % con 8 bits (Zhang et al., tabla 6).<span class="nota-margen" popover id="nota-dnn"><b>dnn · deep neural network</b>Red neuronal profunda. Acá, un modelo hecho solo de capas densas, sin convoluciones.</span> Una diferencia así es ruido de medición, no una mejora segura.</p>
+<p>La elección muchas veces la fija el contexto. En el benchmark MLPerf Tiny, la división cerrada permite PTQ con los datos de calibración dados. Prohíbe reentrenar (Banbury et al., p. 7). Un caso de ganancia sin pérdida está en Hello Edge. Un ejemplo: una red densa (<span class="ref" data-nota="dnn">DNN</span>) de reconocimiento de palabras pasó de 86,66 % a 87,60 % de aciertos. Fue de 32 bits a 8 bits (Zhang et al., tabla 6).<span class="nota-margen" popover id="nota-dnn"><b>dnn · deep neural network</b>Red neuronal profunda. Acá, un modelo hecho solo de capas densas, sin convoluciones.</span> Una diferencia así es ruido de medición, no una mejora segura.</p>
 
 <div class="caja ojo">
   <h4>ojo</h4>

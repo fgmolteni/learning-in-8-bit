@@ -48,7 +48,7 @@
 <p>El acceso a la memoria externa cuesta del orden de miles de veces lo que el cálculo. Es deducción propia, con accesos de 64 bits y operaciones de 8 bits. Por eso diseñar un acelerador es sobre todo decidir dónde viven los datos.</p>
 
 <figure class="diagrama" data-titulo="fig-4.1">
-  <canvas data-widget="barras" data-titulo="ENERGÍA DE UN ACCESO · RELATIVA A UNA OPERACIÓN DE ALU" data-items="REGISTRO|1;RED ENTRE CELDAS|2;BUFFER 100–500 KB|6;DRAM|200" data-nota="Sze et al., figura 22: cada nivel que se evita ahorra energía" width="640" height="216"></canvas>
+  <canvas data-widget="barras" data-titulo="ENERGÍA DE UN ACCESO · RELATIVA A UNA OPERACIÓN DE ALU" data-items="REGISTRO|1;RED ENTRE CELDAS|2;BUFFER 100–500 KB|6;DRAM|200" data-leyenda="Sze et al., figura 22: cada nivel que se evita ahorra energía" width="640" height="216"></canvas>
   <figcaption><b>fig 4.1</b>Leer de la DRAM cuesta unas 200 veces lo que una operación de la ALU; un registro, 1. Por eso un acelerador intenta que los datos no salgan de cerca de la unidad que calcula.</figcaption>
 </figure>
 
@@ -75,7 +75,7 @@
   <figcaption><b>fig 4.2</b>64 productos de un mismo punto de convolución. Escalar: un MAC por instrucción, 64 instrucciones. PIE: 16 carriles de 8 bits en un registro de 128 bits, 4 instrucciones. El manual da la cifra por instrucción, no por ciclo.</figcaption>
 </figure>
 
-<p>Por dentro, el PIE tiene tres partes (ESP32-S3 TRM v1.8, sección 1.3). Ocho registros Q de 128 bits guardan los datos. Dieciséis multiplicadores de 8 × 8 bits trabajan en paralelo. Los acumuladores tienen margen: QACC son 16 acumuladores de 20 bits, uno por carril, y ACCX es uno solo de 40 bits que suma los 16 carriles. Al final, cada resultado se satura a 8 bits antes de volver a un registro.</p>
+<p>Por dentro, el PIE tiene tres partes (ESP32-S3 TRM v1.8, sección 1.3). Ocho registros Q de 128 bits guardan los datos. Dieciséis multiplicadores de 8 × 8 bits trabajan en paralelo. Los acumuladores tienen margen: QACC son 16 acumuladores de 20 bits, uno por carril. ACCX es uno solo de 40 bits que suma los 16 carriles. Al final, cada resultado se satura a 8 bits antes de volver a un registro.</p>
 
 <figure class="diagrama" data-titulo="fig-4.3 interactivo">
   <canvas data-widget="composicion" data-vista="pie" width="640" height="288"></canvas>
@@ -93,7 +93,7 @@
 
 <p class="formula"><var>VLMAX</var> = <var>LMUL</var> · <var>VLEN</var> / <var>SEW</var></p>
 
-<p>Con <var>VLEN</var> = 128, <var>SEW</var> = 8 y <var>LMUL</var> = 1 son 128 / 8 = 16 elementos, como el PIE (tabla 4, p. 11). Con <var>LMUL</var> = 4 se agrupan cuatro registros y son 64. El mismo programa corre en un micro con registros de 128 bits y en otro de 512. Solo cambia la cantidad de vueltas. Para micros hay perfiles chicos: Zve32x pide un <var>VLEN</var> mínimo de 32 bits, enteros de 8, 16 y 32 bits y nada de coma flotante (tabla 19, p. 92).</p>
+<p>Con <var>VLEN</var> = 128, <var>SEW</var> = 8 y <var>LMUL</var> = 1 son 128 / 8 = 16 elementos, como el PIE (tabla 4, p. 11). Con <var>LMUL</var> = 4 se agrupan cuatro registros y son 64. El mismo programa corre en un micro con registros de 128 bits y en otro de 512. Solo cambia la cantidad de vueltas. Para micros hay perfiles chicos: Zve32x pide un <var>VLEN</var> mínimo de 32 bits y enteros de 8, 16 y 32 bits, sin coma flotante (tabla 19, p. 92).</p>
 
 <figure class="diagrama" data-titulo="fig-4.4 interactivo">
   <canvas data-widget="vector" width="640" height="216"></canvas>

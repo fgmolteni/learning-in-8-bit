@@ -102,7 +102,7 @@
 <p>Un núcleo optimizado conoce el procesador. <span class="ref" data-nota="cmsis">CMSIS-NN</span> es la biblioteca de núcleos de Arm para los Cortex-M.<span class="nota-margen" popover id="nota-cmsis"><b>cmsis-nn · núcleos de red neuronal de arm</b>Biblioteca de funciones de Arm para ejecutar capas de redes en procesadores Cortex-M. Usa las instrucciones de producto doble de 16 bits.</span> Lai et al. la midieron en una red de CIFAR-10 sobre un Cortex-M7 a 216 MHz (tablas 1 y 2). Tardó 99,1 ms contra 456,4 ms con las funciones base de <span class="ref" data-nota="dsp">CMSIS-DSP</span>.<span class="nota-margen" popover id="nota-dsp"><b>dsp · digital signal processing</b>Procesamiento digital de señales. CMSIS-DSP es la biblioteca de Arm con funciones de señales para los Cortex-M.</span></p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
-  <canvas data-widget="dosbarras" data-titulo="RED DE CIFAR-10 · CORTEX-M7 A 216 MHZ" data-a="CMSIS-DSP BASE|456.4|ms" data-b="CMSIS-NN|99.1|ms" data-nota="más rápido con núcleos escritos para el procesador" width="640" height="176"></canvas>
+  <canvas data-widget="dosbarras" data-titulo="RED DE CIFAR-10 · CORTEX-M7 A 216 MHZ" data-a="CMSIS-DSP BASE|456.4|ms" data-b="CMSIS-NN|99.1|ms" data-leyenda="más rápido con núcleos escritos para el procesador" width="640" height="176"></canvas>
   <figcaption><b>fig 3.3</b>Los mismos cálculos con núcleos escritos para el procesador pasan de 456,4 ms a 99,1 ms (Lai et al.).</figcaption>
 </figure>
 
@@ -121,7 +121,7 @@
 <p>Para usar la multiplicación de matrices, una convolución se reordena primero con <span class="ref" data-nota="im2col">im2col</span>: cada posición del filtro se copia a una fila.<span class="nota-margen" popover id="nota-im2col"><b>im2col · image to column</b>Truco que copia los parches de la imagen a una matriz, para convertir la convolución en una multiplicación de matrices. Gasta memoria extra.</span> Eso gasta memoria. Lai et al. calcularon la memoria de la red de CIFAR-10. Con la matriz completa eran unos 332 KB. Con la versión parcial, que arma pocas filas a la vez, unos 133 KB.</p>
 
 <figure class="diagrama" data-titulo="fig-3.4">
-  <canvas data-widget="dosbarras" data-titulo="MEMORIA MÁXIMA DE LA MISMA RED" data-a="SIN IM2COL PARCIAL|332|KB" data-b="CON IM2COL PARCIAL|133|KB" data-nota="menos memoria: la red pasa a entrar" width="640" height="176"></canvas>
+  <canvas data-widget="dosbarras" data-titulo="MEMORIA MÁXIMA DE LA MISMA RED" data-a="SIN IM2COL PARCIAL|332|KB" data-b="CON IM2COL PARCIAL|133|KB" data-leyenda="menos memoria: la red pasa a entrar" width="640" height="176"></canvas>
   <figcaption><b>fig 3.4</b>Armar la matriz auxiliar de a pocas filas baja la memoria máxima de unos 332 KB a unos 133 KB (Lai et al.).</figcaption>
 </figure>
 
@@ -146,7 +146,7 @@
 
 <p class="formula"><var>E</var> = <var>V</var> · <var>I</var> · <var>t</var></p>
 
-<p>Con valores supuestos de 3,3 V, 50 mA y 50 ms, <var>E</var> = 3,3 V · 0,05 A · 0,05 s ≈ 8,25 mJ. Los valores de un micro real salen de medir su corriente durante la inferencia, no de la corriente de reposo del manual.</p>
+<p>Supongamos 3,3 V, 50 mA y 50 ms. Entonces <var>E</var> = 3,3 V · 0,05 A · 0,05 s ≈ 8,25 mJ. En un micro real, esos valores salen de medir la corriente durante la inferencia. La corriente de reposo del manual no sirve.</p>
 
 <p>El benchmark fija cuatro tareas con su modelo de referencia (Banbury et al., tabla 1). KWS (<em>keyword spotting</em>) es detectar una palabra clave en un audio. VWW (<em>visual wake words</em>) es decidir si hay una persona en una imagen.</p>
 

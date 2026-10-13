@@ -1431,7 +1431,7 @@ function widgetPlanificador(cv) {
 }
 
 // ------------------------------------------------------------------
-// Widget: dos barras con su razón (datos en el HTML: data-titulo, data-a, data-b, data-nota)
+// Widget: dos barras con su razón (datos en el HTML: data-titulo, data-a, data-b, data-leyenda)
 // data-a / data-b: "rótulo|valor|unidad" (el valor con punto decimal)
 // ------------------------------------------------------------------
 function widgetDosBarras(cv) {
@@ -1448,7 +1448,7 @@ function widgetDosBarras(cv) {
       rotulo(g, `${num(it.v, 1)} ${it.u}`, 200 + w + 10, y + 14, K(3));
     });
     const w = numero(g, num(a.v / b.v, 1) + "×", MG, 150, A(3), "left", 30);
-    rotulo(g, cv.dataset.nota || "", MG + w + 12, 152, R(5));
+    rotulo(g, cv.dataset.leyenda || "", MG + w + 12, 152, R(5));
   }
   document.addEventListener("redibujar", dibujar);
   dibujar();
@@ -1456,7 +1456,7 @@ function widgetDosBarras(cv) {
 
 // ------------------------------------------------------------------
 // Widget: costo relativo de un acceso según dónde está el dato (datos en el HTML)
-// data-items: "rótulo|valor;rótulo|valor;…"  ·  data-titulo, data-nota
+// data-items: "rótulo|valor;rótulo|valor;…"  ·  data-titulo, data-leyenda
 // ------------------------------------------------------------------
 function widgetBarras(cv) {
   const g = prepCanvas(cv, +cv.getAttribute("height"));
@@ -1473,7 +1473,7 @@ function widgetBarras(cv) {
       caja(g, 200, y, w, 24, ["activo", "segundo", "tercero", "cuarto"][i % 4]);
       numero(g, num(it.v) + "×", 200 + w + 10, y + 12, K[i % 4](3));
     });
-    rotulo(g, cv.dataset.nota || "", MG, 40 + items.length * 40 + 8, R(5));
+    rotulo(g, cv.dataset.leyenda || "", MG, 40 + items.length * 40 + 8, R(5));
   }
   document.addEventListener("redibujar", dibujar);
   cada(cv, () => { k = k >= items.length + 3 ? 1 : k + 1; dibujar(); }, 900);
