@@ -1040,7 +1040,7 @@ function montarArbol(el) {
 // ------------------------------------------------------------------
 // Widget: una neurona paso a paso (cada MAC suma al acumulador; después, la ReLU)
 // ------------------------------------------------------------------
-const num = (v) => String(+v.toFixed(2)).replace(".", ",").replace("-", "−");
+const num = (v, d = 2) => String(+v.toFixed(d)).replace(".", ",").replace("-", "−");
 function marcarBotones(ctl, activo) {           // botón elegido con el acento, como en el widget separable
   ctl.querySelectorAll("button").forEach((b) => {
     const on = b.dataset.m === activo;
@@ -1214,12 +1214,159 @@ function widgetSram(cv) {
 }
 
 // ------------------------------------------------------------------
+// Widget: energía por operación, int8 contra float32 (Horowitz, 45 nm, 0,9 V)
+// ------------------------------------------------------------------
+function widgetEnergia(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 200);
+  const ops = { suma: { i8: 0.03, f32: 0.9, n: "SUMA" }, mult: { i8: 0.2, f32: 3.7, n: "MULTIPLICACIÓN" } };
+  let op = "mult";
+  function dibujar() {
+    limpiar(g);
+    const o = ops[op], Wb = 440;
+    etiqueta(g, `ENERGÍA DE UNA ${o.n} · pJ`, MG, 16, R(6));
+    [["INT8", o.i8, A], ["FLOAT32", o.f32, D]].forEach(([n, v, K], i) => {
+      const y = 48 + i * 56, w = Math.max(4, Math.round(Wb * v / 3.7));
+      etiqueta(g, n, MG, y + 14, K(3));
+      caja(g, 112, y, w, 28, i ? "cuarto" : "activo");
+      rotulo(g, num(v) + " pJ", 112 + w + 10, y + 14, K(3));
+    });
+    const w = numero(g, num(o.f32 / o.i8) + "×", MG, 168, A(3), "left", 30);
+    rotulo(g, "más energía en float32 (45 nm, 0,9 V)", MG + w + 12, 170, R(5));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-m="suma">SUMA</button><button type="button" data-m="mult">MULTIPLICACIÓN</button>`;
+    ctl.querySelectorAll("button").forEach((b) => (b.onclick = () => { op = b.dataset.m; marcarBotones(ctl, op); dibujar(); }));
+    marcarBotones(ctl, op);
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: cuantización afín r = S·(q − Z), rango real [−1, 3] a uint8
+// ------------------------------------------------------------------
+function widgetAfin(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 248);
+  const rmin = -1, rmax = 3, S = (rmax - rmin) / 255, Z = Math.round(-rmin / S);
+  const X0 = 40, X1 = 600, px = (r) => X0 + (r - rmin) / (rmax - rmin) * (X1 - X0);
+  let r = 1;
+  function dibujar() {
+    limpiar(g);
+    const q = Math.max(0, Math.min(255, Math.round(r / S) + Z)), rv = S * (q - Z), err = rv - r;
+    etiqueta(g, "VALOR REAL r", MG, 16, A(3));
+    base(g, X0, 56, X1 - X0, 4);
+    for (let v = -1; v <= 3; v++) { g.fillStyle = R(4); g.fillRect(Math.round(px(v)) - 1, 50, 2, 14); rotulo(g, num(v), px(v), 80, R(5), "center"); }
+    g.fillStyle = A(4); g.fillRect(Math.round(px(r)) - 4, 42, 8, 8);
+    etiqueta(g, "ENTERO q (UINT8)", MG, 112, B(3));
+    base(g, X0, 152, X1 - X0, 4);
+    for (const v of [0, 64, 128, 192, 255]) { const x = X0 + v / 255 * (X1 - X0); g.fillStyle = R(4); g.fillRect(Math.round(x) - 1, 146, 2, 14); rotulo(g, String(v), x, 172, v === Z ? C(3) : R(5), "center"); }
+    const xq = X0 + q / 255 * (X1 - X0);
+    g.fillStyle = B(4); g.fillRect(Math.round(xq) - 4, 138, 8, 8);
+    for (let y = 92; y < 136; y += 6) { g.fillStyle = R(3); g.fillRect(Math.round(px(r)) + Math.round((xq - px(r)) * (y - 92) / 44) - 1, y, 2, 3); }
+    caja(g, Math.round(X0 + Z / 255 * (X1 - X0)) - 2, 142, 4, 20, "foco");
+    rotulo(g, `q = round(${num(r)} / S) + ${Z} = ${q}`, MG, 204, B(3));
+    rotulo(g, `vuelta: S · (${q} − ${Z}) = ${num(rv, 4)}   error ${num(err, 4)} (máximo S/2 ≈ 0,0078)`, MG, 228, D(3));
+    rotulo(g, `S = 4 / 255 ≈ ${num(S, 4)}`, W - MG, 112, R(5), "right");
+    rotulo(g, `Z = ${Z}: el 0 real`, W - MG, 204, C(3), "right");
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<label for="af-r">valor real r</label><input id="af-r" type="range" min="-1" max="3" step="0.05" value="1"><output>1</output>`;
+    const i = ctl.querySelector("input"), o = ctl.querySelector("output");
+    i.oninput = () => { r = +i.value; o.textContent = num(r); dibujar(); };
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: poda no estructurada contra estructurada (matriz de 8 × 8 pesos)
+// ------------------------------------------------------------------
+function widgetPoda(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 248);
+  const N = 8, pesos = Array.from({ length: N * N }, (_, k) => Math.sin(k * 12.9898 + 1.3) * 0.9);
+  const colNorma = Array.from({ length: N }, (_, c) => pesos.filter((_, k) => k % N === c).reduce((s, v) => s + Math.abs(v), 0));
+  let estructurada = false, frac = 0.5;
+  function dibujar() {
+    limpiar(g);
+    const cel = 22, X = MG, Y = 40;
+    const umbral = [...pesos].map(Math.abs).sort((a, b) => a - b)[Math.floor(frac * N * N)] ?? Infinity;
+    const colsFuera = [...colNorma.keys()].sort((a, b) => colNorma[a] - colNorma[b]).slice(0, Math.round(frac * N));
+    etiqueta(g, estructurada ? "PODA ESTRUCTURADA" : "PODA NO ESTRUCTURADA", X, 16, estructurada ? B(3) : A(3));
+    let vivos = 0;
+    pesos.forEach((v, k) => {
+      const r = Math.floor(k / N), c = k % N;
+      const fuera = estructurada ? colsFuera.includes(c) : Math.abs(v) < umbral;
+      if (fuera) { g.fillStyle = R(1); g.fillRect(X + c * cel, Y + r * cel, cel - 2, cel - 2); tramado(g, X + c * cel, Y + r * cel, cel - 2, cel - 2, R(2)); }
+      else { vivos++; celdaSigno(g, X + c * cel, Y + r * cel, cel - 2, cel - 2, Math.abs(v), 0.9, 1, estructurada ? B(4) : A(4)); }
+    });
+    // lo que calcula un micro común: la matriz densa que queda
+    const XD = 248, filas = N, cols = estructurada ? N - colsFuera.length : N;
+    etiqueta(g, "LO QUE CALCULA EL MICRO", XD, 16, R(6));
+    for (let r = 0; r < filas; r++) for (let c = 0; c < cols; c++) { g.fillStyle = estructurada ? B(3) : A(3); g.fillRect(XD + c * 12, Y + r * 12, 10, 10); }
+    rotulo(g, `matriz ${filas} × ${cols}`, XD, Y + filas * 12 + 18, R(5));
+    const X2 = 440;
+    rotulo(g, "pesos guardados", X2, 56, R(5)); numero(g, `${vivos} de 64`, X2, 80, estructurada ? B(3) : A(3), "left", 20);
+    rotulo(g, "MAC por dato", X2, 120, R(5)); numero(g, `${filas * cols} de 64`, X2, 144, estructurada ? B(3) : A(3), "left", 20);
+    rotulo(g, estructurada ? "ahorra memoria y cálculo" : "ahorra memoria; el cálculo", X2, 184, R(6));
+    if (!estructurada) rotulo(g, "irregular casi no baja", X2, 204, R(6));
+    g.fillStyle = R(1); g.fillRect(MG, 226, 14, 14); tramado(g, MG, 226, 14, 14, R(2)); rotulo(g, "peso podado", MG + 22, 234, R(4));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-m="no">NO ESTRUCTURADA</button><button type="button" data-m="si">ESTRUCTURADA</button>
+      <label for="pd">podado</label><input id="pd" type="range" min="0" max="0.75" step="0.25" value="0.5"><output>50 %</output>`;
+    ctl.querySelectorAll("button").forEach((b) => (b.onclick = () => { estructurada = b.dataset.m === "si"; marcarBotones(ctl, b.dataset.m); dibujar(); }));
+    const i = ctl.querySelector("input"), o = ctl.querySelector("output");
+    i.oninput = () => { frac = +i.value; o.textContent = Math.round(frac * 100) + " %"; dibujar(); };
+    marcarBotones(ctl, "no");
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: softmax con temperatura (logits 5 y 1)
+// ------------------------------------------------------------------
+function widgetTemperatura(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 200);
+  const z = [5, 1];
+  let T = 1;
+  function dibujar() {
+    limpiar(g);
+    const e = z.map((v) => Math.exp(v / T)), s = e[0] + e[1], p = e.map((v) => v / s);
+    etiqueta(g, `SOFTMAX DE LOS LOGITS 5 Y 1 · T = ${num(T)}`, MG, 16, R(6));
+    p.forEach((v, i) => {
+      const y = 48 + i * 56, w = Math.max(4, Math.round(440 * v)), K = i ? D : A;
+      etiqueta(g, `CLASE ${i + 1}`, MG, y + 14, K(3));
+      caja(g, 112, y, w, 28, i ? "cuarto" : "activo");
+      numero(g, num(+v.toFixed(3)), 112 + w + 10, y + 14, K(3));
+    });
+    rotulo(g, T < 2 ? "casi todo para la clase ganadora" : "más suave: muestra cuánto se parecen las clases", MG, 176, R(5));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<label for="tt">temperatura T</label><input id="tt" type="range" min="1" max="10" step="1" value="1"><output>1</output>`;
+    const i = ctl.querySelector("input"), o = ctl.querySelector("output");
+    i.oninput = () => { T = +i.value; o.textContent = i.value; dibujar(); };
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
 const WIDGETS = {
   timing: widgetTiming, bateria: widgetBateria,
   redcnn: widgetRedCnn, pixeles: widgetPixeles, macs: widgetMacs,
   conv: widgetConv, separable: widgetSeparable, quant: widgetQuant, familia: widgetFamilia, simd: widgetSimd,
   memoria: widgetMemoria, arena: widgetArena, presupuesto: widgetPresupuesto,
   neurona: widgetNeurona, entrenar: widgetEntrenar, sram: widgetSram,
+  energia: widgetEnergia, afin: widgetAfin, poda: widgetPoda, temperatura: widgetTemperatura,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
