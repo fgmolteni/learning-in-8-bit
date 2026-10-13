@@ -1549,6 +1549,109 @@ function widgetSistolico(cv) {
 }
 
 // ------------------------------------------------------------------
+// Widget: cómo está compuesto un acelerador (data-vista="pie" o "npu"), paso a paso
+// ------------------------------------------------------------------
+function traza(g, pts, color) {                 // polilínea ortogonal de 2 px con punta escalonada al final
+  g.fillStyle = color;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    g.fillRect(Math.min(x0, x1) - 1, Math.min(y0, y1) - 1, Math.abs(x1 - x0) + 2, Math.abs(y1 - y0) + 2);
+  }
+  const [xa, ya] = pts[pts.length - 2], [x, y] = pts[pts.length - 1];
+  const dx = Math.sign(x - xa), dy = Math.sign(y - ya);
+  for (let k = 1; k <= 3; k++) {
+    const s = 2 * k, c = [x - dx * (8 - s), y - dy * (8 - s)];
+    if (dx) g.fillRect(c[0] - 1, c[1] - (5 - s), 2, 2 * (5 - s) + 2); else g.fillRect(c[0] - (5 - s), c[1] - 1, 2 * (5 - s) + 2, 2);
+  }
+}
+const COMPOSICION = {
+  pie: {
+    alto: 288, titulo: "PIE DEL ESP32-S3 · DENTRO DEL NÚCLEO",
+    bloques: {
+      mem: [16, 40, 88, 168, "MEMORIA", "sram", A], q: [136, 40, 168, 168, "8 REGISTROS Q", "128 bits c/u", B],
+      mul: [336, 64, 104, 80, "16 MULT.", "8 × 8 bits", C], qacc: [472, 40, 144, 48, "QACC", "16 × 20 bits", D],
+      accx: [472, 100, 144, 48, "ACCX", "40 bits, 1 total", D], sat: [472, 160, 144, 48, "SATURAR", "a 8 bits", C],
+    },
+    flechas: {
+      cargar: [[104, 72], [136, 72]], aMul: [[304, 104], [336, 104]], aQacc: [[440, 76], [472, 76]], aAccx: [[440, 124], [472, 124]],
+      aSat: [[616, 64], [630, 64], [630, 184], [616, 184]], aQ: [[472, 184], [304, 184]], guardar: [[136, 172], [104, 172]],
+    },
+    pasos: [
+      [[], [], "8 registros de 128 bits, 16 multiplicadores y acumuladores con margen"],
+      [["mem", "q"], ["cargar"], "1. cargar 128 bits: 16 activaciones de 8 bits en un registro Q"],
+      [["mem", "q"], ["cargar"], "2. cargar otros 128 bits: 16 pesos en otro registro Q"],
+      [["q", "mul", "qacc"], ["aMul", "aQacc"], "3. una instrucción: 16 productos, cada uno a su acumulador de 20 bits"],
+      [["q", "mul", "accx"], ["aMul", "aAccx"], "3'. o bien ACCX suma los 16 carriles: el producto punto, en 40 bits"],
+      [["qacc", "sat", "q"], ["aSat", "aQ"], "4. saturar cada resultado a 8 bits y juntarlos en un registro Q"],
+      [["q", "mem"], ["guardar"], "5. guardar 128 bits: 16 resultados de una vez"],
+    ],
+    fila: (g, b, on) => {                         // los registros Q: 8 filas de 16 carriles
+      const [x, y] = b;
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 16; c++) {
+        g.fillStyle = on && r < 2 ? (r ? B(3) : A(3)) : R(2); g.fillRect(x + 8 + c * 9, y + 44 + r * 14, 7, 10);
+      }
+    },
+  },
+  npu: {
+    alto: 360, titulo: "NPU: LA TPU DE GOOGLE (JOUPPI ET AL., P. 3)",
+    bloques: {
+      host: [16, 32, 136, 44, "HOST", "PCIe Gen3 ×16", R], dram: [304, 32, 200, 44, "DRAM DE PESOS", "8 GiB, afuera", B],
+      fifo: [304, 92, 200, 44, "WEIGHT FIFO", "4 bloques", B], ub: [16, 152, 136, 84, "UNIFIED BUFFER", "24 MiB", A],
+      mat: [304, 152, 200, 84, "MATRIZ 256 × 256", "65.536 MAC", C], acc: [304, 252, 200, 44, "ACUMULADORES", "4 MiB, 32 bits", D],
+      act: [528, 252, 96, 44, "ACTIVACIÓN", "ReLU, pool", D],
+    },
+    flechas: {
+      dma: [[60, 76], [60, 152]], pesos: [[404, 76], [404, 92]], aMat: [[404, 136], [404, 152]],
+      datos: [[152, 194], [304, 194]], aAcc: [[404, 236], [404, 252]], aAct: [[504, 274], [528, 274]],
+      vuelta: [[576, 296], [576, 316], [40, 316], [40, 236]], salida: [[108, 152], [108, 76]],
+    },
+    pasos: [
+      [[], [], "la matriz es un cuarto del chip y el Unified Buffer, casi un tercio"],
+      [["host", "ub"], ["dma"], "1. Read_Host_Memory: los datos del host van al Unified Buffer"],
+      [["dram", "fifo", "mat"], ["pesos", "aMat"], "2. Read_Weights: los pesos bajan por la FIFO y quedan en la matriz"],
+      [["ub", "mat", "acc"], ["datos", "aAcc"], "3. MatrixMultiply: los datos entran por la izquierda; las sumas bajan"],
+      [["acc", "act", "ub"], ["aAct", "vuelta"], "4. Activate: ReLU o pooling, y el resultado vuelve al buffer"],
+      [["ub", "host"], ["salida"], "5. Write_Host_Memory: el resultado vuelve al host"],
+    ],
+    fila: (g, b, on) => {                         // la matriz como grilla de MAC
+      const [x, y] = b;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 10; c++) { g.fillStyle = on ? C(3) : R(2); g.fillRect(x + 12 + c * 18, y + 44 + r * 9, 14, 6); }
+    },
+  },
+};
+function widgetComposicion(cv) {
+  const fig = cv.closest("figure");
+  const V = COMPOSICION[cv.dataset.vista || "pie"];
+  const g = prepCanvas(cv, V.alto);
+  let paso = 0, jugando = true;
+  function dibujar() {
+    limpiar(g);
+    const [onB, onF, texto] = V.pasos[paso];
+    etiqueta(g, V.titulo, MG, 14, R(6));
+    if (cv.dataset.vista === "npu") punteado(g, 8, 84, 624, 244, R(3));   // borde del chip (el host y la DRAM quedan afuera)
+    Object.entries(V.bloques).forEach(([id, [x, y, w, h, n, d, K]]) => {
+      const on = onB.includes(id);
+      caja(g, x, y, w, h, on ? "activo" : "normal");
+      rotulo(g, n, x + w / 2, y + 14, on ? A(4) : K(3), "center");
+      rotulo(g, d, x + w / 2, y + 32, on ? R(6) : R(4), "center");
+      if (id === "q" || id === "mat") V.fila(g, [x, y], on);
+    });
+    Object.entries(V.flechas).forEach(([id, pts]) => traza(g, pts, onF.includes(id) ? A(3) : R(2)));
+    rotulo(g, texto, MG, V.alto - 12, paso ? A(3) : R(5));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-a="play">❚❚ PAUSA</button><button type="button" data-a="paso">PASO ▸</button>`;
+    const play = ctl.querySelector('[data-a="play"]');
+    play.onclick = () => { jugando = !jugando; play.textContent = jugando ? "❚❚ PAUSA" : "▶ SEGUIR"; };
+    ctl.querySelector('[data-a="paso"]').onclick = () => { jugando = false; play.textContent = "▶ SEGUIR"; paso = (paso + 1) % V.pasos.length; dibujar(); };
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { if (jugando) { paso = (paso + 1) % V.pasos.length; dibujar(); } }, 2200);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
 const WIDGETS = {
   timing: widgetTiming, bateria: widgetBateria,
   redcnn: widgetRedCnn, pixeles: widgetPixeles, macs: widgetMacs,
@@ -1557,7 +1660,7 @@ const WIDGETS = {
   neurona: widgetNeurona, entrenar: widgetEntrenar, sram: widgetSram,
   energia: widgetEnergia, afin: widgetAfin, poda: widgetPoda, temperatura: widgetTemperatura,
   recorrido: widgetRecorrido, planificador: widgetPlanificador, dosbarras: widgetDosBarras,
-  barras: widgetBarras, vector: widgetVector, sistolico: widgetSistolico,
+  barras: widgetBarras, vector: widgetVector, sistolico: widgetSistolico, composicion: widgetComposicion,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {

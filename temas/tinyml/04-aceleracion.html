@@ -75,6 +75,14 @@
   <figcaption><b>fig 4.2</b>64 productos de un mismo punto de convolución. Escalar: un MAC por instrucción, 64 instrucciones. PIE: 16 carriles de 8 bits en un registro de 128 bits, 4 instrucciones. El manual da la cifra por instrucción, no por ciclo.</figcaption>
 </figure>
 
+<p>Por dentro, el PIE tiene tres partes (ESP32-S3 TRM v1.8, sección 1.3). Ocho registros Q de 128 bits guardan los datos. Dieciséis multiplicadores de 8 × 8 bits trabajan en paralelo. Los acumuladores tienen margen: QACC son 16 acumuladores de 20 bits, uno por carril, y ACCX es uno solo de 40 bits que suma los 16 carriles. Al final, cada resultado se satura a 8 bits antes de volver a un registro.</p>
+
+<figure class="diagrama" data-titulo="fig-4.3 interactivo">
+  <canvas data-widget="composicion" data-vista="pie" width="640" height="288"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 4.3</b>Los bloques del PIE y el recorrido de un cálculo: cargar 16 activaciones y 16 pesos, multiplicar y acumular en QACC (o sumar todo en ACCX), saturar a 8 bits y guardar 128 bits de una vez. Usá PASO para ir de a una instrucción.</figcaption>
+</figure>
+
 <p>El manual no da cuántas instrucciones por ciclo salen. Si fuera una por ciclo a 240 MHz (supuesto), el techo sería 16 · 240 MHz = 3.840 millones de MAC por segundo. Es un máximo teórico, no una medida. La memoria casi nunca deja alcanzarlo (<a href="../borde/03-convolucion-pie.html">IA en el borde, Tomo 2, nivel 3</a>).</p>
 
 <h2>Vectores: el ancho no está en el programa</h2>
@@ -87,10 +95,10 @@
 
 <p>Con <var>VLEN</var> = 128, <var>SEW</var> = 8 y <var>LMUL</var> = 1 son 128 / 8 = 16 elementos, como el PIE (tabla 4, p. 11). Con <var>LMUL</var> = 4 se agrupan cuatro registros y son 64. El mismo programa corre en un micro con registros de 128 bits y en otro de 512. Solo cambia la cantidad de vueltas. Para micros hay perfiles chicos: Zve32x pide un <var>VLEN</var> mínimo de 32 bits, enteros de 8, 16 y 32 bits y nada de coma flotante (tabla 19, p. 92).</p>
 
-<figure class="diagrama" data-titulo="fig-4.3 interactivo">
+<figure class="diagrama" data-titulo="fig-4.4 interactivo">
   <canvas data-widget="vector" width="640" height="216"></canvas>
   <div class="controles"></div>
-  <figcaption><b>fig 4.3</b>Cada cuadro es un elemento que procesa una instrucción vectorial. Cambiá el ancho del registro, el del elemento y cuántos registros se agrupan: el máximo sigue VLMAX = LMUL · VLEN / SEW.</figcaption>
+  <figcaption><b>fig 4.4</b>Cada cuadro es un elemento que procesa una instrucción vectorial. Cambiá el ancho del registro, el del elemento y cuántos registros se agrupan: el máximo sigue VLMAX = LMUL · VLEN / SEW.</figcaption>
 </figure>
 
 <p>Arm tiene su equivalente para los Cortex-M: la extensión <span class="ref" data-nota="helium">Helium</span>, para el Cortex-M55 y el Cortex-M85.<span class="nota-margen" popover id="nota-helium"><b>helium · extensión vectorial m-profile (mve)</b>Instrucciones vectoriales de Arm para los Cortex-M de Armv8.1-M. Se pensaron para procesamiento de señales y redes.</span> Arm dice «hasta 15 veces» para aprendizaje automático.</p>
@@ -104,15 +112,23 @@
 
 <p>Una <span class="ref" data-nota="npu">NPU</span> lleva la idea al extremo.<span class="nota-margen" popover id="nota-npu"><b>npu · neural processing unit</b>Acelerador dedicado a redes neuronales. Tiene muchas unidades de multiplicar y acumular y su propia memoria.</span> En lugar de pocos carriles, tiene una cuadrícula de unidades de MAC. El caso mejor documentado es la <span class="ref" data-nota="tpu">TPU</span> de Google.<span class="nota-margen" popover id="nota-tpu"><b>tpu · tensor processing unit</b>Acelerador de redes neuronales que Google usa en sus centros de datos.</span> Tiene 256 × 256 = 65.536 MAC de 8 bits a 700 MHz. Lleva 28 MiB de memoria en el chip (Jouppi et al., p. 1 y 3).</p>
 
+<p>La matriz no trabaja sola (Jouppi et al., p. 3). Los pesos vienen de una DRAM de 8 GiB fuera del chip y pasan por una cola, la <em>Weight FIFO</em>. Los datos esperan en el <em>Unified Buffer</em>, una SRAM de 24 MiB. Los productos se suman en 4 MiB de acumuladores de 32 bits. Una unidad de activación aplica la ReLU o el pooling y devuelve el resultado al buffer. El host, por el bus PCIe, solo manda instrucciones y datos.</p>
+
+<figure class="diagrama" data-titulo="fig-4.5 interactivo">
+  <canvas data-widget="composicion" data-vista="npu" width="640" height="360"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 4.5</b>Los bloques de la TPU y el recorrido de una capa: los datos llegan al Unified Buffer, los pesos bajan a la matriz, el producto se acumula, la activación devuelve el resultado al buffer y sale al host. La línea punteada es el borde del chip. Usá PASO para ir de a una instrucción.</figcaption>
+</figure>
+
 <p>Cada MAC cuenta como dos operaciones, una multiplicación y una suma. El pico se calcula así:</p>
 
 <p class="formula">65.536 · 700 MHz · 2 ≈ 91,8 TOPS</p>
 
 <p>El paper declara 92 <span class="ref" data-nota="tops">TOPS</span>, y la cuenta lo confirma.<span class="nota-margen" popover id="nota-tops"><b>tops · tera operaciones por segundo</b>Un billón (10¹²) de operaciones por segundo. Es el pico teórico, no lo que da una red real.</span> La TPU usa ejecución <strong>sistólica</strong> (p. 4). Los datos pasan de una celda a la vecina. Las sumas parciales bajan por las columnas y recién salen a la memoria al final.</p>
 
-<figure class="diagrama" data-titulo="fig-4.4">
+<figure class="diagrama" data-titulo="fig-4.6">
   <canvas data-widget="sistolico" width="640" height="272"></canvas>
-  <figcaption><b>fig 4.4</b>Cada celda guarda un peso fijo. Las entradas entran por la izquierda, escalonadas, y avanzan de celda en celda; las sumas parciales bajan por las columnas. Cada dato leído de la memoria alimenta a una fila entera de MAC.</figcaption>
+  <figcaption><b>fig 4.6</b>Cada celda guarda un peso fijo. Las entradas entran por la izquierda, escalonadas, y avanzan de celda en celda; las sumas parciales bajan por las columnas. Cada dato leído de la memoria alimenta a una fila entera de MAC.</figcaption>
 </figure>
 
 <p>Así cada dato leído de la memoria alimenta a muchas celdas. Jouppi et al. lo explican con la energía. Leer una <span class="ref" data-nota="sram">SRAM</span> grande gasta mucho más que la aritmética.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida que va dentro del chip del procesador. Se lee en pocos ciclos, pero es cara en área.</span> La ejecución sistólica reduce esas lecturas y escrituras (p. 4). Sze et al. clasifican cómo reutilizar: dejar fijos los pesos, dejar fija la salida, o fijar una fila (p. 14–16).</p>
