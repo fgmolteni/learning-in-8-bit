@@ -1360,6 +1360,100 @@ function widgetTemperatura(cv) {
 }
 
 // ------------------------------------------------------------------
+// Widget: recorrido de un modelo, de la PC al micro (un paquete que avanza por etapas)
+// ------------------------------------------------------------------
+function widgetRecorrido(cv) {
+  const g = prepCanvas(cv, 232);
+  const etapas = [
+    ["DATOS", "ejemplos con su respuesta", A], ["ENTRENAR", "ajustar los pesos (nivel 1)", B], ["CUANTIZAR", "pasar a int8 (nivel 2)", C], ["CONVERTIR", "grafo y pesos en un archivo", D],
+    ["FLASH", "el archivo queda grabado", A], ["INTÉRPRETE", "recorre el grafo, reparte la arena", B], ["NÚCLEOS", "hacen las cuentas de cada capa", C], ["SALIDA", "la respuesta de la red", D],
+  ];
+  let k = 7;                                      // cuadro inicial: el recorrido completo
+  function dibujar() {
+    limpiar(g);
+    etiqueta(g, "EN LA PC", MG, 16, R(6)); etiqueta(g, "EN EL MICRO", MG, 116, R(6));
+    etapas.forEach(([n, , K], i) => {
+      const fila = i < 4 ? 0 : 1, c = i % 4, x = MG + c * 156, y = 36 + fila * 100;
+      caja(g, x, y, 136, 40, i === k ? "activo" : i < k ? "a" : "apagado");
+      rotulo(g, n, x + 68, y + 21, i <= k ? K(3) : R(4), "center");
+      if (c < 3) flecha(g, x + 138, y + 20, 16, i < k ? A(3) : R(2));
+    });
+    // del archivo convertido a la flash: baja y vuelve a la izquierda
+    g.fillStyle = k >= 4 ? A(3) : R(2);
+    g.fillRect(MG + 3 * 156 + 67, 78, 2, 16); g.fillRect(MG + 68, 92, 3 * 156, 2); g.fillRect(MG + 67, 92, 2, 40);
+    rotulo(g, `${etapas[k][0].toLowerCase()}: ${etapas[k][1]}`, MG, 204, etapas[k][2](3));
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { k = (k + 1) % etapas.length; dibujar(); }, 1200);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: el planificador de la arena, paso a paso (first-fit decreasing)
+// ------------------------------------------------------------------
+function widgetPlanificador(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 296);
+  // tensores del ejemplo: tamaño en KB, nodos donde vive [desde, hasta], dirección elegida
+  const T = [{ n: "B", kb: 80, v: [1, 2], dir: 0, K: A }, { n: "A", kb: 40, v: [0, 1], dir: 80, K: B }, { n: "C", kb: 40, v: [2, 3], dir: 80, K: C }, { n: "D", kb: 20, v: [3, 4], dir: 0, K: D }];
+  const txts = ["ordenar de mayor a menor: B, A, C, D", "B va a la dirección 0 KB", "A vive con B en el nodo 1: va a 80 KB", "C vive con B en el nodo 2; A ya murió: va a 80 KB", "D vive con C en el nodo 3; B ya murió: va a 0 KB"];
+  let paso = 4, reuso = true;
+  const X = 96, Y0 = 240, KW = 104, KH = 1.1;     // eje: 1 KB = 1,1 px
+  function dibujar() {
+    limpiar(g);
+    etiqueta(g, reuso ? "CON PLANIFICADOR" : "SIN REUTILIZAR", MG, 16, R(6));
+    const tope = reuso ? 120 : 180;
+    for (const a of [0, 60, 120, 180]) { const y = Y0 - a * KH; g.fillStyle = R(2); g.fillRect(X, y, 5 * KW, 1); rotulo(g, String(a), X - 8, y, R(4), "right"); }
+    for (let n = 0; n < 5; n++) rotulo(g, `nodo ${n}`, X + n * KW + KW / 2, Y0 + 18, R(4), "center");
+    let pico = 0;
+    T.forEach((t, i) => {
+      if (reuso && i >= paso) return;
+      const dir = reuso ? t.dir : [40, 0, 120, 160][i];   // sin reutilizar: uno arriba del otro, en orden de aparición
+      const x = X + t.v[0] * KW, w = (t.v[1] - t.v[0] + 1) * KW, h = t.kb * KH, y = Y0 - (dir + t.kb) * KH;
+      caja(g, x + 1, y + 1, w - 2, h - 2, ["activo", "segundo", "tercero", "cuarto"][i]);
+      rotulo(g, `${t.n} ${t.kb} KB`, x + w / 2, y + h / 2, t.K(3), "center");
+      pico = Math.max(pico, dir + t.kb);
+    });
+    numero(g, `pico ${pico} KB`, W - MG, 16, A(3), "right");
+    g.fillStyle = D(3); for (let x = X; x < X + 5 * KW; x += 8) g.fillRect(x, Y0 - tope * KH, 4, 2);
+    rotulo(g, reuso ? txts[paso] : "cada tensor en su propio lugar: 40 + 80 + 40 + 20 = 180 KB", MG, 282, reuso ? R(6) : D(3));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-a="paso">PASO ▸</button><button type="button" data-m="si">CON PLANIFICADOR</button><button type="button" data-m="no">SIN REUTILIZAR</button>`;
+    ctl.querySelector('[data-a="paso"]').onclick = () => { reuso = true; marcarBotones(ctl, "si"); paso = (paso + 1) % 5; dibujar(); };
+    ctl.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { reuso = b.dataset.m === "si"; marcarBotones(ctl, b.dataset.m); dibujar(); }));
+    marcarBotones(ctl, "si");
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: dos barras con su razón (datos en el HTML: data-titulo, data-a, data-b, data-nota)
+// data-a / data-b: "rótulo|valor|unidad" (el valor con punto decimal)
+// ------------------------------------------------------------------
+function widgetDosBarras(cv) {
+  const g = prepCanvas(cv, 176);
+  const [a, b] = [cv.dataset.a, cv.dataset.b].map((s) => { const [n, v, u] = s.split("|"); return { n, v: +v, u }; });
+  function dibujar() {
+    limpiar(g);
+    etiqueta(g, cv.dataset.titulo || "", MG, 16, R(6));
+    const max = Math.max(a.v, b.v);
+    [[a, D, "cuarto"], [b, A, "activo"]].forEach(([it, K, st], i) => {
+      const y = 40 + i * 48, w = Math.max(4, Math.round(320 * it.v / max));
+      etiqueta(g, it.n, MG, y + 14, K(3));
+      caja(g, 200, y, w, 28, st);
+      rotulo(g, `${num(it.v, 1)} ${it.u}`, 200 + w + 10, y + 14, K(3));
+    });
+    const w = numero(g, num(a.v / b.v, 1) + "×", MG, 150, A(3), "left", 30);
+    rotulo(g, cv.dataset.nota || "", MG + w + 12, 152, R(5));
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
 const WIDGETS = {
   timing: widgetTiming, bateria: widgetBateria,
   redcnn: widgetRedCnn, pixeles: widgetPixeles, macs: widgetMacs,
@@ -1367,6 +1461,7 @@ const WIDGETS = {
   memoria: widgetMemoria, arena: widgetArena, presupuesto: widgetPresupuesto,
   neurona: widgetNeurona, entrenar: widgetEntrenar, sram: widgetSram,
   energia: widgetEnergia, afin: widgetAfin, poda: widgetPoda, temperatura: widgetTemperatura,
+  recorrido: widgetRecorrido, planificador: widgetPlanificador, dosbarras: widgetDosBarras,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
