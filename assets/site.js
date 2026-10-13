@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.39";
+const VERSION = "0.1.40";
 
 const CURSOS = {
   micro: {
@@ -79,6 +79,7 @@ const CURSOS = {
     niveles: [
       { f: "01-fundamentos.html", t: "Una red neuronal y sus cuentas", d: "Neurona, capa y convolución: cómo contar pesos, MAC y memoria antes de entrenar." },
       { f: "02-encoger.html", t: "Encoger un modelo", d: "Cuantización a int8, poda y destilación: la cuenta que hay debajo de cada técnica." },
+      { f: "03-del-modelo-al-firmware.html", t: "Del modelo al firmware", d: "El archivo del modelo, la arena de memoria, el intérprete, los núcleos y cómo medir una inferencia." },
     ],
   },
 };
