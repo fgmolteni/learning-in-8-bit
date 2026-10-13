@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.35";
+const VERSION = "0.1.36";
 
 const CURSOS = {
   micro: {
@@ -72,6 +72,12 @@ const CURSOS = {
       { f: "07-energia.html", t: "Energía y autonomía", d: "Dormir, despertar, inferir y transmitir: carga por ciclo y meses de batería." },
       { f: "08-palabra-clave.html", t: "Oír una palabra", d: "Micrófono, tramas, espectrograma Mel y WakeNet en el ESP32-S3." },
       { f: "09-sensores.html", t: "Sentir vibraciones", d: "Señales 1D, rasgos y autoencoders para detectar anomalías." },
+    ],
+  },
+  tinyml: {
+    titulo: "Redes neuronales en el micro", seccion: "ia",
+    niveles: [
+      { f: "01-fundamentos.html", t: "Una red neuronal y sus cuentas", d: "Neurona, capa y convolución: cómo contar pesos, MAC y memoria antes de entrenar." },
     ],
   },
 };

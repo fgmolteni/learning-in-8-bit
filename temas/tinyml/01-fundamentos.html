@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1: Una red neuronal y sus cuentas</title>
+<meta name="description" content="Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 1: Una red neuronal y sus cuentas">
+<meta property="og:description" content="Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="tinyml" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01, 15 min de lectura</span>
+  <h1>Una red neuronal y sus cuentas</h1>
+  <p class="bajada">Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Calcular a mano la salida de una neurona y decir qué hace la activación.</li>
+    <li>Contar pesos y multiplicaciones de una capa densa y de una convolución.</li>
+    <li>Explicar por qué entrenar y inferir son trabajos distintos, y cuál corre en el micro.</li>
+    <li>Estimar cuánta memoria piden los pesos y las activaciones de una red.</li>
+    <li>Decidir si una red entra en una memoria dada, antes de probarla.</li>
+  </ul>
+</div>
+
+<h2>Una neurona es una cuenta chica</h2>
+
+<p>Una <strong>red neuronal</strong> es una función: recibe una lista de números y devuelve otra. Por dentro hay muchas cuentas iguales y simples. Lo que cambia el resultado son los números que la red guarda. Se ajustan una sola vez, al entrenarla.</p>
+
+<p>La cuenta básica es la <strong>neurona</strong>. Multiplica cada entrada por un número propio, el <strong>peso</strong>. Suma los productos y le agrega un número fijo, el <strong>sesgo</strong>. Cada producto más su suma es una operación de multiplicar y acumular, un <span class="ref" data-nota="mac">MAC</span>.<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red y la unidad con la que se mide su costo.</span> La neurona de la figura 1.1 hace tres.</p>
+
+<p class="formula"><var>s</var> = Σ <var>w</var><sub><var>i</var></sub> · <var>x</var><sub><var>i</var></sub> + <var>b</var></p>
+
+<figure class="diagrama" data-titulo="fig-1.1">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Una neurona con tres entradas: 2, menos 1 y 3. Cada una se multiplica por su peso: 0,5, menos 1 y 0,25. Una suma junta los productos y el sesgo 0,5 y da 3,25. La activación ReLU deja pasar 3,25."><rect x="16" y="24" width="72" height="32" class="fa1 sa3" stroke-width="2"/><text x="52" y="46" class="sv-lbl fa3" text-anchor="middle" font-size="16">x1 = 2</text><line x1="88" y1="40" x2="152" y2="40" class="s4" stroke-width="2"/><rect x="152" y="24" width="96" height="32" class="fb1 sb3" stroke-width="2"/><text x="200" y="46" class="sv-lbl fb3" text-anchor="middle" font-size="16">× 0,5</text><rect x="16" y="72" width="72" height="32" class="fa1 sa3" stroke-width="2"/><text x="52" y="94" class="sv-lbl fa3" text-anchor="middle" font-size="16">x2 = −1</text><line x1="88" y1="88" x2="152" y2="88" class="s4" stroke-width="2"/><rect x="152" y="72" width="96" height="32" class="fb1 sb3" stroke-width="2"/><text x="200" y="94" class="sv-lbl fb3" text-anchor="middle" font-size="16">× −1</text><rect x="16" y="120" width="72" height="32" class="fa1 sa3" stroke-width="2"/><text x="52" y="142" class="sv-lbl fa3" text-anchor="middle" font-size="16">x3 = 3</text><line x1="88" y1="136" x2="152" y2="136" class="s4" stroke-width="2"/><rect x="152" y="120" width="96" height="32" class="fb1 sb3" stroke-width="2"/><text x="200" y="142" class="sv-lbl fb3" text-anchor="middle" font-size="16">× 0,25</text><rect x="312" y="56" width="96" height="80" class="fc1 sc3" stroke-width="2"/><text x="360" y="88" class="sv-lbl fc3" text-anchor="middle" font-size="16">suma</text><text x="360" y="112" class="sv-lbl fc3" text-anchor="middle" font-size="16">+ b = 0,5</text><line x1="248" y1="40" x2="312" y2="96" class="s4" stroke-width="2"/><line x1="248" y1="88" x2="312" y2="96" class="s4" stroke-width="2"/><line x1="248" y1="136" x2="312" y2="96" class="s4" stroke-width="2"/><line x1="408" y1="96" x2="456" y2="96" class="s4" stroke-width="2"/><polygon points="448,91 456,96 448,101" class="f4"/><rect x="456" y="64" width="88" height="64" class="fd1 sd3" stroke-width="2"/><text x="500" y="92" class="sv-lbl fd3" text-anchor="middle" font-size="16">ReLU</text><text x="500" y="114" class="sv-lbl fd3" text-anchor="middle" font-size="16">máx(0, s)</text><line x1="544" y1="96" x2="576" y2="96" class="s4" stroke-width="2"/><polygon points="576,91 584,96 576,101" class="f4"/><rect x="584" y="76" width="40" height="40" class="fa1 sa3" stroke-width="2"/><text x="604" y="102" class="sv-lbl fa3" text-anchor="middle" font-size="16">y</text><text x="16" y="176" class="sv-lbl f4" text-anchor="start" font-size="16">s = 0,5·2 + (−1)(−1) + 0,25·3 + 0,5 = 3,25   →   y = 3,25</text></svg>
+  <figcaption><b>fig 1.1</b>Los datos (naranja) se multiplican por sus pesos (azul), se suman junto al sesgo (verde) y pasan por la activación (magenta). Las tres multiplicaciones son tres MAC.</figcaption>
+</figure>
+
+<p>Con los números de la figura, la suma da 0,5·2 + (−1)·(−1) + 0,25·3 + 0,5 = 3,25. Todavía falta un paso: la <strong>activación</strong>, una función que se aplica al resultado. La más usada es la <span class="ref" data-nota="relu">ReLU</span>, que deja pasar los positivos y pone cero en los negativos.<span class="nota-margen" popover id="nota-relu"><b>relu · rectified linear unit</b>Función que devuelve el mayor entre cero y su entrada. Es barata de calcular: una comparación.</span> Acá deja pasar 3,25.</p>
+
+<h3>Para qué sirve la activación</h3>
+
+<p>Sin activación, apilar capas no serviría de nada. Una suma ponderada de sumas ponderadas es otra suma ponderada. Toda la red se reduciría a una sola capa (Zhang et al., sección 5.1). La activación rompe esa linealidad. Por eso una red de varias capas puede aprender formas que una sola no alcanza.</p>
+
+<div class="caja dato">
+  <h4>dato</h4>
+  <p>Con una sola capa oculta y suficientes neuronas, una red puede aproximar cualquier función continua en un dominio acotado (Goodfellow et al., sección 6.4.1, p. 194). Que pueda no dice que la entrenes bien.</p>
+</div>
+
+<h2>Una capa son muchas neuronas a la vez</h2>
+
+<p>Una <strong>capa densa</strong> junta varias neuronas que miran las mismas entradas. Con <var>m</var> entradas y <var>n</var> neuronas hay <var>m</var>·<var>n</var> pesos, uno por cada par. Cada peso se usa una vez por dato. Los MAC también son <var>m</var>·<var>n</var> (Goodfellow et al., sección 9.2, p. 330).</p>
+
+<p class="formula">pesos = MAC = <var>m</var> · <var>n</var></p>
+
+<p>Un ejemplo: una capa de 1.000 entradas y 128 neuronas tiene 1.000 · 128 = 128.000 pesos. Hace 128.000 MAC por dato. Es un caso chico. Sirve de escala la red LeNet, que lee dígitos escritos a mano. Tiene unos 60.000 pesos y hace 341.000 MAC por imagen (Sze et al., p. 8).</p>
+
+<p>La salida de una capa es la entrada de la siguiente. Apilar capas expresa una idea. La función que buscás es una composición de funciones más simples (Goodfellow et al., sección 6.4.1, p. 196). La primera capa detecta rasgos chicos y las siguientes los combinan.</p>
+
+<h2>Entrenar e inferir son trabajos distintos</h2>
+
+<p>Los pesos no vienen de fábrica. Se encuentran con un lazo de dos tiempos. Primero se hace una pasada hacia adelante con un dato de ejemplo y se mide el error contra la respuesta correcta. Después una pasada hacia atrás reparte ese error entre los pesos y los corrige un poco. Esa segunda pasada es la <strong>retropropagación</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-1.2">
+  <svg viewBox="0 0 640 296" role="img" aria-label="Dos recorridos. Entrenar, en la PC: datos, pasada hacia adelante, error, pasada hacia atrás y ajuste de pesos, en lazo. Inferir, en el micro: entrada, una pasada hacia adelante con pesos fijos en la flash, salida."><text x="16" y="28" class="sv-lbl fa3" text-anchor="start">ENTRENAR · en la PC</text><rect x="16" y="40" width="88" height="40" class="fa1 sa3" stroke-width="2"/><text x="60" y="66" class="sv-lbl fa3" text-anchor="middle" font-size="16">datos</text><line x1="104" y1="60" x2="128" y2="60" class="s4" stroke-width="2"/><polygon points="128,55 136,60 128,65" class="f4"/><rect x="136" y="40" width="120" height="40" class="fb1 sb3" stroke-width="2"/><text x="196" y="66" class="sv-lbl fb3" text-anchor="middle" font-size="16">hacia adelante</text><line x1="256" y1="60" x2="280" y2="60" class="s4" stroke-width="2"/><polygon points="280,55 288,60 280,65" class="f4"/><rect x="288" y="40" width="72" height="40" class="fd1 sd3" stroke-width="2"/><text x="324" y="66" class="sv-lbl fd3" text-anchor="middle" font-size="16">error</text><line x1="360" y1="60" x2="384" y2="60" class="s4" stroke-width="2"/><polygon points="384,55 392,60 384,65" class="f4"/><rect x="392" y="40" width="104" height="40" class="fb1 sb3" stroke-width="2"/><text x="444" y="66" class="sv-lbl fb3" text-anchor="middle" font-size="16">hacia atrás</text><line x1="496" y1="60" x2="520" y2="60" class="s4" stroke-width="2"/><polygon points="520,55 528,60 520,65" class="f4"/><rect x="528" y="40" width="96" height="40" class="fc1 sc3" stroke-width="2"/><text x="576" y="66" class="sv-lbl fc3" text-anchor="middle" font-size="16">ajustar pesos</text><line x1="576" y1="80" x2="576" y2="104" class="s4" stroke-width="2"/><line x1="576" y1="104" x2="196" y2="104" class="s4" stroke-width="2"/><line x1="196" y1="104" x2="196" y2="88" class="s4" stroke-width="2"/><polygon points="191,80 201,80 196,88" class="f4"/><text x="16" y="128" class="sv-lbl f4" text-anchor="start" font-size="16">se repite con millones de ejemplos; guarda las salidas de cada capa</text><line x1="16" y1="148" x2="624" y2="148" class="s2" stroke-width="2"/><text x="16" y="180" class="sv-lbl fb3" text-anchor="start">INFERIR · en el micro</text><rect x="16" y="196" width="88" height="40" class="fa1 sa3" stroke-width="2"/><text x="60" y="222" class="sv-lbl fa3" text-anchor="middle" font-size="16">entrada</text><line x1="104" y1="216" x2="160" y2="216" class="s4" stroke-width="2"/><polygon points="160,211 168,216 160,221" class="f4"/><rect x="168" y="196" width="136" height="40" class="fb1 sb3" stroke-width="2"/><text x="236" y="222" class="sv-lbl fb3" text-anchor="middle" font-size="16">hacia adelante</text><line x1="304" y1="216" x2="352" y2="216" class="s4" stroke-width="2"/><polygon points="352,211 360,216 352,221" class="f4"/><rect x="360" y="196" width="88" height="40" class="fa1 sa3" stroke-width="2"/><text x="404" y="222" class="sv-lbl fa3" text-anchor="middle" font-size="16">salida</text><rect x="168" y="248" width="136" height="32" class="f1 s3" stroke-width="2"/><text x="236" y="270" class="sv-lbl f4" text-anchor="middle" font-size="16">pesos fijos (flash)</text><line x1="236" y1="248" x2="236" y2="244" class="s4" stroke-width="2"/><text x="472" y="222" class="sv-lbl f4" text-anchor="start" font-size="16">una sola pasada</text></svg>
+  <figcaption><b>fig 1.2</b>Entrenar es un lazo que ajusta los pesos. Inferir recorre la red una vez con los pesos ya fijos. Solo lo segundo corre en el micro.</figcaption>
+</figure>
+
+<p>Una pasada hacia atrás cuesta del mismo orden que una hacia adelante (Goodfellow et al., sección 6.5.3, p. 205–206; Nielsen, capítulo 2). El lazo se repite con muchos ejemplos. Además, para corregir los pesos hay que conservar las salidas de cada capa (Sze et al., p. 4). Entrenar también suele pedir más precisión numérica que usar la red.</p>
+
+<p>La cuenta de memoria se nota. Para entrenar, los apuntes de CS231n estiman que la memoria de los parámetros se multiplica por 3 o más. Hay que guardar también los gradientes y el estado del optimizador. Usar la red ya entrenada es la <strong>inferencia</strong>. Es una sola pasada hacia adelante, con pesos fijos y sin guardar nada de más. Es lo único que corre en el micro.</p>
+
+<div class="caja ojo">
+  <h4>ojo</h4>
+  <p>Una red entrenada en la PC con números decimales de 32 bits no da exactamente la misma salida cuando se la ejecuta con enteros en el micro. Hay que medir esa diferencia (se ve en el nivel 2).</p>
+</div>
+
+<h2>La convolución comparte pesos</h2>
+
+<p>Una capa densa no es práctica para imágenes. Tomá una imagen en gris de 96×96 píxeles, que son 9.216 valores. Si la capa debe devolver 8 mapas del mismo tamaño, son 96·96·8 = 73.728 salidas. Una capa densa tendría 9.216 · 73.728 = 679.477.248 pesos (cuenta propia). No entra en ningún micro.</p>
+
+<p>La solución es la <strong>convolución</strong>: un filtro chico que se desliza por la imagen. En cada lugar usa los mismos pesos (CS231n, «Convolutional Layer»). Un filtro de 3×3 tiene 9 pesos. Para 8 filtros hay 72 pesos y 8 sesgos, 80 números en total. La figura 1.3 muestra un paso.</p>
+
+<figure class="diagrama" data-titulo="fig-1.3">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Una entrada de 6 por 6 casillas. Un filtro de 3 por 3 cubre 9 casillas y produce un valor de la salida de 4 por 4. El mismo filtro se desliza por toda la imagen."><text x="16" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">entrada 6×6</text><rect x="16" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="88" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="112" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="136" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="16" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="64" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="88" y="64" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="112" y="64" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="136" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="16" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="88" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="88" y="88" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="112" y="88" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="136" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="16" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="112" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="88" y="112" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="112" y="112" width="24" height="24" class="fa1 sa3" stroke-width="2"/><rect x="136" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="16" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="88" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="112" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="136" y="136" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="16" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="40" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="88" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="112" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="136" y="160" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="64" y="64" width="72" height="72" class="fn sa3" stroke-width="2"/><text x="224" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">filtro 3×3</text><rect x="224" y="40" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="248" y="40" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="272" y="40" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="224" y="64" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="248" y="64" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="272" y="64" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="224" y="88" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="248" y="88" width="24" height="24" class="fb1 sb3" stroke-width="2"/><rect x="272" y="88" width="24" height="24" class="fb1 sb3" stroke-width="2"/><text x="260" y="136" class="sv-lbl fb3" text-anchor="middle" font-size="16">9 pesos</text><text x="260" y="156" class="sv-lbl fb3" text-anchor="middle" font-size="16">los mismos</text><text x="260" y="176" class="sv-lbl fb3" text-anchor="middle" font-size="16">en toda la imagen</text><line x1="304" y1="112" x2="352" y2="112" class="s4" stroke-width="2"/><polygon points="344,107 352,112 344,117" class="f4"/><text x="368" y="24" class="sv-lbl f4" text-anchor="start" font-size="16">salida 4×4</text><rect x="368" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="392" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="416" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="440" y="40" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="368" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="392" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="416" y="64" width="24" height="24" class="fc2 sc3" stroke-width="2"/><rect x="440" y="64" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="368" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="392" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="416" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="440" y="88" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="368" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="392" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="416" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><rect x="440" y="112" width="24" height="24" class="f1 s2" stroke-width="2"/><text x="416" y="160" class="sv-lbl fc3" text-anchor="middle" font-size="16">un valor =</text><text x="416" y="180" class="sv-lbl fc3" text-anchor="middle" font-size="16">9 MAC</text><text x="496" y="64" class="sv-lbl f4" text-anchor="start" font-size="16">cada paso</text><text x="496" y="86" class="sv-lbl f4" text-anchor="start" font-size="16">mueve el filtro</text><text x="496" y="108" class="sv-lbl f4" text-anchor="start" font-size="16">1 casilla y</text><text x="496" y="130" class="sv-lbl f4" text-anchor="start" font-size="16">repite los 9 MAC</text></svg>
+  <figcaption><b>fig 1.3</b>El filtro (azul) cubre 9 casillas de la entrada (naranja) y produce un valor de la salida (verde). Después se corre una casilla y repite con los mismos 9 pesos.</figcaption>
+</figure>
+
+<p>Un filtro de lado <var>F</var> recorre una entrada de lado <var>W</var> con salto <var>S</var> y borde <var>P</var>. La salida tiene este lado:</p>
+
+<p class="formula"><var>W</var><sub>2</sub> = (<var>W</var><sub>1</sub> − <var>F</var> + 2<var>P</var>) / <var>S</var> + 1</p>
+
+<p>En la figura: (6 − 3 + 0) / 1 + 1 = 4. Cada valor de salida cuesta <var>F</var>² MAC por canal de entrada. Sumá ahora los canales: <var>C</var><sub>e</sub> de entrada, <var>C</var><sub>s</sub> de salida y una salida de <var>H</var>×<var>W</var>. El costo total es <var>H</var>·<var>W</var>·<var>F</var>²·<var>C</var><sub>e</sub>·<var>C</var><sub>s</sub> (Zhang et al., sección 7.4).</p>
+
+<p>Para el ejemplo, 96 · 96 · 9 · 1 · 8 = 663.552 MAC (cuenta propia). Son pocos pesos pero muchas cuentas: cada peso se usa 9.216 veces, una por posición. En una capa densa se usa una. Mirá VGG-16 en la tabla de Sze et al. (p. 11). Sus capas convolucionales hacen 15,3 mil millones de MAC con 14,7 millones de pesos.</p>
+
+<p>De ahí sale una regla de costos. Una capa densa pesa mucho y calcula poco por peso. Una convolución pesa poco y calcula mucho por peso. En un micro, el peso va a la memoria y el cálculo va al tiempo. Los dos tienen un tope.</p>
+
+<h3>La convolución separable: partir la cuenta</h3>
+
+<p>Una convolución estándar mezcla dos cosas a la vez: la vecindad espacial y los canales. La <strong>separable</strong> las separa. Primero un filtro de 3×3 por canal, sin mezclar canales. Después un filtro de 1×1 que mezcla los canales. Es la base de las redes pensadas para micros.</p>
+
+<p>Tomá 64 canales de entrada, 64 de salida y un mapa de 12×12. La estándar tiene 3·3·64·64 = 36.864 pesos y hace 144·36.864 = 5.308.416 MAC. La separable tiene 9·64 + 64·64 = 4.672 pesos y hace 144·4.672 = 672.768 MAC. Es 7,9 veces menos, con la misma forma de entrada y salida (cuenta propia).</p>
+
+<figure class="diagrama" data-titulo="fig-1.4">
+  <svg viewBox="0 0 640 152" role="img" aria-label="Dos barras: una convolución estándar de 3 por 3 de 64 a 64 canales sobre 12 por 12 hace 5,31 millones de MAC. La versión separable hace 0,67 millones."><text x="144" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">estándar</text><rect x="160" y="24" width="336" height="32" class="fa1 sa3" stroke-width="2"/><text x="504" y="46" class="sv-lbl fa3" text-anchor="start" font-size="16">5,31 M MAC</text><text x="144" y="94" class="sv-lbl f6" text-anchor="end" font-size="16">separable</text><rect x="160" y="72" width="43" height="32" class="fb1 sb3" stroke-width="2"/><text x="211" y="94" class="sv-lbl fb3" text-anchor="start" font-size="16">0,67 M MAC</text><text x="16" y="136" class="sv-lbl f4" text-anchor="start" font-size="16">3×3, 64 → 64 canales, mapa de 12×12: 7,9 veces menos cuentas</text></svg>
+  <figcaption><b>fig 1.4</b>Misma entrada, misma salida: la convolución separable parte la cuenta en dos pasos y hace unas 7,9 veces menos MAC (cuenta propia).</figcaption>
+</figure>
+
+<h2>Memoria: pesos y activaciones</h2>
+
+<p>La red ocupa memoria de dos maneras. Los <strong>pesos</strong> son constantes y viven en la <span class="ref" data-nota="flash">flash</span>.<span class="nota-margen" popover id="nota-flash"><b>flash · memoria no volátil</b>Memoria que conserva su contenido sin energía. Guarda el programa y el modelo; se lee más lento que la SRAM.</span> Las <strong>activaciones</strong> son las salidas de cada capa y viven en la <span class="ref" data-nota="sram">SRAM</span> mientras se calculan.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca: del orden de cientos de KB.</span> Cada valor ocupa 4 bytes en decimal de 32 bits o 1 byte en <span class="ref" data-nota="int8">int8</span>.<span class="nota-margen" popover id="nota-int8"><b>int8 · entero de 8 bits</b>Número entero con signo de 8 bits, de −128 a 127. Cuatro veces más chico que un decimal de 32 bits.</span> Cómo se pasa de uno al otro es el tema del nivel 2.</p>
+
+<p>Los pesos de LeNet son unos 60.000. En decimal de 32 bits son del orden de 240 KB. En int8, del orden de 60 KB (cuenta propia). VGG-16 tiene 138 millones: en int8 serían del orden de 138 MB. Un ESP32-S3 tiene 512 KB de SRAM (<a href="../micro/04-memoria.html">Microcontroladores, Tomo 1, nivel 4</a>). La flash es de varios MB. Esa red no entra ni lejos.</p>
+
+<p>Las activaciones se cuentan por capa. La salida de la convolución del ejemplo tiene 96·96·8 = 73.728 valores, 73.728 bytes en int8. Mientras se calcula, la entrada también tiene que estar: 9.216 bytes + 73.728 bytes = 82.944 bytes. Ese pico por capa decide cuánta SRAM necesita la red (<a href="../borde/02-memoria.html">IA en el borde, Tomo 2, nivel 2</a>).</p>
+
+<h2>Qué cabe en un micro</h2>
+
+<p>Un micro tiene del orden de decenas a cientos de KB de SRAM. Eso alcanza para redes chicas que hacen una sola cosa. El benchmark <span class="ref" data-nota="mlperf">MLPerf Tiny</span> fija cuatro tareas de referencia (Banbury et al., 2021). Son detectar una palabra clave, detectar una persona en una imagen, clasificar una imagen chica y detectar anomalías en una señal.<span class="nota-margen" popover id="nota-mlperf"><b>mlperf tiny · benchmark de MLCommons</b>Conjunto de cuatro tareas y modelos de referencia para comparar cuánto tarda y cuánta energía gasta cada micro al correr redes chicas.</span> Dos de ellas se recorren en <a href="../borde/08-palabra-clave.html">IA en el borde, Tomo 2, nivel 8</a> y en <a href="../borde/09-sensores.html">nivel 9</a>.</p>
+
+<p>Una red que no entra falla de dos maneras. Si no cabe en la memoria, el programa no arranca o la reserva de la arena falla. Si cabe pero tarda de más, se pierden cuadros o se pasa el presupuesto de energía. En los dos casos la cuenta de este nivel lo anticipa antes de entrenar nada.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Una capa densa tiene 200 entradas y 50 neuronas. ¿Cuántos MAC hace por cada dato?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="250 es la suma de entradas y neuronas. Cada neurona multiplica sus 200 entradas, así que se multiplica, no se suma.">250.</button>
+    <button type="button" data-por-que="Cada una de las 50 neuronas hace 200 MAC: 200 · 50 = 10.000, igual que los pesos de la capa.">10.000.</button>
+    <button type="button" data-por-que="200 son solo las entradas. Falta repetir la cuenta para cada neurona.">200.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Una convolución de 3×3 pasa de 16 a 32 canales. ¿Cuántos pesos tiene, sin contar los sesgos?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="512 es 16 · 32: faltan los 9 pesos de cada filtro de 3×3.">512.</button>
+    <button type="button" data-por-que="Esa cifra mezcla el tamaño de la salida. El número de pesos no depende del tamaño de la imagen.">2.654.208.</button>
+    <button type="button" data-por-que="3 · 3 · 16 · 32 = 4.608. Cada uno de los 32 filtros tiene 3·3·16 pesos.">4.608.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Una neurona es una suma ponderada más un sesgo, seguida de una activación.</li>
+    <li>Capa densa: pesos = MAC = entradas · neuronas. Convolución: pocos pesos, muchos MAC.</li>
+    <li>Entrenar es un lazo que ajusta pesos. En el micro solo corre la inferencia.</li>
+    <li>Memoria: pesos × bytes por valor, más el pico de activaciones por capa.</li>
+    <li>Contar antes de entrenar dice si la red puede entrar.</li>
+  </ul>
+</div>
+
+<!-- firmware: bloque de código de referencia (tomos de IA en el borde) -->
+<div class="caja firmware">
+  <h4>firmware · una capa densa en C</h4>
+  <p>Este código sigue la cuenta de la figura 1.1: multiplica, acumula, suma el sesgo y aplica la ReLU. Acumula en 32 bits para que la suma no se desborde.</p>
+  <p>Usa enteros. Los números de la figura multiplicados por 4 dan pesos 2, −4 y 1 y sesgo 2 para la primera neurona. Con las entradas 2, −1 y 3 la salida es 13, o sea 4 · 3,25. La segunda neurona tiene pesos −3, 1 y −2 y sesgo −1: da −14 y la ReLU la deja en 0. Son 6 MAC, tres por neurona.</p>
+  <details>
+    <summary>ver el código</summary>
+    <pre><code>/* Capa densa en int8: n_ent entradas, n_sal neuronas.
+   Acumula en int32 para que la suma no se desborde. */
+#include &lt;stdint.h&gt;
+
+void capa_densa(const int8_t *x, int n_ent,
+                const int8_t *w, const int32_t *b,
+                int32_t *y, int n_sal)
+{
+    for (int j = 0; j &lt; n_sal; j++) {
+        int32_t acc = b[j];
+        for (int i = 0; i &lt; n_ent; i++)
+            acc += (int32_t)w[j * n_ent + i] * x[i];
+        y[j] = acc &lt; 0 ? 0 : acc;      /* ReLU */
+    }
+}
+</code></pre>
+  </details>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Goodfellow, I., Bengio, Y. y Courville, A. <em>Deep Learning</em>. MIT Press, 2016: secciones 6.3.1 (ReLU, p. 188), 6.4.1 (aproximación universal y composición, pp. 194 y 196), 6.5.2–6.5.3 (retropropagación, pp. 203–206) y 9.2 (parámetros de una capa, p. 330). <a href="https://www.deeplearningbook.org/">deeplearningbook.org</a></li>
+    <li>Zhang, A., Lipton, Z., Li, M. y Smola, A. <em>Dive into Deep Learning</em> 1.0.3. Cambridge University Press, 2023: secciones 5.1 (activaciones y linealidad) y 7.4 (costo de la convolución con varios canales). <a href="https://d2l.ai/">d2l.ai</a></li>
+    <li>Nielsen, M. <em>Neural Networks and Deep Learning</em>, capítulo 2 (costo de la retropropagación). <a href="http://neuralnetworksanddeeplearning.com/chap2.html">neuralnetworksanddeeplearning.com/chap2.html</a> (el certificado del sitio no valida).</li>
+    <li>Stanford CS231n. <em>Convolutional Neural Networks</em>, apuntes: «Convolutional Layer», «Case Studies» y «Computational Considerations». <a href="https://cs231n.github.io/convolutional-networks/">cs231n.github.io/convolutional-networks</a></li>
+    <li>Sze, V., Chen, Y.-H., Yang, T.-J. y Emer, J. <em>Efficient Processing of Deep Neural Networks: A Tutorial and Survey</em>. arXiv:1703.09039v2, 2017: pp. 3–4 (entrenar e inferir), p. 8 (LeNet) y p. 11 (tabla II). <a href="https://arxiv.org/abs/1703.09039">arxiv.org/abs/1703.09039</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, 2021: tareas de referencia. <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, contrastada con las fuentes por una segunda pasada. Las cuentas de convolución, memoria y separable son deducción propia a partir de las fórmulas citadas. Los tamaños en bytes suponen 4 bytes por valor en decimal de 32 bits y 1 byte en int8 (supuesto).</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-03, nivel-01</footer>
+</body>
+</html>
