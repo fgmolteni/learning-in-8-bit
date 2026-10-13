@@ -161,34 +161,6 @@
   </ul>
 </div>
 
-<!-- firmware: bloque de código de referencia (tomos de IA en el borde) -->
-<div class="caja firmware">
-  <h4>firmware · cuantizar y descuantizar en C</h4>
-  <p>Este código sigue el ejemplo de la figura 2.2: escala 4 / 255 y punto cero 64. Satura al rango de 8 bits para que un valor fuera de rango no dé la vuelta.</p>
-  <p>Con ese par, el real 1,0 da 128, el −1 da 0, el 3 da 255 y el 0 da 64. Volviendo, 128 da 1,0039.</p>
-  <details>
-    <summary>ver el código</summary>
-    <pre><code>/* Cuantización afín a uint8: r = S * (q - Z)
-   S: escala. Z: valor q que representa el 0 real. */
-#include &lt;math.h&gt;
-#include &lt;stdint.h&gt;
-
-uint8_t cuantizar(float r, float S, int Z)
-{
-    int q = (int)lroundf(r / S) + Z;
-    if (q &lt; 0)   q = 0;    /* saturar a 8 bits */
-    if (q &gt; 255) q = 255;
-    return (uint8_t)q;
-}
-
-float descuantizar(uint8_t q, float S, int Z)
-{
-    return S * (float)(q - Z);
-}
-</code></pre>
-  </details>
-</div>
-
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>

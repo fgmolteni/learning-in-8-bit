@@ -167,32 +167,6 @@
   </ul>
 </div>
 
-<!-- firmware: bloque de código de referencia (tomos de IA en el borde) -->
-<div class="caja firmware">
-  <h4>firmware · una capa densa en C</h4>
-  <p>Este código sigue la cuenta de la figura 1.1: multiplica, acumula, suma el sesgo y aplica la ReLU. Acumula en 32 bits para que la suma no se desborde.</p>
-  <p>Usa enteros. Los números de la figura multiplicados por 4 dan pesos 2, −4 y 1 y sesgo 2 para la primera neurona. Con las entradas 2, −1 y 3 la salida es 13, o sea 4 · 3,25. La segunda neurona tiene pesos −3, 1 y −2 y sesgo −1: da −14 y la ReLU la deja en 0. Son 6 MAC, tres por neurona.</p>
-  <details>
-    <summary>ver el código</summary>
-    <pre><code>/* Capa densa en int8: n_ent entradas, n_sal neuronas.
-   Acumula en int32 para que la suma no se desborde. */
-#include &lt;stdint.h&gt;
-
-void capa_densa(const int8_t *x, int n_ent,
-                const int8_t *w, const int32_t *b,
-                int32_t *y, int n_sal)
-{
-    for (int j = 0; j &lt; n_sal; j++) {
-        int32_t acc = b[j];
-        for (int i = 0; i &lt; n_ent; i++)
-            acc += (int32_t)w[j * n_ent + i] * x[i];
-        y[j] = acc &lt; 0 ? 0 : acc;      /* ReLU */
-    }
-}
-</code></pre>
-  </details>
-</div>
-
 <section class="fuentes">
   <h2>Fuentes</h2>
   <ol>
