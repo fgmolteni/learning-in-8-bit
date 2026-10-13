@@ -1038,11 +1038,188 @@ function montarArbol(el) {
 }
 
 // ------------------------------------------------------------------
+// Widget: una neurona paso a paso (cada MAC suma al acumulador; después, la ReLU)
+// ------------------------------------------------------------------
+const num = (v) => String(+v.toFixed(2)).replace(".", ",").replace("-", "−");
+function marcarBotones(ctl, activo) {           // botón elegido con el acento, como en el widget separable
+  ctl.querySelectorAll("button").forEach((b) => {
+    const on = b.dataset.m === activo;
+    b.setAttribute("aria-pressed", on);
+    b.style.background = on ? "var(--a3)" : ""; b.style.color = on ? "var(--fondo)" : ""; b.style.borderColor = on ? "var(--a3)" : "";
+  });
+}
+function widgetNeurona(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 264);
+  const w = [0.5, -1, 0.25], b = 0.5, x = [2, -1, 3];
+  const filas = [48, 104, 160], XA = 304, OX = 500, OY = 176, E = 7;   // ReLU: origen y px por unidad
+  let paso = 4, jugando = true;                   // 0: sesgo; 1 a 3: un MAC cada uno; 4 y 5: ReLU (cuadro completo)
+
+  function dibujar() {
+    limpiar(g);
+    const p = Math.min(paso, 4), hechos = Math.min(p, 3);
+    const s = b + w.slice(0, hechos).reduce((a, wi, i) => a + wi * x[i], 0), y = Math.max(0, s);
+    etiqueta(g, "ENTRADA", MG, 16, A(3)); etiqueta(g, "PESO", 104, 16, B(3)); etiqueta(g, "PRODUCTO", 192, 16, A(3));
+    etiqueta(g, "ACUMULADOR", XA, 16, C(3)); etiqueta(g, "RELU", 448, 16, D(3)); etiqueta(g, "SALIDA", W - MG, 16, A(3), "right");
+    filas.forEach((fy, i) => {
+      const listo = i < hechos, ahora = p >= 1 && p <= 3 && i === p - 1;
+      caja(g, MG, fy, 64, 40, "a"); numero(g, num(x[i]), MG + 32, fy + 21, A(3), "center");
+      txt(g, "×", 92, fy + 21, R(4), "center", 20);
+      caja(g, 104, fy, 64, 40, "b"); numero(g, num(w[i]), 136, fy + 21, B(3), "center");
+      txt(g, "=", 180, fy + 21, R(4), "center", 20);
+      caja(g, 192, fy, 72, 40, listo ? "activo" : "apagado");
+      numero(g, listo ? num(w[i] * x[i]) : "·", 228, fy + 21, listo ? A(4) : R(3), "center");
+      flecha(g, 268, fy + 20, 32, ahora ? A(4) : R(3));
+      if (ahora) marco(g, MG, fy, 248, 40, A(4), 2);
+    });
+    caja(g, XA, 48, 112, 152, p === 0 ? "foco" : "tercero");
+    rotulo(g, "empieza en", XA + 56, 72, R(5), "center"); rotulo(g, "b = " + num(b), XA + 56, 94, C(3), "center");
+    numero(g, num(s), XA + 56, 136, R(6), "center", 30);
+    rotulo(g, `MAC ${hechos} de 3`, XA + 56, 178, R(5), "center");
+    flecha(g, 420, 124, 20, p === 4 ? D(3) : R(3));
+    // ReLU en píxeles: plano en los negativos, diagonal en los positivos
+    base(g, 444, OY, 116, 2); g.fillStyle = R(2); g.fillRect(OX - 1, 56, 2, 136);
+    g.fillStyle = D(3); g.fillRect(444, OY - 2, OX - 444, 2);
+    for (let k = 0; k < 60; k++) g.fillRect(OX + k, OY - 2 - k, 2, 2);
+    const px = OX + Math.max(-8, Math.min(8, s)) * E, py = OY - y * E;
+    g.fillStyle = p === 4 ? D(4) : R(4); g.fillRect(Math.round(px) - 4, Math.round(py) - 5, 8, 8);
+    caja(g, 576, 104, 48, 40, p === 4 ? "activo" : "apagado");
+    numero(g, p === 4 ? num(y) : "·", 600, 125, p === 4 ? A(4) : R(3), "center");
+    const terminos = [num(b), ...w.slice(0, hechos).map((wi, i) => num(wi * x[i]))].join(" + ").replace(/\+ −/g, "− ");
+    rotulo(g, p === 4 ? `s = ${num(s)}  →  y = máx(0; ${num(s)}) = ${num(y)}` : `s = ${terminos}${hechos ? " = " + num(s) : ""}`, MG, 228, p === 4 ? D(3) : R(6));
+    rotulo(g, "cada fila es un MAC: multiplicar y sumar al acumulador", MG, 250, R(4));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-a="play">❚❚ PAUSA</button><button type="button" data-a="paso">PASO ▸</button>` +
+      x.map((v, i) => `<label>x${i + 1} <input type="range" min="-4" max="4" step="1" value="${v}" data-i="${i}"> <output>${num(v)}</output></label>`).join("");
+    const play = ctl.querySelector('[data-a="play"]');
+    play.onclick = () => { jugando = !jugando; play.textContent = jugando ? "❚❚ PAUSA" : "▶ SEGUIR"; };
+    ctl.querySelector('[data-a="paso"]').onclick = () => { jugando = false; play.textContent = "▶ SEGUIR"; paso = (Math.min(paso, 4) + 1) % 5; dibujar(); };
+    ctl.querySelectorAll("input").forEach((inp) => (inp.oninput = () => { x[+inp.dataset.i] = +inp.value; inp.nextElementSibling.textContent = num(+inp.value); dibujar(); }));
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { if (jugando) { paso = (paso + 1) % 6; dibujar(); } }, 1000);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: entrenar contra inferir (pasadas y memoria de cada caso)
+// ------------------------------------------------------------------
+function flechaIzq(g, x, y, w, color) {        // como flecha(), con la punta a la izquierda
+  g.fillStyle = color; g.fillRect(x + 4, y - 1, w - 4, 2);
+  g.fillRect(x + 4, y - 5, 2, 10); g.fillRect(x + 2, y - 3, 2, 6); g.fillRect(x, y - 1, 2, 2);
+}
+function widgetEntrenar(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 256);
+  const capas = [3, 4, 2], cx = [40, 128, 216];
+  const cy = (j, i) => 104 - (capas[j] - 1) * 14 + i * 28;
+  let entrenar = true, f = 2;                     // entrenar: 0-1 adelante, 2 salida, 3-4 atrás, 5 ajustar; inferir: 0-1 adelante, 2-3 salida
+  const vivas = () => entrenar ? [[0], [0, 1], [0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2]][f] : [[0], [0, 1], [1, 2], [1, 2]][f];
+
+  function puntos(x0, y0, x1, y1, color) {      // conexión punteada en píxeles
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 4 | 0;
+    g.fillStyle = color;
+    for (let k = 0; k <= n; k++) g.fillRect(Math.round(x0 + (x1 - x0) * k / n), Math.round(y0 + (y1 - y0) * k / n), 2, 2);
+  }
+  function dibujar() {
+    limpiar(g);
+    const K = entrenar ? A : B;
+    etiqueta(g, entrenar ? "ENTRENAR · EN LA PC" : "INFERIR · EN EL MICRO", MG, 16, K(3));
+    const adelante = f <= 1 ? f : -1, atras = entrenar && (f === 3 || f === 4) ? (f === 3 ? 1 : 0) : -1;
+    for (let j = 0; j < 2; j++) {
+      const col = j === adelante ? A(3) : j === atras ? D(3) : R(2);
+      for (let a = 0; a < capas[j]; a++) for (let c = 0; c < capas[j + 1]; c++) puntos(cx[j] + 6, cy(j, a), cx[j + 1] - 6, cy(j + 1, c), col);
+    }
+    capas.forEach((n, j) => { for (let i = 0; i < n; i++) caja(g, cx[j] - 6, cy(j, i) - 6, 12, 12, vivas().includes(j) ? "activo" : "a"); });
+    flecha(g, 24, 184, 208, adelante >= 0 || f === 2 ? A(3) : R(2)); etiqueta(g, "ADELANTE", 240, 184, A(3));
+    if (entrenar) { flechaIzq(g, 24, 208, 208, atras >= 0 ? D(3) : R(2)); etiqueta(g, "ATRÁS", 240, 208, D(3)); }
+    // memoria
+    const X = 320;
+    etiqueta(g, "MEMORIA", X, 16, R(6));
+    caja(g, X, 32, 72, 32, f === 5 ? "activo" : "a"); rotulo(g, "pesos", X + 36, 49, A(3), "center");
+    if (entrenar) {
+      caja(g, X + 80, 32, 104, 32, "d"); rotulo(g, "gradientes", X + 132, 49, D(3), "center");
+      caja(g, X + 192, 32, 112, 32, "b"); rotulo(g, "optimizador", X + 248, 49, B(3), "center");
+      rotulo(g, "3 veces los pesos o más", X, 80, R(5));
+    } else rotulo(g, "fijos, en la flash", X + 84, 49, R(5));
+    etiqueta(g, "ACTIVACIONES", X, 108, C(3));
+    for (let k = 0; k < 3; k++) {
+      const viva = vivas().includes(k), x = X + k * 56;
+      if (viva) { caja(g, x, 124, 48, 28, "tercero"); rotulo(g, "a" + (k + 1), x + 24, 139, C(4), "center"); }
+      else punteado(g, x, 124, 48, 28, R(2));
+    }
+    rotulo(g, entrenar ? "todas guardadas" : "la capa en curso", X + 168, 139, C(3));
+    const w = numero(g, entrenar ? "≈ 2" : "1", X, 196, K(3), "left", 30);
+    rotulo(g, entrenar ? "pasadas por ejemplo" : "pasada por dato", X + w + 10, 198, R(5));
+    rotulo(g, entrenar ? "y se repite con muchos ejemplos" : "es lo único que corre en el micro", X, 230, R(4));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    ctl.innerHTML = `<button type="button" data-m="ent">ENTRENAR</button><button type="button" data-m="inf">INFERIR</button>`;
+    ctl.querySelectorAll("button").forEach((b) => (b.onclick = () => { entrenar = b.dataset.m === "ent"; f = 0; marcarBotones(ctl, b.dataset.m); dibujar(); }));
+    marcarBotones(ctl, "ent");
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { f = (f + 1) % (entrenar ? 6 : 4); dibujar(); }, 800);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: cuánto de la SRAM del ESP32-S3 ocupa cada cosa (1 cuadro = 1 KB)
+// ------------------------------------------------------------------
+function widgetSram(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 248);
+  const items = [
+    { m: "f32", n: "LENET FLOAT32", kb: 240, K: B, d: "LeNet, pesos en float32: ≈ 240 KB, el 47 % de la SRAM" },
+    { m: "i8", n: "LENET INT8", kb: 60, K: A, d: "LeNet, pesos en int8: ≈ 60 KB, el 12 % de la SRAM" },
+    { m: "pico", n: "PICO DE CAPA", kb: 81, K: C, d: "pico de la capa del ejemplo: 82.944 B, el 16 % de la SRAM" },
+    { m: "vgg", n: "VGG-16 INT8", kb: 138000, K: D, d: "VGG-16, pesos en int8: 138 MB, más de 250 veces la SRAM" },
+  ];
+  const COL = 32, cw = 18, ch = 10, Y = 40;
+  let sel = 0, lleno = 240, auto = true, espera = 0;
+
+  function dibujar() {
+    limpiar(g);
+    const it = items[sel], K = it.K, desborda = it.kb > 512 && lleno >= 512;
+    etiqueta(g, "SRAM DEL ESP32-S3: 512 KB · 1 CUADRO = 1 KB", MG, 16, R(5));
+    numero(g, it.kb > 512 ? "138 MB" : `${it.kb} KB`, W - MG, 16, K(3), "right");
+    for (let k = 0; k < 512; k++) {
+      g.fillStyle = k < lleno ? K(desborda ? 4 : 3) : R(1);
+      g.fillRect(MG + (k % COL) * cw, Y + Math.floor(k / COL) * ch, cw - 2, ch - 2);
+    }
+    if (desborda) {
+      punteado(g, MG - 4, Y - 4, COL * cw + 6, 16 * ch + 6, D(3));
+      flecha(g, MG + COL * cw + 4, Y + 80, 28, D(3));
+      numero(g, "NO ENTRA", MG + COL * cw / 2, Y + 80, R(0), "center", 30);
+    }
+    rotulo(g, it.d, MG, 222, K(3));
+  }
+  const ctl = fig.querySelector(".controles");
+  const elegir = (i) => { sel = i; lleno = 0; if (ctl) marcarBotones(ctl, items[i].m); };
+  if (ctl) {
+    ctl.innerHTML = items.map((it) => `<button type="button" data-m="${it.m}">${it.n}</button>`).join("");
+    ctl.querySelectorAll("button").forEach((b, i) => (b.onclick = () => { auto = false; elegir(i); dibujar(); }));
+    marcarBotones(ctl, items[0].m);
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => {
+    const meta = Math.min(512, items[sel].kb);
+    if (lleno < meta) { lleno = Math.min(meta, lleno + 16); dibujar(); }
+    else if (auto && ++espera > 30) { espera = 0; elegir((sel + 1) % items.length); dibujar(); }
+  }, 60);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
 const WIDGETS = {
   timing: widgetTiming, bateria: widgetBateria,
   redcnn: widgetRedCnn, pixeles: widgetPixeles, macs: widgetMacs,
   conv: widgetConv, separable: widgetSeparable, quant: widgetQuant, familia: widgetFamilia, simd: widgetSimd,
   memoria: widgetMemoria, arena: widgetArena, presupuesto: widgetPresupuesto,
+  neurona: widgetNeurona, entrenar: widgetEntrenar, sram: widgetSram,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
