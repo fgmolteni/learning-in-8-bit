@@ -45,7 +45,7 @@
   <figcaption><b>fig 3.1</b>Lo que sale de la PC es un archivo. En el micro, un intérprete lee ese archivo y llama a los núcleos capa por capa.</figcaption>
 </figure>
 
-<p>Ese archivo suele usar un formato como <span class="ref" data-nota="flatbuffer">FlatBuffer</span>, el de <span class="ref" data-nota="tflm">TensorFlow Lite Micro</span> (David et al., sección 4.3).<span class="nota-margen" popover id="nota-flatbuffer"><b>flatbuffer · serialización binaria</b>Formato de archivo que permite leer los datos en su lugar, sin decodificarlos. Lo creó Google.</span><span class="nota-margen" popover id="nota-tflm"><b>tflm · tensorflow lite micro</b>Intérprete de redes neuronales para micros, hecho por Google. Corre con memoria fija.</span> Queda en la flash junto con el programa. En el micro, un <strong>intérprete</strong> recorre el grafo. Para cada capa llama a un <strong>núcleo</strong>, la rutina que hace la cuenta.</p>
+<p>Ese archivo suele usar un formato como <span class="ref" data-nota="flatbuffer">FlatBuffer</span>, el de <span class="ref" data-nota="tflm">TensorFlow Lite Micro</span> (David et al., sección 4.3).<span class="nota-margen" popover id="nota-flatbuffer"><b>flatbuffer · serialización binaria</b>Formato de archivo que permite leer los datos en su lugar, sin decodificarlos. Lo creó Google.</span><span class="nota-margen" popover id="nota-tflm"><b>tflm · tensorflow lite micro</b>Intérprete de redes neuronales para micros, hecho por Google. Corre con memoria fija.</span> Queda en la <span class="ref" data-nota="flash">flash</span> junto con el programa.<span class="nota-margen" popover id="nota-flash"><b>flash · memoria no volátil</b>Memoria que conserva su contenido sin energía. Guarda el programa y el modelo; se lee más lento que la SRAM.</span> En el micro, un <strong>intérprete</strong> recorre el grafo. Para cada capa llama a un <strong>núcleo</strong>, la rutina que hace la cuenta.</p>
 
 <p>Las tres partes tienen trabajos distintos. El archivo guarda qué red es. El intérprete decide el orden y la memoria. Los núcleos hacen casi todas las cuentas. Cada parte puede cambiarse sin tocar las otras.</p>
 
@@ -68,10 +68,10 @@
 
 <ol>
   <li><strong>Ordenar.</strong> B (80 KB), después A y C (40 KB), por último D (20 KB).</li>
-  <li><strong>Ubicar B.</strong> No hay nada todavía: va a la dirección 0.</li>
-  <li><strong>Ubicar A.</strong> Vive con B en el nodo 1, así que no puede pisarlo. Va a la dirección 80.</li>
-  <li><strong>Ubicar C.</strong> Vive con B en el nodo 2, pero A ya murió. Ocupa el lugar de A: dirección 80.</li>
-  <li><strong>Ubicar D.</strong> Vive con C en el nodo 3, y B ya murió. Va a la dirección 0.</li>
+  <li><strong>Ubicar B.</strong> No hay nada todavía: va a la dirección 0 KB.</li>
+  <li><strong>Ubicar A.</strong> Vive con B en el nodo 1, así que no puede pisarlo. Va a la dirección 80 KB.</li>
+  <li><strong>Ubicar C.</strong> Vive con B en el nodo 2, pero A ya murió. Ocupa el lugar de A: dirección 80 KB.</li>
+  <li><strong>Ubicar D.</strong> Vive con C en el nodo 3, y B ya murió. Va a la dirección 0 KB.</li>
 </ol>
 
 <p class="formula">sin reutilizar: 40 + 80 + 40 + 20 = 180 KB · con el planificador: 80 + 40 = 120 KB</p>
@@ -97,7 +97,7 @@
 
 <h2>Núcleos escritos para el procesador</h2>
 
-<p>Un núcleo optimizado conoce el procesador. <span class="ref" data-nota="cmsis">CMSIS-NN</span> es la biblioteca de núcleos de Arm para los Cortex-M.<span class="nota-margen" popover id="nota-cmsis"><b>cmsis-nn · núcleos de red neuronal de arm</b>Biblioteca de funciones de Arm para ejecutar capas de redes en procesadores Cortex-M. Usa las instrucciones de producto doble de 16 bits.</span> Lai et al. la midieron en una red de CIFAR-10 sobre un Cortex-M7 a 216 MHz (tablas 1 y 2). Tardó 99,1 ms contra 456,4 ms con las funciones base de CMSIS-DSP.</p>
+<p>Un núcleo optimizado conoce el procesador. <span class="ref" data-nota="cmsis">CMSIS-NN</span> es la biblioteca de núcleos de Arm para los Cortex-M.<span class="nota-margen" popover id="nota-cmsis"><b>cmsis-nn · núcleos de red neuronal de arm</b>Biblioteca de funciones de Arm para ejecutar capas de redes en procesadores Cortex-M. Usa las instrucciones de producto doble de 16 bits.</span> Lai et al. la midieron en una red de CIFAR-10 sobre un Cortex-M7 a 216 MHz (tablas 1 y 2). Tardó 99,1 ms contra 456,4 ms con las funciones base de <span class="ref" data-nota="dsp">CMSIS-DSP</span>.<span class="nota-margen" popover id="nota-dsp"><b>dsp · digital signal processing</b>Procesamiento digital de señales. CMSIS-DSP es la biblioteca de Arm con funciones de señales para los Cortex-M.</span></p>
 
 <figure class="diagrama" data-titulo="fig-3.3">
   <svg viewBox="0 0 640 152" role="img" aria-label="Dos barras: la red de CIFAR-10 tarda 456,4 ms con funciones base de CMSIS-DSP y 99,1 ms con CMSIS-NN, en un Cortex-M7 a 216 MHz."><text x="176" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">CMSIS-DSP base</text><rect x="192" y="24" width="320" height="32" class="fd1 sd3" stroke-width="2"/><text x="520" y="46" class="sv-lbl fd3" text-anchor="start" font-size="16">456,4 ms</text><text x="176" y="94" class="sv-lbl f6" text-anchor="end" font-size="16">CMSIS-NN</text><rect x="192" y="72" width="69" height="32" class="fa1 sa3" stroke-width="2"/><text x="269" y="94" class="sv-lbl fa3" text-anchor="start" font-size="16">99,1 ms</text><text x="16" y="140" class="sv-lbl f4" text-anchor="start" font-size="16">CIFAR-10, Cortex-M7 a 216 MHz (Lai et al.)</text></svg>
@@ -108,7 +108,7 @@
 
 <p>Esas 4,6 veces son contra funciones base de CMSIS-DSP, no contra código C común. La ganancia viene de dos cosas. Los núcleos convierten los pesos de 8 bits a 16 bits para usar una instrucción que hace dos multiplicaciones por vez. Y reordenan los datos para leerlos en orden.</p>
 
-<p>Se puede estimar qué tan eficiente es. A 216 MHz, 99,1 ms son 99,1 ms · 216 MHz ≈ 21,4 millones de ciclos. La red hace 24,7 millones de operaciones. Si una operación cuenta 2 por cada MAC, son 12,35 millones de MAC, así que:</p>
+<p>Se puede estimar qué tan eficiente es. A 216 MHz, 99,1 ms son 99,1 ms · 216 MHz ≈ 21,4 millones de ciclos. La red hace 24,7 millones de operaciones. Si una operación cuenta 2 por cada MAC, son 12,35 millones de <span class="ref" data-nota="mac">MAC</span>, así que:<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red.</span></p>
 
 <p class="formula">21,4 M ciclos / 12,35 M MAC ≈ 1,7 ciclos por MAC</p>
 
@@ -129,7 +129,7 @@
 
 <p>La alternativa al intérprete es generar el código de la red. Un compilador lee el modelo y escribe un programa. Ese programa llama a los núcleos en el orden exacto, con las direcciones de la arena ya decididas. Lin et al. lo hicieron en MCUNet con un motor llamado TinyEngine.</p>
 
-<p>Pasar de intérprete a generación de código evita guardar en RAM los metadatos del modelo. Baja la memoria 2,1 veces y gana 22 % de eficiencia contra CMSIS-NN (p. 5). El resumen da más: 3,4 veces menos memoria y entre 1,7 y 3,3 veces más rápido que TFLM y CMSIS-NN. El motivo del contexto es claro. Un Cortex-M7 típico tiene 320 KB de SRAM y 1 MB de flash. MobileNetV2 excede el límite de memoria pico unas 22 veces (p. 1).</p>
+<p>Pasar de intérprete a generación de código evita guardar en RAM los metadatos del modelo. Baja la memoria 2,1 veces y gana 22 % de eficiencia contra CMSIS-NN (p. 5). El resumen da más: 3,4 veces menos memoria y entre 1,7 y 3,3 veces más rápido que TFLM y CMSIS-NN. El motivo del contexto es claro. Un Cortex-M7 típico tiene 320 KB de <span class="ref" data-nota="sram">SRAM</span> y 1 MB de flash.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca.</span> MobileNetV2 excede el límite de memoria pico unas 22 veces (p. 1).</p>
 
 <div class="caja ojo">
   <h4>ojo</h4>
