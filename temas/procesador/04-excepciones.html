@@ -178,9 +178,9 @@
 
 <h2>Relación con el resto del micro</h2>
 
-<p>Este nivel completa lo que el <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a> cuenta desde el lado del sistema: acá se ve lo que el núcleo hace con la matriz y los niveles. El DMA se ve en el <a href="../datos/04-dma.html">Tomo 3, nivel 4</a> y el ADC por DMA, en el <a href="../mundo/03-adc.html">Tomo 2, nivel 3</a>.</p>
+<p>Este nivel completa lo que el <a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a> cuenta desde el lado del sistema: acá se ve lo que el núcleo hace con la matriz y los niveles. El DMA se ve en el <a href="../datos/04-dma.html">Tomo 3, nivel 4</a> y el ADC por DMA, en el <a href="../mundo/03b-adc-esp32.html">Tomo 2, nivel 3, componentes</a>.</p>
 
-<p>El manejador de fallas del MCPWM (<a href="../mundo/02-temporizadores-pwm.html">Tomo 2, nivel 2</a>) lleva las salidas a un estado seguro desde un pin, sin la CPU. Una interrupción necesita del orden de cientos de ciclos para llegar a su rutina (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>); el hardware no pasa por ese camino. El núcleo puede enterarse después con una interrupción, pero la protección ya actuó.</p>
+<p>El manejador de fallas del MCPWM (<a href="../mundo/02b-temporizadores-esp32.html">Tomo 2, nivel 2, componentes</a>) lleva las salidas a un estado seguro desde un pin, sin la CPU. Una interrupción necesita del orden de cientos de ciclos para llegar a su rutina (<a href="../micro/05-tiempo-real.html">Tomo 1, nivel 5</a>); el hardware no pasa por ese camino. El núcleo puede enterarse después con una interrupción, pero la protección ya actuó.</p>
 
 <h2>Los números que importan</h2>
 

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 4, componentes: el DAC del ESP32 y las alternativas sin DAC</title>
+<meta name="description" content="El DAC de 8 bits del ESP32 con su generador de coseno, el modulador sigma-delta del ESP32-S3 que reemplaza al DAC que no tiene, y el caso del RP2040, con las cifras de sus manuales.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 4, componentes: el DAC del ESP32 y las alternativas sin DAC">
+<meta property="og:description" content="El DAC de 8 bits del ESP32 con su generador de coseno, el modulador sigma-delta del ESP32-S3 que reemplaza al DAC que no tiene, y el caso del RP2040, con las cifras de sus manuales.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="4b">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="04b">nivel 04, componentes, 11 min de lectura</span>
+  <h1>El DAC del ESP32 y las alternativas sin DAC</h1>
+  <p class="bajada">Cómo aplican tres micros lo que explica <a href="04-dac.html">«De número a tensión»</a>: un DAC de cadena con un generador de coseno, un modulador sigma-delta de segundo orden, y un micro que solo tiene PWM. Las cifras vienen de sus manuales.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar esta página vas a poder…</h4>
+  <ul>
+    <li>Calcular el escalón del DAC del ESP32 y estimar el error que le mete el ruido de la alimentación.</li>
+    <li>Calcular la frecuencia que genera el generador de coseno y su error de resolución.</li>
+    <li>Explicar qué mejora un modulador sigma-delta de segundo orden frente a uno de primer orden.</li>
+    <li>Elegir cómo generar una tensión en un micro sin DAC.</li>
+  </ul>
+</div>
+
+<h2>Qué trae cada micro</h2>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>RP2040</th></tr></thead>
+  <tbody>
+    <tr><td><b>DAC</b></td><td>dos canales de 8 bits (GPIO25 y GPIO26)</td><td>no tiene</td><td>no tiene</td></tr>
+    <tr><td><b>Estructura</b></td><td>cadena de resistencias con un búfer</td><td>—</td><td>—</td></tr>
+    <tr><td><b>Referencia</b></td><td>la alimentación (VDD3P3_RTC)</td><td>—</td><td>—</td></tr>
+    <tr><td><b>Alternativas</b></td><td>—</td><td>8 canales de modulación sigma-delta de segundo orden, PWM, DAC externo</td><td>16 canales PWM, DAC externo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Los datasheets de <span class="ref" data-nota="espressif">Espressif</span> no dan la corriente de salida del DAC, su DNL o INL, ni su tiempo de asentamiento.<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> Lo que sigue se limita a lo que dicen los manuales.</p>
+
+<h2>El DAC del ESP32</h2>
+
+<p>Según el datasheet, cada canal es una cadena de resistencias con un <span class="ref" data-nota="bufer">búfer</span>, la estructura que describe el nivel 4 como monótona por construcción y limitada a 8 o 10 bits por tamaño.<span class="nota-margen" popover id="nota-bufer"><b>buffer</b>Amplificador seguidor: copia la tensión y la entrega con baja impedancia de salida.</span> Que sea de 8 bits calza justo con esa limitación.</p>
+
+<p>Usa la alimentación como referencia. El manual da la relación exacta:</p>
+
+<p class="formula"><var>V</var><sub>out</sub> = <var>V</var><sub>DD</sub> · <var>D</var> / 255</p>
+
+<p>El divisor es 255 y no 256: con el código máximo la salida llega justo a <var>V</var><sub>DD</sub>, la convención que menciona el nivel 4. Con <var>V</var><sub>DD</sub> = 3,3 V, un LSB vale 3,3 / 255 ≈ 12,9 mV.</p>
+
+<h3>La referencia es la alimentación: el ruido pasa a la salida</h3>
+
+<p>Como la referencia es <var>V</var><sub>DD</sub>, cualquier variación de la alimentación se multiplica por el código, igual que el código por la referencia en la medición <span class="ref" data-nota="ratiometrica">ratiométrica</span> del ADC.<span class="nota-margen" popover id="nota-ratiometrica"><b>medición ratiométrica</b>Medición cuyo resultado depende de la relación con la referencia, y no de su valor absoluto.</span> A mitad de escala, <var>D</var> / 255 ≈ ½, así que una variación de la alimentación aparece a la salida reducida a la mitad.</p>
+
+<p>Un ejemplo con un valor supuesto: si <var>V</var><sub>DD</sub> tiene 50 mV de ruido, a mitad de escala la salida recibe unos 25 mV, o sea 25 / 12,9 ≈ 2 LSB. Es más que el escalón: en un DAC con referencia de la alimentación, el <span class="ref" data-nota="desacople">desacople</span> de <var>V</var><sub>DD</sub> es parte de la exactitud.<span class="nota-margen" popover id="nota-desacople"><b>decoupling</b>Capacitores cerca del chip que dan carga rápida y filtran el ruido de la alimentación.</span></p>
+
+<h3>Quién le da el valor</h3>
+
+<p>El valor del DAC puede venir de tres fuentes, según el manual: el generador de coseno, un registro que escribe el programa, o el <span class="ref" data-nota="dma">DMA</span>.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span> La conversión se dispara por software o por la máquina de estados del <span class="ref" data-nota="adc">ADC</span>, y el coprocesador <span class="ref" data-nota="ulp">ULP</span> puede controlarlo por completo.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span><span class="nota-margen" popover id="nota-adc"><b>adc · analog-to-digital converter</b>Conversor analógico-digital: convierte una tensión en un número (nivel 3).</span> Con el DMA, el reloj y los datos del <span class="ref" data-nota="i2s">I2S</span> se conectan al DAC, y se reproducen muestras de 8 bits desde la RAM sin la CPU.<span class="nota-margen" popover id="nota-i2s"><b>i2s · Inter-IC Sound</b>Bus serie para audio digital, definido por Philips.</span></p>
+
+<h2>El generador de coseno</h2>
+
+<p>El ESP32 puede generar un tono sin que el programa escriba cada muestra. El manual da la frecuencia:</p>
+
+<p class="formula"><var>f</var> = <var>f</var><sub>reloj</sub> · <var>paso</var> / 65 536</p>
+
+<p>con <var>f</var><sub>reloj</sub> típicamente de 8 MHz. El 65 536 es 2<sup>16</sup>, lo que sugiere un acumulador de fase de 16 bits: en cada ciclo suma el <var>paso</var> y, cuando se desborda, completa una vuelta. La fase del acumulador entra en una tabla de coseno y el resultado va al DAC. (La estructura interna es una lectura nuestra de la fórmula; el manual solo da la fórmula y el diagrama de bloques.)</p>
+
+<figure class="diagrama" data-titulo="fig-4b.1">
+  <svg viewBox="0 0 640 160" role="img" aria-label="Generador de coseno: un reloj de 8 megahertz avanza un acumulador de 16 bits que suma un paso en cada ciclo; la fase del acumulador direcciona una tabla de coseno y su valor va al DAC de 8 bits">
+    <rect x="16" y="48" width="144" height="64" class="fb1 sb3" stroke-width="2"/><rect x="15" y="47" width="2" height="2" class="f0"/><rect x="159" y="47" width="2" height="2" class="f0"/><rect x="15" y="111" width="2" height="2" class="f0"/><rect x="159" y="111" width="2" height="2" class="f0"/><text x="88" y="70" class="sv-tit f6" text-anchor="middle">Reloj</text><text x="88" y="90" class="sv-lbl fb3" text-anchor="middle" font-size="16">8 MHz típico</text>
+    <rect x="208" y="48" width="144" height="64" class="fa1 sa3" stroke-width="2"/><rect x="207" y="47" width="2" height="2" class="f0"/><rect x="351" y="47" width="2" height="2" class="f0"/><rect x="207" y="111" width="2" height="2" class="f0"/><rect x="351" y="111" width="2" height="2" class="f0"/><text x="280" y="70" class="sv-tit f6" text-anchor="middle">Acumulador</text><text x="280" y="90" class="sv-lbl fa3" text-anchor="middle" font-size="16">suma el paso</text>
+    <rect x="400" y="48" width="112" height="64" class="f1 s3" stroke-width="2"/><rect x="399" y="47" width="2" height="2" class="f0"/><rect x="511" y="47" width="2" height="2" class="f0"/><rect x="399" y="111" width="2" height="2" class="f0"/><rect x="511" y="111" width="2" height="2" class="f0"/><text x="456" y="70" class="sv-tit f6" text-anchor="middle">Tabla</text><text x="456" y="90" class="sv-lbl f4" text-anchor="middle" font-size="16">de coseno</text>
+    <rect x="552" y="48" width="72" height="64" class="fc1 sc3" stroke-width="2"/><rect x="551" y="47" width="2" height="2" class="f0"/><rect x="623" y="47" width="2" height="2" class="f0"/><rect x="551" y="111" width="2" height="2" class="f0"/><rect x="623" y="111" width="2" height="2" class="f0"/><text x="588" y="70" class="sv-tit f6" text-anchor="middle">DAC</text><text x="588" y="90" class="sv-lbl fc3" text-anchor="middle" font-size="16">8 bits</text>
+    <line x1="160" y1="80" x2="198" y2="80" class="sb3" stroke-width="2"/><rect x="198" y="72" width="2" height="16" class="fb3"/><rect x="200" y="74" width="2" height="12" class="fb3"/><rect x="202" y="76" width="2" height="8" class="fb3"/><rect x="204" y="78" width="2" height="4" class="fb3"/><rect x="206" y="79" width="2" height="2" class="fb3"/>
+    <line x1="352" y1="80" x2="390" y2="80" class="sa3" stroke-width="2"/><rect x="390" y="72" width="2" height="16" class="fa3"/><rect x="392" y="74" width="2" height="12" class="fa3"/><rect x="394" y="76" width="2" height="8" class="fa3"/><rect x="396" y="78" width="2" height="4" class="fa3"/><rect x="398" y="79" width="2" height="2" class="fa3"/>
+    <line x1="512" y1="80" x2="542" y2="80" class="sa3" stroke-width="2"/><rect x="542" y="72" width="2" height="16" class="fa3"/><rect x="544" y="74" width="2" height="12" class="fa3"/><rect x="546" y="76" width="2" height="8" class="fa3"/><rect x="548" y="78" width="2" height="4" class="fa3"/><rect x="550" y="79" width="2" height="2" class="fa3"/>
+    <text x="280" y="144" class="sv-lbl fa3" text-anchor="middle" font-size="16">16 bits: se desborda al completar una vuelta</text>
+    <text x="456" y="28" class="sv-lbl f4" text-anchor="middle" font-size="16">fase → valor</text>
+  </svg>
+  <figcaption><b>fig 4b.1</b>El reloj hace avanzar el acumulador, que suma un paso por ciclo y da una vuelta completa al desbordarse. La fase direcciona una tabla de coseno y el resultado va al DAC. Un paso mayor da una vuelta más rápida, o sea una frecuencia mayor.</figcaption>
+</figure>
+
+<p>¿Qué resolución de frecuencia da? El paso mínimo es 1:</p>
+
+<p class="formula"><var>Δf</var> = 8 MHz / 65 536 ≈ 122 Hz</p>
+
+<p>Las frecuencias posibles son múltiplos de 122 Hz. Por ejemplo, para generar 1 kHz hace falta un paso de 1000 · 65 536 / 8 MHz = 8,19. Hay que redondear a 8, y la frecuencia real es 8 · 122,07 ≈ 976,6 Hz: un error de −2,3 %. Para tonos graves el generador de coseno es grueso. Para 10 kHz el paso es 81,92: se redondea a 82 y la frecuencia real es 10 010 Hz, un error de +0,1 %.</p>
+
+<p>Tiene además tres ajustes: la amplitud se puede dividir por 1, 2, 4 u 8; se puede agregar un offset de continua (el resultado satura si se pasa); y se puede desplazar la fase 0, 90, 180 o 270 grados.</p>
+
+<h2>Sin DAC en el ESP32-S3</h2>
+
+<p>El ESP32-S3 no tiene <span class="ref" data-nota="dac">DAC</span> en su datasheet ni en su manual.<span class="nota-margen" popover id="nota-dac"><b>dac · digital-to-analog converter</b>Conversor digital-analógico: convierte un número en una tensión (nivel 4).</span> Para generar una tensión analógica hay tres caminos:</p>
+
+<ul>
+  <li><strong><span class="ref" data-nota="pwm">PWM</span> con un filtro RC.<span class="nota-margen" popover id="nota-pwm"><b>pwm · pulse-width modulation</b>Pulsos de ancho variable a frecuencia fija: el valor medio sigue el ancho.</span></strong> El del <a href="02-temporizadores-pwm.html">nivel 2</a>. Es lo más simple, con el costo de asentamiento que calcula el nivel 4.</li>
+  <li><strong>El modulador sigma-delta.</strong> Es lo que sigue.</li>
+  <li><strong>Un DAC externo,</strong> por I2S para audio (<a href="../datos/03-i2s.html">Tomo 3, nivel 3</a>) o por <span class="ref" data-nota="i2c">I2C</span> o <span class="ref" data-nota="spi">SPI</span> para tensiones de precisión (<a href="../datos/02-spi-i2c.html">Tomo 3, nivel 2</a>).<span class="nota-margen" popover id="nota-i2c"><b>i2c · Inter-Integrated Circuit</b>Bus de dos hilos para chips cercanos, definido por Philips.</span><span class="nota-margen" popover id="nota-spi"><b>spi · Serial Peripheral Interface</b>Bus serie con reloj y selección de chip, de Motorola.</span></li>
+</ul>
+
+<h3>El modulador sigma-delta del S3</h3>
+
+<p>Ocho de las salidas de periféricos del S3 tienen un modulador <span class="ref" data-nota="sigma-delta">sigma-delta</span> de 1 bit y segundo orden, que se puede llevar a cualquier pin por la matriz de <span class="ref" data-nota="gpio">GPIO</span>.<span class="nota-margen" popover id="nota-sigma-delta"><b>sigma-delta</b>Modulador que genera un tren de pulsos de 1 bit cuya densidad representa el valor (nivel 4).</span><span class="nota-margen" popover id="nota-gpio"><b>gpio · general-purpose input/output</b>Pin que el programa puede usar como entrada o salida digital.</span> Su <span class="ref" data-nota="funcion-transferencia">función de transferencia</span>, según el manual, es<span class="nota-margen" popover id="nota-funcion-transferencia"><b>transfer function</b>Relación entre la salida y la entrada de un sistema, según la frecuencia.</span></p>
+
+<p class="formula"><var>H</var>(<var>z</var>) = <var>X</var>(<var>z</var>) · <var>z</var><sup>−1</sup> + <var>E</var>(<var>z</var>) · (1 − <var>z</var><sup>−1</sup>)<sup>2</sup></p>
+
+<p>La señal <var>X</var> pasa con un retardo de un ciclo. El error de cuantización <var>E</var> pasa multiplicado por (1 − <var>z</var><sup>−1</sup>)<sup>2</sup>. Esa es la forma en que el modulador mueve el ruido a frecuencias altas, y se calcula directo. Para frecuencias mucho menores que la tasa de pulsos <var>f</var><sub>p</sub>, el factor tiene un módulo de</p>
+
+<p class="formula">| 1 − <var>z</var><sup>−1</sup> | = 2 · sen(π <var>f</var> / <var>f</var><sub>p</sub>) ≈ 2π <var>f</var> / <var>f</var><sub>p</sub></p>
+
+<p>Si miramos una frecuencia de la señal cien veces menor que la tasa de pulsos, <var>f</var> = <var>f</var><sub>p</sub> / 100, el módulo es 2π / 100 ≈ 0,063. En un modulador de primer orden, cuyo factor es (1 − <var>z</var><sup>−1</sup>), el ruido baja por ese factor: 20 log<sub>10</sub> 0,063 ≈ −24 dB. En uno de segundo orden se aplica al cuadrado, 0,063² ≈ 0,0039, o sea −48 dB. Cada orden agrega una potencia más del factor, y por eso un segundo orden filtra bastante mejor la banda de la señal.</p>
+
+<p>La entrada es un número con signo de 8 bits, de −128 a 127, y la fracción de unos es (entrada + 128) / 256. Con −128 la salida está casi siempre en cero; con 0, cerca de la mitad; con 127, casi siempre en uno. El manual define esa fracción sobre un período estadístico de varios pulsos, por ejemplo 256. Ahí está el mismo compromiso del PWM: para distinguir 256 valores hay que promediar del orden de 256 pulsos, o sea resolución a cambio de tiempo. El reloj del modulador sale del reloj <span class="ref" data-nota="apb">APB</span> dividido por un valor de 1 a 256, y un ciclo de ese reloj es un pulso.<span class="nota-margen" popover id="nota-apb"><b>apb · Advanced Peripheral Bus</b>Bus de periféricos de la familia AMBA de Arm; da el nombre al reloj de periféricos.</span></p>
+
+<h2>El RP2040 tampoco tiene DAC</h2>
+
+<p>El RP2040 no tiene un DAC propio; tiene 16 canales PWM. Su datasheet, al describir lo que puede hacer el bloque <span class="ref" data-nota="pio">PIO</span>, menciona la salida de video <span class="ref" data-nota="vga">VGA</span> «mediante un DAC de resistencias»: un DAC armado afuera con resistencias, que es la forma de generar una tensión analógica de varios bits cuando solo se dispone de pines digitales.<span class="nota-margen" popover id="nota-pio"><b>pio · programmable I/O</b>Bloque del RP2040 con máquinas de estado propias para generar y leer señales.</span><span class="nota-margen" popover id="nota-vga"><b>vga · Video Graphics Array</b>Estándar de video analógico de IBM.</span> Es el mismo principio de la cadena y de la R-2R, con los pines del micro en el lugar de las llaves.</p>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En un ESP32-S3, el rizado de un PWM con filtro RC te obliga a un filtro muy lento. ¿Qué probás primero, sin agregar chips?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El S3 no tiene DAC: ni en su datasheet ni en su manual figura.">El DAC interno, en GPIO25.</button>
+    <button type="button" data-por-que="Más resolución del PWM baja el escalón pero no el rizado, que depende de la frecuencia y del filtro. Y exige un reloj más rápido por bit.">Un PWM con más bits de resolución.</button>
+    <button type="button" data-por-que="El modulador reparte los pulsos y empuja el ruido hacia frecuencias altas: el mismo filtro RC lo saca mejor, o se puede usar un filtro más rápido.">Un canal sigma-delta.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>El DAC del ESP32 es una cadena de 8 bits con búfer y referencia en la alimentación: 3,3 / 255 ≈ 12,9 mV por escalón, y el ruido de <var>V</var><sub>DD</sub> pasa a la salida.</li>
+    <li>El generador de coseno da frecuencias de a pasos de 122 Hz; a 1 kHz el redondeo mete un error de −2,3 %.</li>
+    <li>El ESP32-S3 no tiene DAC: PWM con RC, el modulador sigma-delta de segundo orden o un DAC externo.</li>
+    <li>El segundo orden baja el ruido de banda 48 dB a <var>f</var><sub>p</sub>/100, el doble que el primer orden.</li>
+    <li>El RP2040 solo tiene PWM; con pines y resistencias se arma un DAC externo.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>, sección 4.9.2. <a href="https://documentation.espressif.com/esp32_datasheet_en.pdf">documentation.espressif.com/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual v5.8</em>, capítulo 31.4 (DAC y generador de coseno). <a href="https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf">documentation.espressif.com/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, sección 6.5.4 (salida modulada sigma-delta). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2040 Datasheet</em>. <a href="https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf">datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf</a></li>
+  </ol>
+  <p class="nota">El ruido de 50 mV en la alimentación es un supuesto para ilustrar el cálculo. La estructura de acumulador de fase del generador de coseno y los −24 y −48 dB (que salen de aplicar la función de transferencia del manual) son lecturas propias. No figuran en las fuentes que revisé la corriente de salida, el DNL, el INL ni el tiempo de asentamiento del DAC del ESP32, ni el valor del reloj APB del S3. La comparación con el primer orden usa el factor estándar (1 − <var>z</var><sup>−1</sup>) de la teoría, que el manual del S3 no trae.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, micro-esp, tomo-02, nivel-04, componentes</footer>
+</body>
+</html>

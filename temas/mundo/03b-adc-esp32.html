@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 3, componentes: el ADC del ESP32, del ESP32-S3 y del RP2040</title>
+<meta name="description" content="Cómo aplican el ESP32, el ESP32-S3 y el RP2040 lo que explica la página del ADC: referencia, atenuación, calibración, controladores, el choque de ADC2 con la radio y el sensor de temperatura, con las cifras de sus hojas de datos.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 3, componentes: el ADC del ESP32, del ESP32-S3 y del RP2040">
+<meta property="og:description" content="Cómo aplican el ESP32, el ESP32-S3 y el RP2040 lo que explica la página del ADC: referencia, atenuación, calibración, controladores, el choque de ADC2 con la radio y el sensor de temperatura, con las cifras de sus hojas de datos.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="3b">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="03b">nivel 03, componentes, 21 min de lectura</span>
+  <h1>El ADC del ESP32, del ESP32-S3 y del RP2040</h1>
+  <p class="bajada">Acá se ve cómo tres micros aplican lo que explica <a href="03-adc.html">«Del voltaje al número»</a>, y dónde se apartan del ideal. Las cifras vienen de sus hojas de datos y manuales.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar esta página vas a poder…</h4>
+  <ul>
+    <li>Calcular cuánto vale un LSB en volts para cada atenuación del ESP32-S3 y cuántos LSB de error deja el datasheet.</li>
+    <li>Explicar por qué la referencia interna obliga a calibrar cada micro.</li>
+    <li>Elegir entre controlador RTC y controlador digital según lo que haya que medir.</li>
+    <li>Explicar por qué ADC2 falla con el Wi-Fi activo, y qué hace el árbitro.</li>
+    <li>Leer un ENOB de datasheet y reconocer cuánto de la pérdida es ruido y cuánto es distorsión.</li>
+    <li>Explicar cómo un sensor de temperatura integrado saca una tensión de dos transistores, y por qué mide el silicio y no el ambiente.</li>
+  </ul>
+</div>
+
+<h2>Qué trae cada micro</h2>
+
+<p>Los tres usan un <span class="ref" data-nota="sar">SAR</span> de hasta 12 bits, la arquitectura que desarrolla la página anterior.<span class="nota-margen" popover id="nota-sar"><b>sar · successive approximation register</b>Convertidor por aproximaciones sucesivas: un bit por paso, con un solo comparador (nivel 3).</span> Cambian la cantidad de convertidores, la velocidad y, sobre todo, qué tan lejos queda cada uno del ideal.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>RP2040</th></tr></thead>
+  <tbody>
+    <tr><td><b>Convertidores</b></td><td>dos SAR; ADC1 con 8 canales y ADC2 con 10 (18 en total)</td><td>dos SAR; ADC1 con 10 canales y ADC2 con 10 (20 en total)</td><td>un SAR; 4 canales (GPIO26 a 29) más un sensor de temperatura interno</td></tr>
+    <tr><td><b>Resolución</b></td><td>9, 10, 11 o 12 bits, configurable</td><td>12 bits</td><td>12 bits</td></tr>
+    <tr><td><b>Velocidad máxima</b></td><td>200 kmuestras/s (controlador RTC); 2 Mmuestras/s (digital)</td><td>100 kmuestras/s</td><td>500 kmuestras/s</td></tr>
+    <tr><td><b>DNL / INL</b></td><td>±7 / ±12 LSB</td><td>±4 / ±8 LSB</td><td>DNL menor a 1 LSB salvo en 4 códigos; INL en diente de sierra (sin cifra en el texto)</td></tr>
+    <tr><td><b>ENOB</b></td><td>no figura</td><td>no figura</td><td>8,7 (de 8,6 a 8,8)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Las cifras de <span class="ref" data-nota="espressif">Espressif</span> se midieron con 100 nF en el pin, a 25 °C, con una señal continua y el Wi-Fi apagado (en el ESP32, también el Bluetooth).<span class="nota-margen" popover id="nota-espressif"><b>espressif · Espressif Systems</b>Fabricante de los micros ESP32 y ESP32-S3.</span> El <span class="ref" data-nota="enob">ENOB</span> del <span class="ref" data-nota="rp2040">RP2040</span> se midió a 250 kmuestras/s, con una senoide de 997 Hz y una referencia de bajo ruido en la placa.<span class="nota-margen" popover id="nota-rp2040"><b>rp2040 · Raspberry Pi</b>Micro de Raspberry Pi Ltd con dos núcleos Arm Cortex-M0+.</span><span class="nota-margen" popover id="nota-enob"><b>enob · effective number of bits</b>Bits efectivos: cuántos bits de un ADC valen de verdad, calculados con la SINAD (nivel 3).</span> Con la radio encendida o una fuente más ruidosa, los números empeoran.</p>
+
+<h2>La referencia y la atenuación</h2>
+
+<p>De la página anterior: el código es una fracción, <var>código</var> = (<var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub>) · 2<sup><var>N</var></sup>. En el ESP32-S3, <var>V</var><sub>ref</sub> es interna y vale <strong>1100 mV por diseño</strong>. Para medir tensiones mayores, la entrada pasa antes por un atenuador programable que la reduce por un factor <var>k</var>, y el manual da la relación:</p>
+
+<p class="formula"><var>V</var><sub>dato</sub> = (<var>V</var><sub>ref</sub> / <var>k</var>) · <var>dato</var> / 4095</p>
+
+<p>Esto dice algo útil: al atenuar, el <span class="ref" data-nota="fondo-escala">fondo de escala</span> sube a <var>V</var><sub>ref</sub> / <var>k</var>, pero el escalón de 1 <span class="ref" data-nota="lsb">LSB</span> crece en la misma proporción.<span class="nota-margen" popover id="nota-fondo-escala"><b>full scale</b>La mayor tensión que el convertidor llega a medir.</span><span class="nota-margen" popover id="nota-lsb"><b>lsb · least significant bit</b>Valor del bit menos significativo: el escalón mínimo del convertidor.</span> Medir más rango cuesta resolución.</p>
+
+<p>Calculemos cuánto vale un LSB para cada atenuación, y cuántos LSB de error representa el error total calibrado del datasheet:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Atenuación</th><th>k</th><th>fondo de escala (V<sub>ref</sub>/k)</th><th>1 LSB</th><th>rango útil (datasheet)</th><th>error total calibrado</th><th>error en LSB</th></tr></thead>
+  <tbody>
+    <tr><td>0 dB</td><td>≈ 100 %</td><td>1100 mV</td><td>0,27 mV</td><td>0 a 850 mV</td><td>±5 mV</td><td>±19</td></tr>
+    <tr><td>2,5 dB</td><td>≈ 75 %</td><td>1467 mV</td><td>0,36 mV</td><td>0 a 1100 mV</td><td>±6 mV</td><td>±17</td></tr>
+    <tr><td>6 dB</td><td>≈ 50 %</td><td>2200 mV</td><td>0,54 mV</td><td>0 a 1600 mV</td><td>±10 mV</td><td>±19</td></tr>
+    <tr><td>12 dB</td><td>≈ 25 %</td><td>4400 mV</td><td>1,07 mV</td><td>0 a 2900 mV</td><td>±50 mV</td><td>±47</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>La cuenta confirma lo que dice la sección de errores de la página anterior. Un error de ±19 LSB deja un intervalo de incertidumbre de unos 37 LSB, y 4096 / 37 ≈ 110 niveles distinguibles: es lo que daría un ADC de unos 7 bits. Los 12 bits son resolución; la exactitud absoluta es la de un ADC mucho más modesto. Con 12 dB el rango llega a 2900 mV, pero el error sube a ±47 LSB.</p>
+
+<p>El rango útil queda por debajo del fondo de escala nominal: 850 mV contra 1100 mV, y 2900 mV contra 4400 mV. Es una lectura de las dos columnas; el datasheet no explica la causa.</p>
+
+<p>En el ESP32 el datasheet da otra tabla de rangos y errores calibrados. Los fondos de escala nominales por atenuación no figuran en las fuentes que revisé.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Atenuación (datasheet del ESP32)</th><th>rango útil</th><th>error total calibrado</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>100 a 950 mV</td><td>±23 mV</td></tr>
+    <tr><td>1</td><td>100 a 1250 mV</td><td>±30 mV</td></tr>
+    <tr><td>2</td><td>150 a 1750 mV</td><td>±40 mV</td></tr>
+    <tr><td>3</td><td>150 a 2450 mV</td><td>±60 mV</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Dos diferencias saltan a la vista. El ESP32 no mide bien cerca de 0 V: el rango útil empieza en 100 o 150 mV, que es la zona muerta de la curva de errores de la página anterior. Y su error calibrado es de 4 a 5 veces el del S3. Además, el datasheet avisa que con atenuación 3 y una lectura por encima de 3000 cuentas (unos 2450 mV) la exactitud empeora más de lo que indica la tabla.</p>
+
+<p>Para medir una señal de 3,3 V ninguno de los dos alcanza: hace falta un divisor externo, con su capacitor, por lo visto en la sección de la fuente de la página anterior.</p>
+
+<h2>Calibración: por qué cada micro es distinto</h2>
+
+<p>Si el código es <var>V</var><sub>in</sub> / <var>V</var><sub>ref</sub> y <var>V</var><sub>ref</sub> cambia de un micro a otro, entonces cambia la ganancia de todo el convertidor. Es lo que pasa: el datasheet del ESP32 dice que, por defecto, <strong>las lecturas difieren ±6 % entre micros</strong>. A 1 V de entrada, eso son ±60 mV. Ninguna especificación de linealidad arregla algo así si no se mide el micro.</p>
+
+<p>Por eso los parámetros de calibración se graban en <span class="ref" data-nota="efuse">eFuses</span>.<span class="nota-margen" popover id="nota-efuse"><b>efuse · electronic fuse</b>Memoria que se programa una sola vez; guarda datos de fábrica, como los de calibración.</span> El ESP32 usa un esquema de ajuste lineal basado en esos datos; si los bits no están grabados, el driver usa un valor de referencia por defecto que da el usuario. El S3 usa un ajuste de curva, con parámetros que Espressif dice grabar durante la fabricación del módulo. Para los dos, la documentación de <span class="ref" data-nota="espidf">ESP-IDF</span> dice que el objetivo es minimizar el efecto de las distintas tensiones de referencia.<span class="nota-margen" popover id="nota-espidf"><b>esp-idf · Espressif IoT Development Framework</b>Entorno de desarrollo oficial de Espressif para sus micros.</span> No explica el algoritmo interno, y acá no lo voy a inventar.</p>
+
+<p>Lo que sí se ve en las tablas: tras calibrar, el error cae a ±5 mV en el S3 con 0 dB y a ±23 mV en el ESP32. Según la página anterior, una recta corrige offset y ganancia, y la <span class="ref" data-nota="inl">INL</span> necesita una curva.<span class="nota-margen" popover id="nota-inl"><b>inl · integral nonlinearity</b>No linealidad integral: cuánto se aparta la curva real de una recta (nivel 3).</span> Que el S3 calibre con una curva sugiere que corrige parte de la INL, pero esa es una inferencia y no una afirmación de las fuentes.</p>
+
+<h2>Cómo se dispara una conversión</h2>
+
+<p>La página anterior explicó cómo un SAR convierte en N pasos. Falta ver quién arranca esa conversión, y eso depende de para qué se use el ADC. Los micros de Espressif tienen varios controladores con usos distintos para el mismo par de convertidores.</p>
+
+<figure class="diagrama" data-titulo="fig-3b.1">
+  <svg viewBox="0 0 640 272" role="img" aria-label="ESP32-S3: cuatro controladores y dos convertidores. El controlador digital de ADC1 hace barridos con DMA y maneja SAR ADC1. El controlador RTC de ADC1 maneja SAR ADC1. El controlador RTC de ADC2 y el de la radio pasan por un árbitro hacia SAR ADC2.">
+    <text x="16" y="12" class="sv-lbl f4" text-anchor="start" font-size="16">controladores</text><text x="448" y="12" class="sv-lbl f4" text-anchor="start" font-size="16">convertidores</text>
+    <rect x="16" y="24" width="184" height="48" class="fa1 sa3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="199" y="23" width="2" height="2" class="f0"/><rect x="15" y="71" width="2" height="2" class="f0"/><rect x="199" y="71" width="2" height="2" class="f0"/><text x="108" y="44" class="sv-tit f6" text-anchor="middle">DIG ADC1</text><text x="108" y="62" class="sv-lbl fa3" text-anchor="middle" font-size="16">barrido y DMA</text>
+    <rect x="16" y="88" width="184" height="48" class="fb1 sb3" stroke-width="2"/><rect x="15" y="87" width="2" height="2" class="f0"/><rect x="199" y="87" width="2" height="2" class="f0"/><rect x="15" y="135" width="2" height="2" class="f0"/><rect x="199" y="135" width="2" height="2" class="f0"/><text x="108" y="108" class="sv-tit f6" text-anchor="middle">RTC ADC1</text><text x="108" y="126" class="sv-lbl fb3" text-anchor="middle" font-size="16">conversión suelta</text>
+    <rect x="16" y="152" width="184" height="48" class="fb1 sb3" stroke-width="2"/><rect x="15" y="151" width="2" height="2" class="f0"/><rect x="199" y="151" width="2" height="2" class="f0"/><rect x="15" y="199" width="2" height="2" class="f0"/><rect x="199" y="199" width="2" height="2" class="f0"/><text x="108" y="172" class="sv-tit f6" text-anchor="middle">RTC ADC2</text><text x="108" y="190" class="sv-lbl fb3" text-anchor="middle" font-size="16">conversión suelta</text>
+    <rect x="16" y="216" width="184" height="48" class="fd1 sd3" stroke-width="2"/><rect x="15" y="215" width="2" height="2" class="f0"/><rect x="199" y="215" width="2" height="2" class="f0"/><rect x="15" y="263" width="2" height="2" class="f0"/><rect x="199" y="263" width="2" height="2" class="f0"/><text x="108" y="236" class="sv-tit f6" text-anchor="middle">PWDET</text><text x="108" y="254" class="sv-lbl fd3" text-anchor="middle" font-size="16">solo la radio</text>
+    <rect x="264" y="164" width="104" height="76" class="fc1 sc3" stroke-width="2"/><rect x="263" y="163" width="2" height="2" class="f0"/><rect x="367" y="163" width="2" height="2" class="f0"/><rect x="263" y="239" width="2" height="2" class="f0"/><rect x="367" y="239" width="2" height="2" class="f0"/><text x="316" y="184" class="sv-tit f6" text-anchor="middle">Árbitro</text>
+    <text x="316" y="206" class="sv-lbl fc3" text-anchor="middle" font-size="16">elige quién</text><text x="316" y="224" class="sv-lbl fc3" text-anchor="middle" font-size="16">usa ADC2</text>
+    <rect x="448" y="40" width="176" height="80" class="f1 s3" stroke-width="2"/><rect x="447" y="39" width="2" height="2" class="f0"/><rect x="623" y="39" width="2" height="2" class="f0"/><rect x="447" y="119" width="2" height="2" class="f0"/><rect x="623" y="119" width="2" height="2" class="f0"/><text x="536" y="60" class="sv-tit f6" text-anchor="middle">SAR ADC1</text><text x="536" y="78" class="sv-lbl f4" text-anchor="middle" font-size="16">12 bits, 10 canales</text>
+    <rect x="448" y="168" width="176" height="80" class="f1 s3" stroke-width="2"/><rect x="447" y="167" width="2" height="2" class="f0"/><rect x="623" y="167" width="2" height="2" class="f0"/><rect x="447" y="247" width="2" height="2" class="f0"/><rect x="623" y="247" width="2" height="2" class="f0"/><text x="536" y="188" class="sv-tit f6" text-anchor="middle">SAR ADC2</text><text x="536" y="206" class="sv-lbl f4" text-anchor="middle" font-size="16">12 bits, 10 canales</text>
+    <polyline points="200,48 424,48 424,64 438,64" class="fn sa3" stroke-width="2"/><rect x="438" y="56" width="2" height="16" class="fa3"/><rect x="440" y="58" width="2" height="12" class="fa3"/><rect x="442" y="60" width="2" height="8" class="fa3"/><rect x="444" y="62" width="2" height="4" class="fa3"/><rect x="446" y="63" width="2" height="2" class="fa3"/>
+    <polyline points="200,112 424,112 424,96 438,96" class="fn sb3" stroke-width="2"/><rect x="438" y="88" width="2" height="16" class="fb3"/><rect x="440" y="90" width="2" height="12" class="fb3"/><rect x="442" y="92" width="2" height="8" class="fb3"/><rect x="444" y="94" width="2" height="4" class="fb3"/><rect x="446" y="95" width="2" height="2" class="fb3"/>
+    <polyline points="200,176 232,176 232,188 254,188" class="fn sb3" stroke-width="2"/><rect x="254" y="180" width="2" height="16" class="fb3"/><rect x="256" y="182" width="2" height="12" class="fb3"/><rect x="258" y="184" width="2" height="8" class="fb3"/><rect x="260" y="186" width="2" height="4" class="fb3"/><rect x="262" y="187" width="2" height="2" class="fb3"/>
+    <polyline points="200,240 232,240 232,216 254,216" class="fn sd3" stroke-width="2"/><rect x="254" y="208" width="2" height="16" class="fd3"/><rect x="256" y="210" width="2" height="12" class="fd3"/><rect x="258" y="212" width="2" height="8" class="fd3"/><rect x="260" y="214" width="2" height="4" class="fd3"/><rect x="262" y="215" width="2" height="2" class="fd3"/>
+    <line x1="368" y1="208" x2="438" y2="208" class="sc3" stroke-width="2"/><rect x="438" y="200" width="2" height="16" class="fc3"/><rect x="440" y="202" width="2" height="12" class="fc3"/><rect x="442" y="204" width="2" height="8" class="fc3"/><rect x="444" y="206" width="2" height="4" class="fc3"/><rect x="446" y="207" width="2" height="2" class="fc3"/>
+  </svg>
+  <figcaption><b>fig 3b.1</b>ESP32-S3: cuatro controladores y dos convertidores. Solo el controlador digital (naranja) hace barridos con DMA, y solo trabaja con ADC1. ADC2 lo comparten, a través de un árbitro, el controlador RTC y el de la radio.</figcaption>
+</figure>
+
+<ul>
+  <li><strong>Controladores <span class="ref" data-nota="rtc">RTC</span>:</strong> conversiones sueltas, a pedido, con consumo mínimo.<span class="nota-margen" popover id="nota-rtc"><b>rtc · real-time clock</b>Dominio de bajo consumo que sigue activo con el micro dormido.</span> Funcionan incluso con el micro en sueño profundo y los puede manejar el coprocesador <span class="ref" data-nota="ulp">ULP</span>.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span></li>
+  <li><strong>Controlador digital</strong> (ESP32: dos, y solo uno con DMA; S3: uno, solo para ADC1): un temporizador marca el ritmo y el hardware recorre una <strong>tabla de patrones</strong>, que dice qué canal y con qué atenuación en cada paso. Las muestras van por <span class="ref" data-nota="dma">DMA</span> a memoria y la CPU se entera al terminar un barrido.<span class="nota-margen" popover id="nota-dma"><b>dma · direct memory access</b>Bloque que mueve datos entre memoria y periféricos sin pasar por la CPU.</span> En el S3 suma dos filtros de coeficiente configurable y dos monitores de umbral: se produce una interrupción solo si la señal pasa por encima o por debajo de un nivel prefijado.</li>
+  <li><strong>Controlador de potencia (<span class="ref" data-nota="pwdet">PWDET</span>):</strong> es de uso interno de la radio, para medir su potencia de transmisión.<span class="nota-margen" popover id="nota-pwdet"><b>pwdet · power detect</b>Circuito de la radio que mide su propia potencia de transmisión.</span></li>
+</ul>
+
+<p>El ESP32 permite además que sus dos SAR conviertan al mismo tiempo (muestreo simultáneo), lo que sirve para medir dos señales en el mismo instante.</p>
+
+<h2>ADC2 y la radio</h2>
+
+<p>El controlador PWDET de la radio usa ADC2. Si el Wi-Fi lo está usando, el manual del ESP32 dice que no se puede medir ninguna señal de los pines con ADC2 hasta que el Wi-Fi lo libere. El datasheet del S3 repite la advertencia: las funciones analógicas de ADC2 no se pueden usar con el Wi-Fi a la vez.</p>
+
+<figure class="diagrama" data-titulo="fig-3b.2">
+  <svg viewBox="0 0 640 176" role="img" aria-label="El núcleo de ADC2 lo comparten la radio y la CPU a través de un árbitro; si el controlador más prioritario necesita convertir, corta la conversión del otro">
+    <rect x="16" y="24" width="176" height="48" class="fa1 sa3" stroke-width="2"/><rect x="15" y="23" width="2" height="2" class="f0"/><rect x="191" y="23" width="2" height="2" class="f0"/><rect x="15" y="71" width="2" height="2" class="f0"/><rect x="191" y="71" width="2" height="2" class="f0"/><text x="104" y="45" class="sv-tit f6" text-anchor="middle">Radio Wi-Fi</text><text x="104" y="63" class="sv-lbl fa3" text-anchor="middle">detector de potencia</text><rect x="16" y="104" width="176" height="48" class="fb1 sb3" stroke-width="2"/><rect x="15" y="103" width="2" height="2" class="f0"/><rect x="191" y="103" width="2" height="2" class="f0"/><rect x="15" y="151" width="2" height="2" class="f0"/><rect x="191" y="151" width="2" height="2" class="f0"/><text x="104" y="125" class="sv-tit f6" text-anchor="middle">CPU o controlador</text><text x="104" y="143" class="sv-lbl fb3" text-anchor="middle">lectura de un pin</text><rect x="256" y="56" width="128" height="64" class="f1 sc3" stroke-width="2"/><rect x="255" y="55" width="2" height="2" class="f0"/><rect x="383" y="55" width="2" height="2" class="f0"/><rect x="255" y="119" width="2" height="2" class="f0"/><rect x="383" y="119" width="2" height="2" class="f0"/><text x="320" y="85" class="sv-tit f6" text-anchor="middle">Árbitro</text><text x="320" y="103" class="sv-lbl fc3" text-anchor="middle">elige quién usa</text><rect x="448" y="56" width="176" height="64" class="f0 s4" stroke-width="2"/><rect x="447" y="55" width="2" height="2" class="f0"/><rect x="623" y="55" width="2" height="2" class="f0"/><rect x="447" y="119" width="2" height="2" class="f0"/><rect x="623" y="119" width="2" height="2" class="f0"/><text x="536" y="85" class="sv-tit f6" text-anchor="middle">ADC2</text><text x="536" y="103" class="sv-lbl f4" text-anchor="middle">un solo núcleo</text><polyline points="192,48 224,48 224,72 246,72" class="fn sa3" stroke-width="2"/><rect x="246" y="64" width="2" height="16" class="fa3"/><rect x="248" y="66" width="2" height="12" class="fa3"/><rect x="250" y="68" width="2" height="8" class="fa3"/><rect x="252" y="70" width="2" height="4" class="fa3"/><rect x="254" y="71" width="2" height="2" class="fa3"/><polyline points="192,128 224,128 224,104 246,104" class="fn sb3" stroke-width="2"/><rect x="246" y="96" width="2" height="16" class="fb3"/><rect x="248" y="98" width="2" height="12" class="fb3"/><rect x="250" y="100" width="2" height="8" class="fb3"/><rect x="252" y="102" width="2" height="4" class="fb3"/><rect x="254" y="103" width="2" height="2" class="fb3"/><line x1="384" y1="88" x2="438" y2="88" class="sc3" stroke-width="2"/><rect x="438" y="80" width="2" height="16" class="fc3"/><rect x="440" y="82" width="2" height="12" class="fc3"/><rect x="442" y="84" width="2" height="8" class="fc3"/><rect x="444" y="86" width="2" height="4" class="fc3"/><rect x="446" y="87" width="2" height="2" class="fc3"/><text x="320" y="170" class="sv-lbl fd3" text-anchor="middle" font-size="16">el controlador más prioritario corta la conversión del otro</text>
+  </svg>
+  <figcaption><b>fig 3b.2</b>ADC2 no es solo tuyo: el circuito que mide la potencia de transmisión de la radio usa el mismo convertidor, y un árbitro de hardware decide quién convierte. Con el Wi-Fi activo, una lectura de ADC2 puede fallar o devolver basura.</figcaption>
+</figure>
+
+<p>El manual del S3 da el mecanismo. El árbitro puede trabajar por turnos o con prioridad fija configurable, y con prioridad el controlador más prioritario <strong>puede cortar una conversión en curso</strong> del otro y empezar la suya. Una lectura de ADC2 se pierde o da basura no por un defecto del convertidor, sino porque otro controlador lo necesitó en ese momento.</p>
+
+<p>El S3 tiene además un problema propio. Según su manual, el controlador digital de ADC2 no funciona bien (hay una <span class="ref" data-nota="errata">errata</span>), así que ADC2 solo sirve para lecturas sueltas.<span class="nota-margen" popover id="nota-errata"><b>errata</b>Lista de fallos conocidos de un micro, publicada por el fabricante.</span></p>
+
+<div class="caja clave">
+  <h4>regla práctica</h4>
+  <p>Con el Wi-Fi activo, todo lo analógico importante va a ADC1.</p>
+</div>
+
+<h2>El sensor de temperatura: una tensión más que lee el ADC</h2>
+
+<p>El ESP32-S3 trae otro sensor que llega al mismo convertidor: uno de temperatura. No mide el ambiente. Según su datasheet, genera una tensión que varía con la temperatura, que el ADC convierte a un valor digital, y está pensado sobre todo para detectar los cambios de temperatura dentro del micro. El valor depende de la frecuencia del reloj y de la carga de las E/S, y en general la temperatura interna es mayor que la del ambiente.</p>
+
+<h3>Cómo sale una tensión que depende de la temperatura</h3>
+
+<p>El principio es el de un transistor bipolar. Su tensión base-emisor es <var>V</var><sub>BE</sub> = (<var>k</var><var>T</var> / <var>q</var>) · ln(<var>I</var><sub>C</sub> / <var>I</var><sub>S</sub>), donde <var>I</var><sub>S</sub>, la corriente de saturación, cambia mucho con la temperatura y de un micro a otro. Por sí sola, <var>V</var><sub>BE</sub> es poco útil como termómetro.</p>
+
+<p>La salida es usar dos transistores con la misma corriente, uno de ellos formado por <var>N</var> transistores iguales en paralelo. La diferencia entre sus tensiones cancela <var>I</var><sub>S</sub>:</p>
+
+<p class="formula">Δ<var>V</var><sub>BE</sub> = (<var>k</var><var>T</var> / <var>q</var>) · ln(<var>N</var>)</p>
+
+<p>Esta tensión es proporcional a la temperatura absoluta (<span class="ref" data-nota="ptat">PTAT</span>) y no depende de <var>I</var><sub>C</sub> ni de <var>I</var><sub>S</sub> (Kester, <em>Practical Design Techniques for Sensor Signal Conditioning</em>, sección 7).<span class="nota-margen" popover id="nota-ptat"><b>ptat · proportional to absolute temperature</b>Tensión que crece en forma lineal con la temperatura absoluta, en kelvin.</span> Cuánto vale se calcula directo. La constante <var>k</var> / <var>q</var> es 86,17 µV/K, y con <var>N</var> = 8 (supuesto):</p>
+
+<p class="formula">Δ<var>V</var><sub>BE</sub> / <var>T</var> = 86,17 µV/K · ln 8 ≈ 179 µV/K</p>
+
+<p>Es una señal chica: a 300 K, unos 54 mV, y cada kelvin la mueve 0,18 mV. Un ADC de 12 bits con referencia de 1,1 V tiene un escalón de 0,27 mV, así que un kelvin son menos de un LSB: sin amplificar, el ADC no distingue un grado de otro. Por eso un sensor así tiene que amplificar la señal antes de digitalizarla; el manual del S3 no detalla cómo lo hace. Es el mismo problema que ya vimos con el rango del ADC: lo que se mide tiene que caer en un tramo donde el escalón sea más fino que el cambio que se quiere ver.</p>
+
+<h3>La conversión en el ESP32-S3</h3>
+
+<p>El manual del S3 da la fórmula que convierte la lectura en grados:</p>
+
+<p class="formula"><var>T</var> (°C) = 0,4386 · <var>valor</var> − 27,88 · <var>offset</var> − 20,52</p>
+
+<p>El coeficiente 0,4386 °C por cuenta es la resolución: cada paso de la lectura vale unos 0,44 °C. El diagrama del manual muestra una salida de 8 bits, o sea 256 valores, y 256 · 0,4386 ≈ 112 °C de ventana. Para cubrir de −40 a 125 °C hace falta mover esa ventana, y para eso está el <em>offset</em>, que el manual elige entre cinco valores según el rango de trabajo:</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Rango documentado</th><th>offset</th><th>ventana de la fórmula (lectura de 0 a 255)</th></tr></thead>
+  <tbody>
+    <tr><td>50 a 125 °C</td><td>−2</td><td>35 a 147 °C</td></tr>
+    <tr><td>20 a 100 °C</td><td>−1</td><td>7 a 119 °C</td></tr>
+    <tr><td>−10 a 80 °C</td><td>0</td><td>−21 a 91 °C</td></tr>
+    <tr><td>−30 a 50 °C</td><td>1</td><td>−48 a 63 °C</td></tr>
+    <tr><td>−40 a 20 °C</td><td>2</td><td>−76 a 36 °C</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Cada offset corre la ventana 27,88 °C, unas 64 cuentas. El rango documentado cae dentro de la ventana de cada uno, con margen en los dos extremos. Que el manual no use la ventana entera sugiere que la respuesta del sensor se aparta de la recta cerca de los bordes, pero es una lectura nuestra: ni el datasheet ni el manual dan el error de medición.</p>
+
+<div class="caja ojo">
+  <h4>ojo: mide el silicio, no el ambiente</h4>
+  <p>El sensor está dentro del micro, y el chip se calienta con su propio consumo. Sirve para vigilar la salud térmica del micro, por ejemplo para bajar la velocidad si se calienta, no para saber la temperatura de una habitación. En el ESP32 clásico, la documentación de Espressif eliminó el sensor de temperatura (así figura en el historial de revisiones del datasheet y del manual), por lo que no hay que contar con él.</p>
+</div>
+
+<h3>El RP2040: la tensión sola, sin diferencia</h3>
+
+<p>El RP2040 usa una variante más simple, y la comparación enseña. Mide la <var>V</var><sub>BE</sub> de un diodo bipolar polarizado, conectado al quinto canal de su ADC: típicamente 0,706 V a 27 °C, con una pendiente de −1,721 mV por grado. La temperatura sale de</p>
+
+<p class="formula"><var>T</var> = 27 − (<var>V</var><sub>ADC</sub> − 0,706) / 0,001721</p>
+
+<p>Como no usa la diferencia, <var>V</var><sub>BE</sub> y su pendiente varían de un micro a otro, y el datasheet advierte que, si hace falta exactitud, hay que calibrar. Y como mide una tensión, hereda lo que ya sabemos del ADC: el código es una fracción de la referencia. El datasheet da el ejemplo: una lectura de 891 corresponde a 20,1 °C, pero si la referencia fuera 1 % menor que 3,3 V, la misma lectura correspondería a 24,3 °C: un error de más de 4 °C por un 1 % de la referencia. Se puede comprobar: 891 · 3,3 / 4095 = 0,718 V da 27 − (0,718 − 0,706) / 0,001721 ≈ 20 °C (el datasheet da 20,1 °C, con otros redondeos), y con 3,267 V sale 0,711 V y unos 24 °C.</p>
+
+<h2>El RP2040: un contraste</h2>
+
+<p>El RP2040 no tiene radio, pero muestra cómo se ven los conceptos de la página anterior en otro diseño.</p>
+
+<h3>Rápido y con la entrada liviana</h3>
+
+<p>El ADC pide un reloj de 48 MHz y cada muestra toma 96 ciclos:</p>
+
+<p class="formula">96 / 48 MHz = 2 µs por muestra, o sea 500 kmuestras/s</p>
+
+<p>Un temporizador de ritmo, una <span class="ref" data-nota="fifo">FIFO</span> con DMA y un recorrido por turnos entre canales permiten muestrear varias entradas sin que la CPU intervenga.<span class="nota-margen" popover id="nota-fifo"><b>fifo · first in, first out</b>Cola donde sale primero lo que entró primero.</span> Es el mismo problema que resuelve la tabla de patrones del S3, con otro mecanismo.</p>
+
+<p>Su capacitor de muestreo es de apenas unos 1 pF, más lo que aporten el encapsulado y la placa. El datasheet afirma que no hace falta tiempo de asentamiento al cambiar de canal ni buffer para medidas de continua. Es lo que anticipa la página anterior: <var>τ</var> = <var>R</var> · <var>C</var>, y con <var>C</var> chico, <var>τ</var> también.</p>
+
+<h3>Un ENOB de 8,7 con 12 bits</h3>
+
+<p>El datasheet mide una <span class="ref" data-nota="sinad">SINAD</span> de 54,0 dB y una SNR de 61,5 dB.<span class="nota-margen" popover id="nota-sinad"><b>sinad · signal-to-noise-and-distortion</b>Relación entre la señal y el ruido más la distorsión, en decibeles.</span> Con la fórmula de la página anterior:</p>
+
+<p class="formula">ENOB = (54,0 − 1,76) / 6,02 ≈ 8,68</p>
+
+<p>Eso coincide con el 8,7 del datasheet. Pero con la SNR sola el cálculo daría otro resultado:</p>
+
+<p class="formula">(61,5 − 1,76) / 6,02 ≈ 9,9</p>
+
+<p>La diferencia, más de un bit, es <strong>distorsión</strong>: la que producen los errores de linealidad, que la SINAD incluye y la SNR no. Es la razón por la que el ENOB se calcula con la SINAD.</p>
+
+<h3>De dónde salen esos errores</h3>
+
+<p>El <span class="ref" data-nota="dnl">DNL</span> del RP2040 es plano y menor a 1 LSB, salvo en cuatro códigos: <strong>512, 1536, 2560 y 3584</strong>.<span class="nota-margen" popover id="nota-dnl"><b>dnl · differential nonlinearity</b>No linealidad diferencial: cuánto se aparta cada escalón de 1 LSB (nivel 3).</span> Raspberry Pi atribuye el INL en diente de sierra y esos picos a un error en la escala de algunos capacitores internos, de apenas decenas de femtofaradios.</p>
+
+<p>Es lo que adelantó la página anterior: la exactitud de un SAR con DAC de capacitores depende de qué tan bien se parecen los capacitores entre sí. Los cuatro códigos son múltiplos impares de 512: en cada uno se enciende el bit de peso 512 y los de abajo pasan de unos a ceros. Que justo ahí caigan los picos sugiere un capacitor de ese peso fuera de escala, pero es una lectura mía; el datasheet solo habla de «algunos capacitores internos».</p>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Con el ESP32-S3 a 12 dB, el datasheet da ±50 mV de error total y 1 LSB vale unos 1,07 mV. ¿Qué dice eso?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="50 / 1,07 ≈ 47 LSB. Los 12 bits dan resolución (el ADC distingue pasos de 1,07 mV) pero la exactitud absoluta es la de un ADC de bastantes menos bits.">El error equivale a unos 47 LSB: los 12 bits son resolución, no exactitud.</button>
+    <button type="button" data-por-que="La resolución es el tamaño del escalón, 1,07 mV a 12 dB. Los 50 mV son el error total calibrado, otra magnitud.">La resolución del ADC es de 50 mV.</button>
+    <button type="button" data-por-que="50 mV son unos 47 escalones de 1,07 mV. El error supera por mucho a 1 LSB.">El error es menor que 1 LSB.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Tu ESP32 usa Wi-Fi y tenés que leer un sensor analógico. ¿Dónde conectás el sensor?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="ADC2 comparte su núcleo con la radio: con el Wi-Fi activo, la lectura puede fallar o devolver basura.">En un canal de ADC2, porque tiene más canales.</button>
+    <button type="button" data-por-que="ADC1 no lo usa la radio: con el Wi-Fi activo, una lectura de ADC1 no compite con ninguna otra.">En un canal de ADC1.</button>
+    <button type="button" data-por-que="El reparto no es parejo: ADC2 comparte su núcleo con el controlador de la radio y ADC1 no. Hay que usar ADC1.">Da lo mismo: los dos ADC se comportan igual.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Los tres micros usan un SAR de 12 bits, pero ninguno tiene 12 bits de exactitud: con 0 dB, el error calibrado del S3 equivale a un ADC de unos 7 bits.</li>
+    <li>Atenuar suma rango y resta resolución: el LSB crece como 1/<var>k</var>.</li>
+    <li>La referencia varía de un micro a otro (±6 % en el ESP32): la calibración de fábrica es parte del convertidor.</li>
+    <li>ADC2 comparte su núcleo con la radio y un árbitro puede cortar tu conversión. Con el Wi-Fi activo, usá ADC1.</li>
+    <li>El ENOB se calcula con la SINAD: la distorsión de la INL también cuesta bits (RP2040: 9,9 contra 8,7).</li>
+    <li>El sensor de temperatura integrado usa ΔV<sub>BE</sub> = (<var>k</var><var>T</var>/<var>q</var>) · ln <var>N</var> y mide el silicio, no el ambiente. Sale como una tensión más, y hereda los límites del ADC.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>, sección 4.9.1 y tablas 4-3 y 4-4. <a href="https://documentation.espressif.com/esp32_datasheet_en.pdf">documentation.espressif.com/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual v5.8</em>, capítulo 31.3 (SAR ADC). <a href="https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf">documentation.espressif.com/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>, secciones 4.2.2.1, 4.2.2.2 y 5.5. <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, capítulos 39.3 (SAR ADC) y 39.4 (sensor de temperatura). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series SoC Errata</em>. <a href="https://docs.espressif.com/projects/esp-chip-errata/en/latest/esp32s3/">docs.espressif.com/projects/esp-chip-errata/…/esp32s3/</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: ADC Calibration Driver</em> (ESP32 y ESP32-S3). <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/adc/adc_calibration.html">docs.espressif.com/…/adc_calibration.html</a></li>
+    <li>Espressif Systems. <em>ESP-IDF Programming Guide: ADC Oneshot Mode Driver</em>. <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc/adc_oneshot.html">docs.espressif.com/…/adc_oneshot.html</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2040 Datasheet</em>, sección 4.9 (ADC y sensor de temperatura, 4.9.5). <a href="https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf">datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf</a></li>
+    <li>Kester, W. <em>Practical Design Techniques for Sensor Signal Conditioning</em>, sección 7: Temperature Sensors. Analog Devices, 1999. <a href="https://www.analog.com/media/en/training-seminars/design-handbooks/Practical-Design-Techniques-Sensor-Signal/Section7.PDF">analog.com/…/Practical-Design-Techniques-Sensor-Signal/Section7.PDF</a></li>
+    <li>Kester, W. <em>MT-003: Understand SINAD, ENOB, SNR, THD, THD + N, and SFDR so You Don't Get Lost in the Noise Floor</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-003.pdf">analog.com/…/MT-003.pdf</a></li>
+  </ol>
+  <p class="nota">Los datasheets de Espressif no dan la referencia interna del ESP32 ni el fondo de escala por atenuación; las cuentas de la tabla del S3 usan los valores del manual del S3 (1100 mV y k ≈ 100, 75, 50 y 25 %). Que una calibración de curva corrija parte de la INL, y que el rango útil quede bajo el fondo de escala nominal, son lecturas propias. El ENOB y la SINAD del RP2040 vienen de una placa con referencia de bajo ruido. En el sensor de temperatura, <var>N</var> = 8 es un supuesto (el manual del S3 no da la estructura interna), y que el rango documentado deje margen dentro de la ventana de la fórmula, y la comparación entre ΔV<sub>BE</sub> y V<sub>BE</sub>, son lecturas propias.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, micro-esp, tomo-02, nivel-03, componentes</footer>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1, componentes: los pines del ESP32, del ESP32-S3 y del RP2040</title>
+<meta name="description" content="Las cifras de los pines del ESP32, el ESP32-S3 y el RP2040, el IO MUX y la matriz de GPIO, los pines de arranque y el dominio RTC, con lo que dicen sus hojas de datos y manuales.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 1, componentes: los pines del ESP32, del ESP32-S3 y del RP2040">
+<meta property="og:description" content="Las cifras de los pines del ESP32, el ESP32-S3 y el RP2040, el IO MUX y la matriz de GPIO, los pines de arranque y el dominio RTC, con lo que dicen sus hojas de datos y manuales.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+<script src="../../assets/pixelmotor.js" defer></script>
+<script src="../../assets/pixelmicro.js" defer></script>
+<script src="../../assets/escenas-perifericos.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="1b">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01b">nivel 01, componentes, 16 min de lectura</span>
+  <h1>Los pines del ESP32, del ESP32-S3 y del RP2040</h1>
+  <p class="bajada">Cómo aplican tres micros lo que explica <a href="01-pin.html">«La frontera del micro»</a>: las cifras de sus pines, la matriz que conecta señales con pines, los pines que deciden el arranque y los que sobreviven al sueño profundo. Todo viene de sus hojas de datos y manuales.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar esta página vas a poder…</h4>
+  <ul>
+    <li>Leer la tabla de características DC de un micro y calcular sus márgenes de ruido.</li>
+    <li>Explicar qué agrega la matriz de GPIO frente al IO MUX y qué cuesta en tiempo.</li>
+    <li>Reconocer los pines de arranque de cada micro y qué decide cada uno.</li>
+    <li>Distinguir los pines del dominio RTC y para qué sirven en sueño profundo.</li>
+  </ul>
+</div>
+
+<h2>Las cifras de los pines</h2>
+
+<p>La celda de entrada y salida es la misma idea en los tres micros. Lo que cambia son los números que se pueden garantizar. La tabla reúne los de las hojas de datos, a 3,3 V.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th></th><th>ESP32</th><th>ESP32-S3</th><th>RP2040</th></tr></thead>
+  <tbody>
+    <tr><td><b>GPIO</b></td><td>34: 0 a 19, 21 a 23, 25 a 27 y 32 a 39</td><td>45: 0 a 21 y 26 a 48</td><td>30: 0 a 29, de los cuales 4 pueden ser entradas analógicas</td></tr>
+    <tr><td><b>Solo entrada</b></td><td>GPIO34 a 39: sin driver de salida ni pull</td><td>ninguno: los 45 son de entrada o salida</td><td>no figura</td></tr>
+    <tr><td><b>V<sub>IH</sub> mínimo</b></td><td>0,75 · V<sub>DD</sub></td><td>0,75 · V<sub>DD</sub></td><td>2,0 V</td></tr>
+    <tr><td><b>V<sub>IL</sub> máximo</b></td><td>0,25 · V<sub>DD</sub></td><td>0,25 · V<sub>DD</sub></td><td>0,8 V</td></tr>
+    <tr><td><b>V<sub>OH</sub> mínimo</b></td><td>0,8 · V<sub>DD</sub></td><td>0,8 · V<sub>DD</sub></td><td>2,62 V</td></tr>
+    <tr><td><b>V<sub>OL</sub> máximo</b></td><td>0,1 · V<sub>DD</sub></td><td>0,1 · V<sub>DD</sub></td><td>0,5 V</td></tr>
+    <tr><td><b>Corriente de salida</b></td><td>40 mA típica de fuente con la fuerza máxima (20 mA en VDD_SDIO) y 28 mA de sumidero; la de fuente baja de unos 40 mA a unos 29 mA al sumar pines</td><td>40 mA típica de fuente (V<sub>OH</sub> ≥ 2,64 V) y 28 mA de sumidero, con la fuerza máxima</td><td>2, 4, 8 o 12 mA, según la configuración</td></tr>
+    <tr><td><b>Resistencia de pull</b></td><td>45 kΩ</td><td>45 kΩ</td><td>50 a 80 kΩ</td></tr>
+    <tr><td><b>Corriente de entrada máxima</b></td><td>50 nA</td><td>50 nA</td><td>1 µA</td></tr>
+    <tr><td><b>Capacidad del pin</b></td><td>2 pF</td><td>2 pF</td><td>no figura</td></tr>
+    <tr><td><b>Histéresis</b></td><td>no figura</td><td>no figura</td><td>0,2 V como mínimo, con el Schmitt habilitado</td></tr>
+    <tr><td><b>ESD, HBM / CDM</b></td><td>±2000 V / ±500 V</td><td>±2000 V / ±1000 V</td><td>2 kV (4 kV en pines tolerantes) / 500 V</td></tr>
+    <tr><td><b>Tensión máxima de entrada</b></td><td>V<sub>DD</sub> + 0,3 V</td><td>V<sub>DD</sub> + 0,3 V</td><td>IOV<sub>DD</sub> + 0,5 V (máximo absoluto)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Dos advertencias de los datasheets de Espressif: <var>V</var><sub>OH</sub> y <var>V</var><sub>OL</sub> se midieron con una carga de alta impedancia, y las corrientes de salida se dan con la fuerza máxima. Las cifras del RP2040 son de caracterización sobre todo el rango de temperatura y tensión, salvo las marcadas como simuladas.</p>
+
+<p>De esa tabla salen los márgenes de ruido de la página anterior. Los dos micros de Espressif, con los mismos porcentajes de <var>V</var><sub>DD</sub>, dan 165 mV en el nivel alto y 495 mV en el bajo. El RP2040 reparte distinto: más margen en el alto (0,62 V) y menos en el bajo (0,30 V). Que dos micros con la misma lógica tengan perfiles tan distintos es una razón más para mirar la tabla antes de conectar dos chips entre sí.</p>
+
+<h3>Los niveles de fuerza</h3>
+
+<p>El driver de cada pin tiene cuatro niveles de fuerza en los tres micros. El manual del ESP32-S3 da corrientes del orden de 5, 10, 20 y 40 mA, con una excepción: en GPIO17 y GPIO18 el código 1 es de unos 20 mA, el 2 de unos 10 y el 3 de unos 40. El RP2040 da 2, 4, 8 y 12 mA. Para el ESP32 el manual solo describe un campo de 0 a 3, y en este material no figuran los valores en miliamperes salvo la corriente típica con la fuerza máxima. En los pines de solo entrada (GPIO34 a 39) ese campo vale siempre 0.</p>
+
+<h2>El IO MUX y la matriz de GPIO</h2>
+
+<p>Un micro tiene muchos más periféricos que pines. La solución son dos capas de conmutación entre las señales de los periféricos y los pines.</p>
+
+<ul>
+  <li><strong>El IO MUX</strong> es un multiplexor junto a cada pin. Elige entre unas pocas funciones fijas de ese pin o la función <span class="ref" data-nota="gpio">GPIO</span>, que a su vez puede venir de la matriz.<span class="nota-margen" popover id="nota-gpio"><b>gpio · general-purpose input/output</b>Pin que el programa puede usar como entrada o salida digital.</span> La ruta directa por el IO MUX no pasa por la sincronización de la matriz.</li>
+  <li><strong>La matriz de GPIO</strong> es un conmutador «todos con todos». En el ESP32, cada una de las 162 entradas de periférico puede tomar su señal de cualquier pin, y la salida de cada uno de los 34 pines puede venir de una de 176 señales de periférico. En el ESP32-S3 son 175 entradas y 184 salidas para 45 pines.</li>
+</ul>
+
+<figure class="diagrama" data-titulo="fig-1b.1 animada">
+  <canvas data-motor="per-matriz"></canvas>
+  <figcaption><b>fig 1b.1</b>La matriz cierra un cruce entre una señal de periférico (filas) y un pin (columnas). Cada pocos segundos cambia la ruta y la misma señal aparece en otro pin, sin tocar el hardware. Los cuatro pines son un ejemplo sobre un ESP32-S3; el ESP32 funciona igual.</figcaption>
+</figure>
+
+<h3>El precio de la flexibilidad</h3>
+
+<p>Una señal que entra por un pin no tiene relación de fase con el reloj interno: es asíncrona. Antes de usarla hay que sincronizarla. Weste y Harris explican la técnica: un primer <span class="ref" data-nota="flipflop">flip-flop</span> muestrea la señal asíncrona y su salida puede quedar un tiempo en un nivel indeterminado, la metaestabilidad, y un segundo flip-flop la vuelve a muestrear para entregar un nivel válido alineado con el reloj, con una latencia de un ciclo.<span class="nota-margen" popover id="nota-flipflop"><b>flip-flop</b>Circuito que guarda un bit y lo actualiza con el flanco del reloj.</span> No existe un sincronizador perfecto, porque la metaestabilidad puede durar un tiempo no acotado, y su probabilidad de falla baja de forma exponencial con el tiempo que se le da para resolverse (sección 10.6).</p>
+
+<p>El manual del ESP32-S3 dice que las señales que entran por la matriz se sincronizan con el reloj del bus <span class="ref" data-nota="apb">APB</span> mediante un bloque dedicado, y que eso no vale cuando se usa el IO MUX.<span class="nota-margen" popover id="nota-apb"><b>apb · Advanced Peripheral Bus</b>Bus de periféricos de la familia AMBA de Arm; da nombre al reloj de periféricos.</span> Además hay un filtro opcional: solo se muestrean las señales con un ancho de más de dos ciclos de APB. Con un APB de 80 MHz, que es el valor normal que menciona el manual del ESP32, dos ciclos son:</p>
+
+<p class="formula">2 / 80 MHz = 25 ns</p>
+
+<p>Es el pulso más corto que deja pasar el filtro: un ruido de 20 ns se descarta, pero también un pulso legítimo de esa duración. El manual del S3 no da una cifra del retardo de la sincronización.</p>
+
+<p>En el ESP32 hay una medida concreta, en el controlador <span class="ref" data-nota="spi">SPI</span> de propósito general: las señales que entran por la matriz llegan con dos ciclos de APB de demora, y las que salen no se demoran.<span class="nota-margen" popover id="nota-spi"><b>spi · Serial Peripheral Interface</b>Bus serie con reloj y selección de chip, de Motorola.</span> Esa demora importa según la velocidad del reloj SPI. A 80 MHz de APB son 25 ns: con un reloj SPI de 20 MHz, cuyo período es de 50 ns, es medio período del reloj. Para un botón da igual. Para un SPI rápido, no, y por eso las interfaces más rápidas usan los pines directos del IO MUX.</p>
+
+<h2>Los pines de arranque</h2>
+
+<p>Al soltar el reset, el micro todavía no ejecutó nada y tiene que decidir cosas: si arranca el programa de la flash o espera uno nuevo, con qué tensión alimenta la flash. Dedicar un pin fijo a cada pregunta sería caro. Por eso algunos pines, los <strong>strapping pins</strong>, se leen en el instante en que sube el reset y después quedan libres como GPIO comunes. Cada uno tiene un <span class="ref" data-nota="latch">latch</span> que guarda el valor leído hasta que se apague el micro.<span class="nota-margen" popover id="nota-latch"><b>latch</b>Circuito que guarda un valor y lo mantiene hasta que se lo cambia.</span></p>
+
+<p>El nivel por defecto lo fija una resistencia de pull interna, si el pin no está conectado a nada o a un circuito de alta impedancia. Por eso cualquier cosa externa que fuerce un nivel en el arranque (un LED con su resistencia, un pull-up, un sensor que ya esté encendido) puede cambiar la decisión sin que el programa tenga la culpa.</p>
+
+<figure class="diagrama" data-titulo="fig-1b.2">
+  <svg viewBox="0 0 640 224" role="img" aria-label="Cronograma del arranque: la señal de reset sube; en ese flanco el micro copia el nivel del strapping pin en un latch; después el pin queda libre como GPIO y sus cambios ya no afectan la decisión">
+    <text x="16" y="44" class="sv-tit fc3" text-anchor="start" font-size="20">reset (EN)</text><polyline points="128,56 272,56 272,24 624,24" class="fn sc3" stroke-width="2"/><text x="16" y="108" class="sv-tit f6" text-anchor="start" font-size="20">strapping</text><polyline points="128,80 400,80 400,112 464,112 464,80 520,80 520,112 624,112" class="fn sa3" stroke-width="2"/><text x="16" y="172" class="sv-tit f6" text-anchor="start" font-size="20">decisión</text><rect x="128" y="144" width="144" height="40" class="f1 s2" stroke-width="2"/><text x="200" y="170" class="sv-lbl f4" text-anchor="middle" font-size="16">sin decidir</text><rect x="272" y="144" width="352" height="40" class="fa1 sa3" stroke-width="2"/><text x="448" y="170" class="sv-lbl fa3" text-anchor="middle" font-size="16">guardada en el latch: vale 1</text><line x1="272" y1="16" x2="272" y2="200" class="sd3" stroke-width="2" stroke-dasharray="4 4"/><text x="272" y="216" class="sv-lbl fd3" text-anchor="middle" font-size="16">se lee acá</text><text x="512" y="216" class="sv-lbl f4" text-anchor="middle" font-size="16">después: GPIO común</text>
+  </svg>
+  <figcaption><b>fig 1b.2</b>El nivel del strapping pin solo importa en el instante en que sube el reset: ahí se copia a un latch y decide el arranque. Lo que el pin haga después (los pulsos de la derecha) ya no cambia nada: queda libre como GPIO.</figcaption>
+</figure>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Decisión</th><th>ESP32</th><th>ESP32-S3</th></tr></thead>
+  <tbody>
+    <tr><td><b>Modo de arranque</b></td><td>GPIO0 (pull-up, 1) y GPIO2 (pull-down, 0): con GPIO0 = 1 arranca de la flash; con GPIO0 = 0 y GPIO2 = 0, modo de descarga</td><td>GPIO0 (pull-up, 1) y GPIO46 (pull-down, 0): con GPIO0 = 1 arranca de la flash; con GPIO0 = 0 y GPIO46 = 0, modo de descarga</td></tr>
+    <tr><td><b>Tensión de la flash</b></td><td>MTDI (GPIO12, pull-down): 0 = 3,3 V; 1 = 1,8 V desde el regulador interno</td><td>GPIO45 (pull-down): 0 = 3,3 V; 1 = 1,8 V desde el regulador interno</td></tr>
+    <tr><td><b>Mensajes de la ROM</b></td><td>MTDO (GPIO15, pull-up): 1 = habilitados</td><td>por registros y eFuse</td></tr>
+    <tr><td><b>Otros</b></td><td>MTDO y GPIO5 (pull-up): tiempos del esclavo SDIO</td><td>GPIO3 (sin pull interno): origen de las señales JTAG</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Hay además un requisito de tiempo en el ESP32: los niveles tienen que estar estables antes de que suba el reset (tiempo de preparación, o setup, mínimo de 0 ms) y mantenerse al menos 1 ms después, porque en ese lapso el micro lee los pines.</p>
+
+<div class="caja ojo">
+  <h4>ojo: el pin de la tensión de la flash</h4>
+  <p>Si un circuito externo deja GPIO45 del ESP32-S3, o MTDI del ESP32, en 1 durante el arranque, el micro elige 1,8 V para la flash en lugar de 3,3 V. Dejá esos pines libres durante el reset, o fijá la tensión por <span class="ref" data-nota="efuse">eFuse</span>, que las tablas de los datasheets contemplan como opción.<span class="nota-margen" popover id="nota-efuse"><b>efuse · electronic fuse</b>Memoria que se programa una sola vez; guarda datos de fábrica o de configuración.</span></p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">En una placa con un ESP32-S3 conectás un LED, con su resistencia, entre 3,3 V y GPIO45. Al soltar el reset el LED está encendido. ¿Qué decide el micro con ese pin?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El nivel de GPIO45 al soltar el reset no elige el modo de arranque (eso lo hacen GPIO0 y GPIO46), sino la tensión de la flash.">Que arranque en modo de descarga.</button>
+    <button type="button" data-por-que="Con el LED conectado a 3,3 V, la corriente que pasa por él deja el pin en alto: el latch lee 1 y el micro elige 1,8 V para la flash en lugar de 3,3 V.">Que la flash trabaja a 1,8 V en lugar de 3,3 V.</button>
+    <button type="button" data-por-que="El latch copia el nivel al soltar el reset sin importar quién lo fuerza. Un LED con resistencia, si conduce, es una fuente de nivel como cualquier otra.">Nada: un LED no puede cambiar el valor de un strapping pin.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>Los pines que no son libres</h2>
+
+<p>No todos los pines están a disposición. En el ESP32, los GPIO34 a 39 son solo de entrada y no tienen driver de salida ni resistencias de pull. Un pulsador a masa en uno de ellos sin resistencia externa deja el pin flotando cuando está suelto: lee ruido y da pulsaciones fantasma.</p>
+
+<p>En el ESP32-S3, el datasheet clasifica los pines por prioridad de uso. Se deben usar con cuidado los strapping pins (GPIO0, 3, 45 y 46), los del <span class="ref" data-nota="usb">USB</span> Serial/JTAG (GPIO19 y 20), los del <span class="ref" data-nota="jtag">JTAG</span> (GPIO39 a 42) y los de la <span class="ref" data-nota="uart0">UART0</span> (GPIO43 y 44).<span class="nota-margen" popover id="nota-jtag"><b>jtag · Joint Test Action Group</b>Interfaz estándar, IEEE 1149.1, para probar y depurar chips.</span><span class="nota-margen" popover id="nota-uart0"><b>uart · universal asynchronous receiver-transmitter</b>Puerto serie asíncrono; la UART0 suele ser la de la consola.</span><span class="nota-margen" popover id="nota-usb"><b>usb · universal serial bus</b>Bus serie estándar que conecta un micro con una computadora y otros periféricos.</span> Los GPIO26 a 32 están asignados al SPI de la flash y la <span class="ref" data-nota="psram">PSRAM</span> y no se recomienda usarlos.<span class="nota-margen" popover id="nota-psram"><b>psram · pseudo-static RAM</b>Memoria RAM externa de bajo costo, para datos grandes.</span> Los GPIO33 a 37 sirven de GPIO solo si el micro no está conectado a una flash o PSRAM en modo SPI de 8 líneas. En el ESP32, el datasheet multiplexa los GPIO6 a 11 con el SPI de la flash.</p>
+
+<h2>El dominio RTC</h2>
+
+<p>En sueño profundo se apagan los núcleos y la mayor parte de la lógica digital. Si todos los pines dependieran de esa lógica, quedarían sin control y el micro no podría enterarse de que alguien apretó un botón. Por eso algunos pines pertenecen también al dominio <span class="ref" data-nota="rtc">RTC</span>, que sigue alimentado, y tienen un segundo multiplexor, el RTC IO MUX, que los conecta con funciones de bajo consumo y analógicas.<span class="nota-margen" popover id="nota-rtc"><b>rtc · real-time clock</b>Dominio de bajo consumo que sigue activo con el micro dormido.</span></p>
+
+<p>Son 18 pines en el ESP32 y 22 en el ESP32-S3 (GPIO0 a 21). Como pines RTC, las salidas conservan su nivel durante el sueño profundo y las entradas pueden despertar al micro. Además, el S3 tiene una función de retención (hold) en cada pin, RTC o no, que conserva el estado incluso a través de un reinicio del núcleo por <span class="ref" data-nota="watchdog">watchdog</span> o por sueño profundo; el ESP32 la describe para los pines digitales y para los RTC.<span class="nota-margen" popover id="nota-watchdog"><b>watchdog</b>Temporizador que reinicia el micro si el programa no lo atiende a tiempo.</span></p>
+
+<h2>El RP2040: un contraste</h2>
+
+<p>El RP2040 tiene 30 GPIO. Cada uno elige su función con un campo de selección propio: cumple un papel parecido al de la función del IO MUX. Las cifras de su tabla muestran un perfil de márgenes distinto, con la histéresis especificada, y el fabricante publica además la corriente total que pueden entregar y absorber todos los pines juntos: 50 mA de cada lado.</p>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Los dos micros de Espressif tienen los mismos niveles lógicos, en porcentaje de <var>V</var><sub>DD</sub>: <var>NM</var><sub>H</sub> = 165 mV y <var>NM</var><sub>L</sub> = 495 mV. El RP2040 da 0,62 V y 0,30 V.</li>
+    <li>La matriz de GPIO conecta cualquier señal con cualquier pin, a cambio de sincronizar con el reloj APB; el IO MUX es el camino directo. Dos ciclos de APB son 25 ns a 80 MHz.</li>
+    <li>Los strapping pins se leen al subir el reset: nada externo debe forzarlos. GPIO45 del S3 y MTDI del ESP32 eligen la tensión de la flash.</li>
+    <li>En el ESP32, GPIO34 a 39 son solo de entrada y no tienen pull.</li>
+    <li>El dominio RTC permite que las salidas conserven su nivel y que las entradas despierten al micro en sueño profundo.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Espressif Systems. <em>ESP32 Series Datasheet v5.3</em>, sección 3 (arranque), tabla 5-3 (características DC) y apéndice A (pines). <a href="https://documentation.espressif.com/esp32_datasheet_en.pdf">documentation.espressif.com/esp32_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32 Technical Reference Manual v5.8</em>, capítulo 6 (IO MUX y matriz de GPIO) y 20.4.2 (tiempos del SPI de propósito general). <a href="https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf">documentation.espressif.com/esp32_technical_reference_manual_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Series Datasheet v2.2</em>, secciones 2.3.4, 3 y 5.4. <a href="https://documentation.espressif.com/esp32-s3_datasheet_en.pdf">documentation.espressif.com/esp32-s3_datasheet_en.pdf</a></li>
+    <li>Espressif Systems. <em>ESP32-S3 Technical Reference Manual v1.8</em>, capítulo 6 (IO MUX y matriz de GPIO). <a href="https://documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf">documentation.espressif.com/esp32-s3_technical_reference_manual_en.pdf</a></li>
+    <li>Raspberry Pi Ltd. <em>RP2040 Datasheet</em>, sección 5.5.3. <a href="https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf">datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf</a></li>
+    <li>Weste, N. y Harris, D. <em>CMOS VLSI Design</em>, 4.ª ed.: sección 10.6 (metaestabilidad y sincronizadores).</li>
+  </ol>
+  <p class="nota">El ejemplo del SPI a 20 MHz es una cuenta propia con la demora de dos ciclos de APB del manual del ESP32. Que el APB sea de 80 MHz es el valor que el manual del ESP32 menciona como normal; no verifiqué el del S3. El campo de selección de función del RP2040 se describe en su datasheet con un registro por pin; la comparación con el IO MUX es una lectura propia, y no verifiqué si el RP2040 tiene un equivalente de la matriz. No figuran en las fuentes revisadas los valores en mA de los cuatro niveles de fuerza del ESP32, la histéresis de los micros de Espressif, la capacidad del pin del RP2040 ni la latencia exacta de la matriz del S3.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, micro-esp, tomo-02, nivel-01, componentes</footer>
+</body>
+</html>

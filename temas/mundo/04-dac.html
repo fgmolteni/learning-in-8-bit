@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 4: De número a tensión</title>
+<meta name="description" content="Un DAC hace lo inverso del ADC: de un código saca una tensión. Lo que sale es una escalera, y una escalera trae imágenes de frecuencia que hay que filtrar.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 4: De número a tensión">
+<meta property="og:description" content="Un DAC hace lo inverso del ADC: de un código saca una tensión. Lo que sale es una escalera, y una escalera trae imágenes de frecuencia que hay que filtrar.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+</head>
+<body data-raiz="../../" data-curso="mundo" data-nivel="4">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="04">nivel 04, 21 min de lectura</span>
+  <h1>De número a tensión</h1>
+  <p class="bajada">Un DAC hace lo inverso del ADC: de un código saca una tensión. Lo que sale es una escalera, y una escalera trae imágenes de frecuencia que hay que filtrar.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Explicar por qué la salida de un DAC es una escalera y calcular cuánto atenúa su envolvente en la frecuencia de Nyquist.</li>
+    <li>Calcular cuánta exactitud necesita el bit más significativo para que un DAC no retroceda, y usarlo para comparar las estructuras.</li>
+    <li>Describir cómo se arman una cadena de resistencias, una escalera R-2R y un arreglo ponderado, y qué paga cada una.</li>
+    <li>Explicar el glitch de la transición mayor y estimar su tamaño.</li>
+    <li>Calcular cuánto tarda en asentarse un PWM con filtro RC y por qué el sigma-delta lo mejora.</li>
+  </ul>
+</div>
+
+<h2>Qué hace un DAC</h2>
+
+<p>Un DAC (convertidor digital-analógico) recibe un código <var>D</var> de <var>N</var> bits y entrega una tensión proporcional:</p>
+
+<p class="formula"><var>V</var><sub>out</sub> = <var>V</var><sub>ref</sub> · <var>D</var> / 2<sup><var>N</var></sup></p>
+
+<p>La salida es siempre el producto de la referencia por el código, y en ese sentido todo DAC es un multiplicador. El escalón mínimo es el mismo LSB del nivel anterior: <var>V</var><sub>ref</sub> / 2<sup><var>N</var></sup>. Con 8 bits y 3,3 V, un LSB vale unos 13 mV.</p>
+
+<p>Con 2<sup><var>N</var></sup> en el denominador, el código máximo queda 1 LSB por debajo de la referencia. Algunos DAC dividen por 2<sup><var>N</var></sup> − 1 para que el máximo llegue justo a <var>V</var><sub>ref</sub>; es una convención, y conviene mirar cuál usa el chip.</p>
+
+<h2>La señal que sale: escalera e imágenes</h2>
+
+<h3>Por qué sale una escalera</h3>
+
+<p>Un DAC no entrega una curva. Entrega un valor por vez y lo mantiene hasta que llega el código siguiente, o sea un período 1/<var>f</var><sub>c</sub>, donde <var>f</var><sub>c</sub> es la frecuencia con que se actualiza el DAC. El resultado es una serie de pulsos rectangulares de ese ancho: una escalera que aproxima a la senoide que se quería generar.</p>
+
+<h3>Las imágenes y la envolvente</h3>
+
+<p>Esta escalera tiene un espectro, y se parece al del solapamiento del nivel anterior pero al revés. Una señal de frecuencia <var>f</var> aparece, además, en <var>f</var><sub>c</sub> − <var>f</var>, <var>f</var><sub>c</sub> + <var>f</var>, 2<var>f</var><sub>c</sub> − <var>f</var>, y así sucesivamente: son las <strong>imágenes</strong>. Además, mantener cada valor un período le pone al espectro una envolvente sen(π<var>x</var>) / (π<var>x</var>), con <var>x</var> = <var>f</var> / <var>f</var><sub>c</sub>.</p>
+
+<figure class="diagrama" data-titulo="fig-4.1">
+  <svg viewBox="0 0 640 304" role="img" aria-label="Arriba, la salida de un DAC como escalera que aproxima una senoide con ocho muestras por período. Abajo, el espectro: la señal a la frecuencia f y sus imágenes alrededor de fc y de 2fc, con una envolvente sen(x)/x que baja 3,92 dB en fc sobre 2">
+    <line x1="64" y1="88" x2="624" y2="88" class="s2" stroke-width="2" stroke-dasharray="2 4"/>
+    <polyline points="64,88 73,80 82,73 90,66 99,60 108,55 116,51 125,49 134,48 143,49 152,51 160,55 169,60 178,66 186,73 195,80 204,88 213,96 222,103 230,110 239,116 248,121 256,125 265,127 274,128 283,127 292,125 300,121 309,116 318,110 326,103 335,96 344,88 353,80 362,73 370,66 379,60 388,55 396,51 405,49 414,48 423,49 432,51 440,55 449,60 458,66 466,73 475,80 484,88 493,96 502,103 510,110 519,116 528,121 536,125 545,127 554,128 563,127 572,125 580,121 589,116 598,110 606,103 615,96 624,88" class="fn s4" stroke-width="2" stroke-dasharray="4 4"/>
+    <polyline points="64,88 99,88 99,60 134,60 134,48 169,48 169,60 204,60 204,88 239,88 239,116 274,116 274,128 309,128 309,116 344,116 344,88 379,88 379,60 414,60 414,48 449,48 449,60 484,60 484,88 519,88 519,116 554,116 554,128 589,128 589,116 624,116" class="fn sa3" stroke-width="4"/>
+    <text x="64" y="20" class="sv-lbl fa3" text-anchor="start" font-size="16">salida del DAC: un valor por período</text>
+    <text x="624" y="20" class="sv-lbl f4" text-anchor="end" font-size="16">senoide ideal (punteada)</text>
+    <text x="624" y="146" class="sv-lbl f4" text-anchor="end" font-size="16">tiempo</text>
+    <line x1="64" y1="272" x2="624" y2="272" class="s4" stroke-width="2"/>
+    <line x1="64" y1="272" x2="64" y2="278" class="s4" stroke-width="2"/><text x="64" y="296" class="sv-lbl f4" text-anchor="middle" font-size="16">0</text>
+    <line x1="288" y1="272" x2="288" y2="278" class="s4" stroke-width="2"/><text x="288" y="296" class="sv-lbl f4" text-anchor="middle" font-size="16">fc</text>
+    <line x1="512" y1="272" x2="512" y2="278" class="s4" stroke-width="2"/><text x="512" y="296" class="sv-lbl f4" text-anchor="middle" font-size="16">2fc</text>
+    <text x="624" y="296" class="sv-lbl f4" text-anchor="end" font-size="16">frecuencia</text>
+    <polyline points="64.0,172 68.48,172 72.96000000000001,172 77.44,173 81.92,173 86.4,174 90.88,174 95.36,175 99.84,176 104.32,177 108.80000000000001,178 113.28,180 117.75999999999999,181 122.24000000000001,183 126.72,184 131.2,186 135.68,188 140.16000000000003,190 144.64,192 149.12,194 153.60000000000002,196 158.07999999999998,199 162.56,201 167.04000000000002,203 171.51999999999998,206 176.0,208 180.48000000000002,211 184.96,214 189.44,216 193.92,219 198.4,222 202.88,224 207.36,227 211.84,230 216.32000000000002,232 220.79999999999998,235 225.28,238 229.76,241 234.24,243 238.72,246 243.20000000000002,249 247.67999999999998,251 252.16,254 256.64,256 261.12,259 265.6,261 270.08000000000004,263 274.56,266 279.03999999999996,268 283.52,270 288.0,272 292.48,270 296.96000000000004,268 301.44,266 305.92,265 310.40000000000003,263 314.88,262 319.36,260 323.84,259 328.32,258 332.8,256 337.28,255 341.76,254 346.24,254 350.72,253 355.2,252 359.68,252 364.16,251 368.64000000000004,251 373.12,251 377.59999999999997,250 382.08,250 386.56,250 391.03999999999996,250 395.52,251 400.0,251 404.48,251 408.96000000000004,251 413.44,252 417.92,252 422.40000000000003,253 426.88,254 431.35999999999996,254 435.84,255 440.32,256 444.8,257 449.28,258 453.76,259 458.24,260 462.72,261 467.2,262 471.68,263 476.16,264 480.64000000000004,265 485.12,266 489.59999999999997,267 494.08,268 498.56,269 503.03999999999996,270 507.52,271 512.0,272 516.48,271 520.96,270 525.44,269 529.9200000000001,268 534.4000000000001,267 538.88,266 543.36,266 547.84,265 552.32,264 556.8000000000001,263 561.28,263 565.76,262 570.24,262 574.72,261 579.1999999999999,261 583.68,260 588.16,260 592.64,260 597.12,260 601.6,259 606.0799999999999,259 610.56,259 615.04,259 619.52,259 624.0,259" class="fn sb3" stroke-width="2" stroke-dasharray="4 4"/>
+    <line x1="92" y1="272" x2="92" y2="175" class="sa3" stroke-width="4"/>
+    <line x1="260" y1="272" x2="260" y2="258" class="sd3" stroke-width="4"/>
+    <line x1="316" y1="272" x2="316" y2="261" class="sd3" stroke-width="4"/>
+    <line x1="484" y1="272" x2="484" y2="266" class="sd3" stroke-width="4"/>
+    <line x1="540" y1="272" x2="540" y2="266" class="sd3" stroke-width="4"/>
+    <text x="102" y="176" class="sv-lbl fa3" text-anchor="start" font-size="16">f</text>
+    <text x="254" y="246" class="sv-lbl fd3" text-anchor="end" font-size="16">fc − f</text>
+    <text x="322" y="248" class="sv-lbl fd3" text-anchor="start" font-size="16">fc + f</text>
+    <text x="512" y="252" class="sv-lbl fd3" text-anchor="middle" font-size="16">imágenes</text>
+    <rect x="172" y="204" width="8" height="8" class="fb3"/>
+    <text x="188" y="200" class="sv-lbl fb3" text-anchor="start" font-size="16">−3,92 dB en fc/2</text>
+    <text x="624" y="162" class="sv-lbl fb3" text-anchor="end" font-size="16">envolvente sen(x)/x</text>
+  </svg>
+  <figcaption><b>fig 4.1</b>Arriba, la escalera (naranja) con ocho muestras por período y la senoide ideal (punteada). Abajo, su espectro: la señal en <var>f</var> y las imágenes en torno a <var>f</var><sub>c</sub> y 2<var>f</var><sub>c</sub> (magenta), todas bajo la envolvente sen(<var>x</var>)/<var>x</var> (azul punteada).</figcaption>
+</figure>
+
+<p>La envolvente tiene un costo que se calcula directo. En la <span class="ref" data-nota="nyquist">frecuencia de Nyquist</span>, <var>x</var> = ½:<span class="nota-margen" popover id="nota-nyquist"><b>nyquist</b>La mitad de la frecuencia de muestreo: la máxima que un sistema muestreado puede representar (nivel 3).</span></p>
+
+<p class="formula">sen(π/2) / (π/2) = 2/π ≈ 0,637 &nbsp;→&nbsp; 20 log<sub>10</sub> 0,637 ≈ −3,92 dB</p>
+
+<p>Una senoide cerca de <var>f</var><sub>c</sub>/2 sale casi 4 dB más chica que una de baja frecuencia, solo por mantener cada valor un período. Si hace falta corregirlo se usa un filtro con la respuesta inversa.</p>
+
+<h3>El filtro anti-imágenes</h3>
+
+<p>Las imágenes son frecuencias que no estaban en la señal que se quería generar. Si el DAC alimenta un parlante, un motor o un lazo de control, hay que sacarlas con un pasabajos analógico a la salida: el <strong>filtro anti-imágenes</strong>, que es el antialiasing del nivel anterior, pero después del convertidor.</p>
+
+<p>Las cuentas son las mismas. La primera imagen está en <var>f</var><sub>c</sub> − <var>f</var>, y entre <var>f</var> y ese punto el filtro tiene que bajar lo que haga falta. Para una señal de 1 kHz y 60 dB de atenuación, la tabla de polos del nivel anterior vale igual: actualizar el DAC a 2,5 kHz pide 18 polos; a 4 kHz, 7.</p>
+
+<p>Si la señal llega en bloques, se puede actualizar el DAC más rápido que los datos, insertando valores <span class="ref" data-nota="interpolados">interpolados</span> con un filtro digital.<span class="nota-margen" popover id="nota-interpolados"><b>interpolated</b>Valores calculados entre las muestras originales con un filtro digital.</span> Con eso las imágenes se van más arriba y el filtro analógico se relaja: cada vez que se duplica la tasa, la <span class="ref" data-nota="snr">SNR</span> mejora 3 dB, igual que al <span class="ref" data-nota="sobremuestrear">sobremuestrear</span> un ADC.<span class="nota-margen" popover id="nota-sobremuestrear"><b>oversampling</b>Muestrear o actualizar a una tasa mayor que la mínima que pide Nyquist.</span><span class="nota-margen" popover id="nota-snr"><b>snr · signal-to-noise ratio</b>Relación señal-ruido: cuánto mayor es la señal que el ruido, en decibeles.</span></p>
+
+<h2>Cuánta exactitud pide cada bit</h2>
+
+<p>Ahora, ¿cómo se arma esa tensión? Hay varias estructuras, y la forma de entenderlas es una sola pregunta: ¿cuánta exactitud tiene que tener cada bit?</p>
+
+<p>Tomemos el salto de mitad de escala, de 0111…1 a 1000…0. Antes, la salida es la suma de los <var>N</var> − 1 bits bajos: 2<sup><var>N</var>−1</sup> − 1 LSB. Después, solo el <span class="ref" data-nota="msb">MSB</span>: 2<sup><var>N</var>−1</sup> LSB.<span class="nota-margen" popover id="nota-msb"><b>msb · most significant bit</b>El bit de mayor peso del código.</span> En un DAC ideal la diferencia es exactamente 1 LSB.</p>
+
+<p>Si el MSB real pesa <var>ε</var> LSB menos que lo ideal, el escalón de ese salto vale 1 − <var>ε</var> LSB. Si <var>ε</var> supera 1 LSB, el escalón es negativo: el código sube y la salida baja. Se dice que el DAC no es <strong>monótono</strong>. Para evitarlo hace falta <var>ε</var> ≤ 1 LSB, y como el MSB pesa 2<sup><var>N</var>−1</sup> LSB, su error relativo máximo es</p>
+
+<p class="formula"><var>ε</var> / peso del MSB = 1 / 2<sup><var>N</var>−1</sup></p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>bits</th><th>peso del MSB</th><th>error máximo del MSB para ser monótono</th></tr></thead>
+  <tbody>
+    <tr><td>8</td><td>128 LSB</td><td>0,78 %</td></tr>
+    <tr><td>12</td><td>2048 LSB</td><td>0,049 %</td></tr>
+    <tr><td>16</td><td>32 768 LSB</td><td>0,0031 %</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Esto es lo que explica todo lo que sigue. Cada bit extra duplica el peso del MSB y reduce a la mitad el error que se le tolera, así que a 16 bits el MSB tiene que estar bien dentro del 0,003 %: más exacto que casi cualquier resistencia sin recortar. Las estructuras son respuestas distintas a ese problema. Esta deducción es nuestra; el hecho que la sostiene, que la no linealidad es peor en las transiciones mayores y que un MSB bajo produce un DAC no monótono, está en Kester (MT-015) y en Taub-Schilling (14.11).</p>
+
+<h3>Resistencias ponderadas: el problema en estado puro</h3>
+
+<p>La estructura de libro de texto es un conjunto de resistencias en relación 1, 2, 4, 8… cada una conmutada por un bit: la corriente de salida es proporcional al número binario (Taub-Schilling, 14.5). Pero con 8 bits hay una relación de 128 a 1 entre la mayor y la menor resistencia, y todas deben mantener su proporción con la temperatura. No es monótona por sí sola y, además, su impedancia de salida cambia con el código (Kester, MT-015). Casi no se usa sola en circuitos integrados.</p>
+
+<h3>Cadena de resistencias: evitar el problema</h3>
+
+<p>La cadena (o divisor de Kelvin, de mediados del 1800) esquiva la pregunta. Son 2<sup><var>N</var></sup> resistencias iguales en serie y una llave por derivación; el código cierra una sola llave y la salida toma esa tensión.</p>
+
+<p>Ningún bit pesa más que otro: cada escalón es un resistor. Por eso es <strong>monótona por construcción</strong>, incluso si una resistencia se cortocircuita accidentalmente, porque la derivación <var>n</var> no puede superar a la <var>n</var> + 1. El costo es el tamaño: 256 resistencias para 8 bits, 4096 para 12. Por eso las cadenas puras se limitan a 8 o 10 bits, y son la base de los <span class="ref" data-nota="potdig">potenciómetros digitales</span> (Kester, MT-014).<span class="nota-margen" popover id="nota-potdig"><b>digital potentiometer</b>Resistencia variable cuyo cursor se mueve con un código digital en lugar de una perilla.</span></p>
+
+<h3>Escalera R-2R: dos valores y una ganancia en cada nodo</h3>
+
+<p>La escalera R-2R usa solo dos valores de resistencia, en relación 2 a 1, y del orden de 2 · <var>N</var> resistencias. Mirando hacia atrás desde cada nodo se ve la misma resistencia, así que la corriente se parte a la mitad en cada paso y cada bit pesa el doble que el anterior, sin necesidad de resistencias de valores muy distintos.</p>
+
+<p>En el modo de tensión, cada brazo se conmuta entre <var>V</var><sub>ref</sub> y masa, y la impedancia de salida no depende del código. En el modo de corriente, o «invertido», los brazos conmutan sobre una línea a <span class="ref" data-nota="tierra-virtual">tierra virtual</span>; se usa en los DAC multiplicadores, pero produce un <span class="ref" data-nota="glitch">glitch</span> mayor (Kester, MT-015).<span class="nota-margen" popover id="nota-tierra-virtual"><b>virtual ground</b>Nodo que un amplificador operacional mantiene a 0 V sin conectarlo a masa.</span><span class="nota-margen" popover id="nota-glitch"><b>glitch</b>Pico breve e indeseado en una señal; se define más abajo, en la sección del glitch.</span> En los dos, el MSB sigue pidiendo la exactitud de la tabla de arriba, así que esta estructura baja la cantidad de relaciones difíciles, no el requisito.</p>
+
+<figure class="diagrama" data-titulo="fig-4.2">
+  <svg viewBox="0 0 640 320" role="img" aria-label="Dos DAC de 3 bits: a la izquierda una cadena de ocho resistencias iguales con una llave cerrada que toma una derivación; a la derecha una escalera R-2R con una llave por bit">
+    <text x="160" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">cadena de resistencias</text><text x="64" y="44" class="sv-lbl fc3" text-anchor="end" font-size="16">Vref</text><line x1="72" y1="40" x2="120" y2="40" class="sc3" stroke-width="2"/><line x1="96" y1="40" x2="96" y2="48" class="s4" stroke-width="2"/><rect x="90" y="48" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="72" x2="96" y2="80" class="s4" stroke-width="2"/><line x1="96" y1="76" x2="160" y2="76" class="s3" stroke-width="2"/><rect x="160" y="72" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="76" x2="208" y2="76" class="s3" stroke-width="2"/><rect x="90" y="80" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="104" x2="96" y2="112" class="s4" stroke-width="2"/><line x1="96" y1="108" x2="160" y2="108" class="s3" stroke-width="2"/><rect x="160" y="104" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="108" x2="208" y2="108" class="s3" stroke-width="2"/><rect x="90" y="112" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="136" x2="96" y2="144" class="s4" stroke-width="2"/><line x1="96" y1="140" x2="160" y2="140" class="s3" stroke-width="2"/><rect x="160" y="136" width="16" height="8" class="fc1 sc3" stroke-width="0"/><line x1="176" y1="140" x2="208" y2="140" class="sd3" stroke-width="2"/><rect x="90" y="144" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="168" x2="96" y2="176" class="s4" stroke-width="2"/><line x1="96" y1="172" x2="160" y2="172" class="s3" stroke-width="2"/><rect x="160" y="168" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="172" x2="208" y2="172" class="s3" stroke-width="2"/><rect x="90" y="176" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="200" x2="96" y2="208" class="s4" stroke-width="2"/><line x1="96" y1="204" x2="160" y2="204" class="s3" stroke-width="2"/><rect x="160" y="200" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="204" x2="208" y2="204" class="s3" stroke-width="2"/><rect x="90" y="208" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="232" x2="96" y2="240" class="s4" stroke-width="2"/><line x1="96" y1="236" x2="160" y2="236" class="s3" stroke-width="2"/><rect x="160" y="232" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="236" x2="208" y2="236" class="s3" stroke-width="2"/><rect x="90" y="240" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="264" x2="96" y2="272" class="s4" stroke-width="2"/><line x1="96" y1="268" x2="160" y2="268" class="s3" stroke-width="2"/><rect x="160" y="264" width="16" height="8" class="f2" stroke-width="0"/><line x1="176" y1="268" x2="208" y2="268" class="s3" stroke-width="2"/><rect x="90" y="272" width="12" height="24" class="f1 s4" stroke-width="2"/><line x1="96" y1="296" x2="96" y2="304" class="s4" stroke-width="2"/><text x="64" y="308" class="sv-lbl f4" text-anchor="end" font-size="16">GND</text><line x1="72" y1="304" x2="120" y2="304" class="s5" stroke-width="2"/><line x1="208" y1="60" x2="208" y2="250" class="s4" stroke-width="2"/><line x1="208" y1="144" x2="254" y2="144" class="sd3" stroke-width="2"/><rect x="254" y="136" width="2" height="16" class="fd3"/><rect x="256" y="138" width="2" height="12" class="fd3"/><rect x="258" y="140" width="2" height="8" class="fd3"/><rect x="260" y="142" width="2" height="4" class="fd3"/><rect x="262" y="143" width="2" height="2" class="fd3"/><text x="236" y="134" class="sv-lbl fd3" text-anchor="middle" font-size="16">Vout</text><text x="160" y="288" class="sv-lbl f4" text-anchor="start" font-size="16">8 R para 3 bits</text><text x="480" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">escalera R-2R</text><line x1="344" y1="96" x2="376" y2="96" class="s4" stroke-width="2"/><rect x="338" y="104" width="12" height="32" class="f1 s4" stroke-width="2"/><line x1="344" y1="96" x2="344" y2="104" class="s4" stroke-width="2"/><line x1="344" y1="136" x2="344" y2="152" class="s4" stroke-width="2"/><text x="332" y="124" class="sv-lbl f4" text-anchor="end" font-size="16">2R</text><rect x="402" y="90" width="28" height="12" class="f1 s4" stroke-width="2"/><line x1="376" y1="96" x2="402" y2="96" class="s4" stroke-width="2"/><line x1="430" y1="96" x2="456" y2="96" class="s4" stroke-width="2"/><text x="416" y="84" class="sv-lbl f4" text-anchor="middle" font-size="16">R</text><line x1="376" y1="96" x2="376" y2="128" class="s4" stroke-width="2"/><rect x="370" y="128" width="12" height="32" class="f1 s4" stroke-width="2"/><text x="388" y="150" class="sv-lbl f4" text-anchor="start" font-size="16">2R</text><line x1="376" y1="160" x2="376" y2="184" class="s4" stroke-width="2"/><rect x="348" y="184" width="56" height="36" class="f1 sa3" stroke-width="2"/><rect x="347" y="183" width="2" height="2" class="f0"/><rect x="403" y="183" width="2" height="2" class="f0"/><rect x="347" y="219" width="2" height="2" class="f0"/><rect x="403" y="219" width="2" height="2" class="f0"/><text x="376" y="208" class="sv-tit f6" text-anchor="middle" font-size="16">bit 0</text><line x1="376" y1="220" x2="376" y2="268" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="373" y="245" width="6" height="6" class="fa3" stroke-width="0"/><rect x="482" y="90" width="28" height="12" class="f1 s4" stroke-width="2"/><line x1="456" y1="96" x2="482" y2="96" class="s4" stroke-width="2"/><line x1="510" y1="96" x2="536" y2="96" class="s4" stroke-width="2"/><text x="496" y="84" class="sv-lbl f4" text-anchor="middle" font-size="16">R</text><line x1="456" y1="96" x2="456" y2="128" class="s4" stroke-width="2"/><rect x="450" y="128" width="12" height="32" class="f1 s4" stroke-width="2"/><text x="468" y="150" class="sv-lbl f4" text-anchor="start" font-size="16">2R</text><line x1="456" y1="160" x2="456" y2="184" class="s4" stroke-width="2"/><rect x="428" y="184" width="56" height="36" class="f1 sa3" stroke-width="2"/><rect x="427" y="183" width="2" height="2" class="f0"/><rect x="483" y="183" width="2" height="2" class="f0"/><rect x="427" y="219" width="2" height="2" class="f0"/><rect x="483" y="219" width="2" height="2" class="f0"/><text x="456" y="208" class="sv-tit f6" text-anchor="middle" font-size="16">bit 1</text><line x1="456" y1="220" x2="456" y2="268" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="453" y="265" width="6" height="6" class="fa3" stroke-width="0"/><line x1="536" y1="96" x2="536" y2="128" class="s4" stroke-width="2"/><rect x="530" y="128" width="12" height="32" class="f1 s4" stroke-width="2"/><text x="548" y="150" class="sv-lbl f4" text-anchor="start" font-size="16">2R</text><line x1="536" y1="160" x2="536" y2="184" class="s4" stroke-width="2"/><rect x="508" y="184" width="56" height="36" class="fa1 sa3" stroke-width="2"/><rect x="507" y="183" width="2" height="2" class="f0"/><rect x="563" y="183" width="2" height="2" class="f0"/><rect x="507" y="219" width="2" height="2" class="f0"/><rect x="563" y="219" width="2" height="2" class="f0"/><text x="536" y="208" class="sv-tit f6" text-anchor="middle" font-size="16">bit 2</text><line x1="536" y1="220" x2="536" y2="268" class="sa3" stroke-width="2" stroke-dasharray="2 4"/><rect x="533" y="245" width="6" height="6" class="fa3" stroke-width="0"/><line x1="344" y1="152" x2="344" y2="264" class="s4" stroke-width="2"/><line x1="336" y1="248" x2="576" y2="248" class="sc3" stroke-width="2"/><text x="332" y="252" class="sv-lbl fc3" text-anchor="end" font-size="16">Vref</text><line x1="336" y1="268" x2="576" y2="268" class="s3" stroke-width="2"/><text x="332" y="272" class="sv-lbl f4" text-anchor="end" font-size="16">GND</text><line x1="536" y1="96" x2="614" y2="96" class="sd3" stroke-width="2"/><rect x="614" y="88" width="2" height="16" class="fd3"/><rect x="616" y="90" width="2" height="12" class="fd3"/><rect x="618" y="92" width="2" height="8" class="fd3"/><rect x="620" y="94" width="2" height="4" class="fd3"/><rect x="622" y="95" width="2" height="2" class="fd3"/><text x="600" y="84" class="sv-lbl fd3" text-anchor="middle" font-size="16">Vout</text><text x="480" y="300" class="sv-lbl f4" text-anchor="middle" font-size="16">2 × N resistencias, solo dos valores</text>
+  </svg>
+  <figcaption><b>fig 4.2</b>Dos maneras de hacer un DAC con resistencias. En la cadena (izquierda), cada código cierra una sola llave sobre una derivación de un divisor: la salida nunca retrocede al subir el código, pero hacen falta 2<sup>N</sup> resistencias. En la escalera R-2R (derecha), cada bit conmuta una rama entre V<sub>ref</sub> y masa y la corriente se parte a la mitad en cada nodo: solo del orden de 2 · N resistencias.</figcaption>
+</figure>
+
+<h3>Dos más, para completar</h3>
+
+<p>Un <strong>DAC <span class="ref" data-nota="termometrico">termométrico</span></strong> es el equivalente de la cadena con fuentes de corriente: 2<sup><var>N</var></sup> − 1 fuentes iguales, y cada incremento de código enciende una más.<span class="nota-margen" popover id="nota-termometrico"><b>termométrico</b>Código en que se encienden tantos elementos iguales como indica el valor, como la columna de un termómetro.</span> Una vez encendida no se apaga, así que es monótono sin importar cuán exactas sean las corrientes (Kester, MT-014).</p>
+
+<p>Un <strong>arreglo de capacitores</strong> pesados en potencias de dos es el DAC del <span class="ref" data-nota="sar">SAR</span> del nivel anterior.<span class="nota-margen" popover id="nota-sar"><b>sar · successive approximation register</b>Convertidor por aproximaciones sucesivas: un bit por paso, con un solo comparador (nivel 3).</span> Tiene una limitación: las fugas le hacen perder exactitud en unos pocos milisegundos, así que sirve dentro de un SAR, que convierte en microsegundos, pero no como DAC de propósito general (Kester, MT-015).</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Estructura</th><th>elementos para N bits</th><th>cómo responde a la exactitud del MSB</th><th>monotonía</th></tr></thead>
+  <tbody>
+    <tr><td><b>Cadena</b></td><td>2<sup>N</sup> resistencias</td><td>no la necesita: todos los escalones son iguales</td><td>por construcción</td></tr>
+    <tr><td><b>Termométrica</b></td><td>2<sup>N</sup> − 1 fuentes</td><td>no la necesita</td><td>por construcción</td></tr>
+    <tr><td><b>Ponderada</b></td><td>N resistencias o fuentes, relación hasta 2<sup>N−1</sup> a 1</td><td>la pide entera</td><td>no garantizada</td></tr>
+    <tr><td><b>R-2R</b></td><td>del orden de 2 · N resistencias, relación 2 a 1</td><td>la pide, pero con solo dos valores</td><td>depende del apareo de las resistencias</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Un DAC binario ponderado de 12 bits, ¿qué error relativo máximo puede tener su MSB para seguir siendo monótono?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El MSB pesa 2048 LSB y se le tolera 1 LSB de error: 1/2048 ≈ 0,049 %.">Alrededor del 0,05 %.</button>
+    <button type="button" data-por-que="0,78 % es el valor para 8 bits (1/128). Con 12 bits el MSB pesa 16 veces más y la tolerancia es 16 veces menor.">Alrededor del 0,8 %.</button>
+    <button type="button" data-por-que="Un error del 5 % en el MSB son más de 100 LSB: el escalón central retrocedería mucho más que 1 LSB.">Alrededor del 5 %.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<h2>El glitch de la transición mayor</h2>
+
+<p>En el salto de mitad de escala cambian todos los bits a la vez: el MSB sube y los demás bajan. Si las llaves no conmutan exactamente al mismo tiempo, durante un instante el código es uno que no era ni el anterior ni el siguiente.</p>
+
+<p>Taub-Schilling lo plantea con 4 bits: de 0111 a 1000. Si el MSB conmuta antes que los demás, por un momento los interruptores quedan en 1111, y la salida pasa por 15 en lugar de 8. Con 8 bits, de 127 (0111 1111) a 128 (1000 0000), el código intermedio es 1111 1111 = 255: el pico es de +127 LSB y dura lo que se adelanta el MSB.</p>
+
+<figure class="diagrama" data-titulo="fig-4.3">
+  <svg viewBox="0 0 640 272" role="img" aria-label="Arriba, la salida de un DAC de 8 bits en el salto de 127 a 128: la ideal sube un LSB y la real pasa por 255 durante un instante. Abajo, los tiempos de las llaves: el bit más significativo sube antes de que los demás bajen">
+    <line x1="64" y1="176" x2="624" y2="176" class="s4" stroke-width="2"/><line x1="64" y1="176" x2="64" y2="32" class="s4" stroke-width="2"/>
+    <text x="56" y="180" class="sv-lbl f4" text-anchor="end" font-size="16">0</text><text x="56" y="40" class="sv-lbl f4" text-anchor="end" font-size="16">255</text><text x="56" y="112" class="sv-lbl f4" text-anchor="end" font-size="16">LSB</text>
+    <polyline points="64,106 316,106 316,106 624,106" class="fn s4" stroke-width="2" stroke-dasharray="4 4"/>
+    <polyline points="64,106 316,106 316,36 366,36 366,106 624,106" class="fn sa3" stroke-width="4"/>
+    <text x="376" y="44" class="sv-lbl fd3" text-anchor="start" font-size="16">pico: 255 en lugar de 128 (+127 LSB)</text>
+    <text x="120" y="96" class="sv-lbl fa3" text-anchor="start" font-size="16">127</text><text x="523" y="96" class="sv-lbl fa3" text-anchor="start" font-size="16">128</text>
+    <text x="624" y="24" class="sv-lbl f4" text-anchor="end" font-size="16">salida ideal (punteada) y real</text>
+    <line x1="316" y1="176" x2="316" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/><line x1="366" y1="176" x2="366" y2="256" class="s2" stroke-width="2" stroke-dasharray="2 4"/>
+    <polyline points="64,232 316,232 316,208 624,208" class="fn sc3" stroke-width="2"/>
+    <polyline points="64,240 366,240 366,264 624,264" class="fn sb3" stroke-width="2"/>
+    <text x="56" y="224" class="sv-lbl fc3" text-anchor="end" font-size="16">MSB</text><text x="56" y="256" class="sv-lbl fb3" text-anchor="end" font-size="16">demás</text>
+    <text x="341" y="196" class="sv-lbl fd3" text-anchor="middle" font-size="16">adelanto</text>
+  </svg>
+  <figcaption><b>fig 4.3</b>El MSB sube un instante antes de que los demás bits bajen. En ese lapso el código es 1111 1111 y la salida da un pico de +127 LSB; después se asienta en 128. La salida ideal (punteada) apenas sube 1 LSB.</figcaption>
+</figure>
+
+<p>¿Cuánto importa? Se compara el <strong>área</strong> del pico con la del propio escalón. Supongamos un adelanto de 10 ns (valor supuesto) y una actualización cada 1 µs. El área del pico es 127 LSB · 10 ns = 1270 LSB·ns. Repartida sobre el período de 1000 ns, es un error medio de 1,27 LSB en ese ciclo: más que el propio escalón de 1 LSB que se quería generar.</p>
+
+<p>La cadena de resistencias se libra de esto casi por completo: en cada transición solo operan dos llaves, y el pico es siempre el mismo sin importar el código. Su contenido de frecuencia queda en la tasa de actualización y sus armónicos, no en los de la señal (Kester, MT-014). Con una R-2R, una defensa es un filtro a la salida, que reparte el pico en el tiempo.</p>
+
+<h2>Un solo bit: PWM y sigma-delta</h2>
+
+<p>El DAC más simple es una llave que conecta la salida a <var>V</var><sub>ref</sub> o a masa: un DAC de 1 bit (Kester, MT-014). Sola solo da dos tensiones. Pero si conmuta rápido y se filtra, el valor medio sale proporcional al tiempo que pasó en <var>V</var><sub>ref</sub>. Así funcionan el <span class="ref" data-nota="pwm">PWM</span> y el <span class="ref" data-nota="sigma-delta">sigma-delta</span>, y son las alternativas de los micros que no tienen un DAC propio.<span class="nota-margen" popover id="nota-pwm"><b>pwm · pulse-width modulation</b>Pulsos de ancho variable a frecuencia fija: el valor medio sigue el ancho.</span><span class="nota-margen" popover id="nota-sigma-delta"><b>sigma-delta</b>Tren de pulsos de 1 bit cuya densidad de unos representa el valor; se explica más abajo.</span></p>
+
+<h3>PWM con un filtro RC</h3>
+
+<p>Con un ciclo de trabajo <var>D</var> y una frecuencia <var>f</var>, el valor medio es <var>D</var> · <var>V</var><sub>ref</sub>. Un filtro RC lo extrae, pero deja un <span class="ref" data-nota="rizado">rizado</span>.<span class="nota-margen" popover id="nota-rizado"><b>ripple</b>Variación residual de una tensión que debería ser continua.</span> Mientras la llave está en <var>V</var><sub>ref</sub> durante <var>D</var> · <var>T</var>, el capacitor se carga con una corriente de aproximadamente (<var>V</var><sub>ref</sub> − <var>V</var><sub>o</sub>) / <var>R</var>, y con <var>V</var><sub>o</sub> = <var>D</var> · <var>V</var><sub>ref</sub>, y un RC mucho mayor que el período, el rizado pico a pico es</p>
+
+<p class="formula">Δ<var>V</var> ≈ <var>V</var><sub>ref</sub> · <var>D</var> · (1 − <var>D</var>) / (<var>f</var> · <var>R</var> · <var>C</var>)</p>
+
+<p>El peor caso es <var>D</var> = ½, donde vale <var>V</var><sub>ref</sub> / (4 · <var>f</var> · <var>R</var> · <var>C</var>). Queremos que no pase de 1 LSB de 8 bits, o sea <var>V</var><sub>ref</sub> / 256:</p>
+
+<p class="formula"><var>f</var> · <var>R</var> · <var>C</var> ≥ 64 &nbsp;→&nbsp; con <var>f</var> = 100 kHz, <var>R</var> · <var>C</var> ≥ 640 µs</p>
+
+<p>Con ese filtro, ¿cuánto tarda la salida en llegar a su valor cuando cambia el código? Es el mismo cálculo de carga RC de la fuente del nivel anterior: asentarse a ½ LSB de 8 bits toma (<var>N</var> + 1) · ln 2 · <var>τ</var>:</p>
+
+<p class="formula">9 · 0,693 · 640 µs ≈ 4 ms</p>
+
+<p>Es decir, con ese PWM la salida puede cambiar unas 250 veces por segundo. Para una tensión de polarización que se fija una vez, sobra. Para audio, no sirve. El PWM cambia hardware por velocidad: no hace falta ningún componente más que un RC, pero cada bit de exactitud se paga en tiempo de asentamiento.</p>
+
+<h3>Sigma-delta: el mismo promedio, distinto reparto</h3>
+
+<p>El modulador sigma-delta genera pulsos con el mismo valor medio que el PWM, pero los reparte lo más parejo posible en vez de agruparlos al principio del período. El error de cuantización sigue ahí, pero su energía se va hacia frecuencias mucho más altas que la señal: es el modelado del ruido que ya apareció en el ADC sigma-delta (Kester, MT-017, MT-022).</p>
+
+<figure class="diagrama" data-titulo="fig-4.4">
+  <svg viewBox="0 0 640 200" role="img" aria-label="Dos trenes de pulsos con el mismo valor medio de 3/8: el PWM agrupa los unos en un bloque por período; el sigma-delta los reparte lo más parejo posible">
+    <text x="16" y="56" class="sv-tit fb3" text-anchor="start" font-size="20">PWM</text><polyline points="128,32 152,32 152,72 192,72 192,32 216,32 216,72 256,72 256,32 280,32 280,72 320,72 320,32 344,32 344,72 384,72 384,32 408,32 408,72 448,72 448,32 472,32 472,72 512,72 512,32 536,32 536,72 576,72 576,32 600,32 600,72 640,72" class="fn sb3" stroke-width="2"/><text x="16" y="140" class="sv-tit fa3" text-anchor="start" font-size="20">sigma-delta</text><polyline points="128,156 144,156 144,116 152,116 152,156 168,156 168,116 176,116 176,156 184,156 184,116 192,116 192,156 208,156 208,116 216,116 216,156 232,156 232,116 240,116 240,156 248,156 248,116 256,116 256,156 272,156 272,116 280,116 280,156 296,156 296,116 304,116 304,156 312,156 312,116 320,116 320,156 336,156 336,116 344,116 344,156 360,156 360,116 368,116 368,156 376,156 376,116 384,116 384,156 400,156 400,116 408,116 408,156 424,156 424,116 432,116 432,156 440,156 440,116 448,116 448,156 464,156 464,116 472,116 472,156 488,156 488,116 496,116 496,156 504,156 504,116 512,116 512,156 528,156 528,116 536,116 536,156 552,156 552,116 560,116 560,156 568,156 568,116 576,116 576,156 592,156 592,116 600,116 600,156 616,156 616,116 624,116 624,156 632,156 632,116 640,116" class="fn sa3" stroke-width="2"/><text x="128" y="188" class="sv-lbl f4" text-anchor="start" font-size="16">mismo promedio: 3 de cada 8</text>
+  </svg>
+  <figcaption><b>fig 4.4</b>El mismo valor medio, 3/8, generado de dos formas. El PWM junta los unos al principio de cada período, así que su rizado cae en la frecuencia del PWM. El sigma-delta los reparte lo más parejo posible: la energía del error se va a frecuencias mucho más altas, y un filtro RC simple la saca con menos retardo.</figcaption>
+</figure>
+
+<p>La consecuencia práctica: con el mismo filtro RC, el rizado del sigma-delta es mucho menor, o con el mismo rizado se puede usar un filtro más rápido, lo que acorta el tiempo de asentamiento de la cuenta anterior. El costo es que el modulador necesita un reloj mucho más rápido que la señal que genera. La página de componentes de este nivel muestra cuánto se gana en un micro real.</p>
+
+<h2>Especificaciones y la carga</h2>
+
+<p>Un DAC se describe con unos pocos números, y la mayoría ya los vimos con el ADC (Taub-Schilling, 14.11; Kester, MT-010):</p>
+
+<ul>
+  <li><strong>Resolución:</strong> el número de bits, y con él el número de salidas posibles, 2<sup><var>N</var></sup>.</li>
+  <li><strong>Linealidad:</strong> cuánto se aparta la salida de una recta. Una especificación de «menos de ±½ LSB» significa que ningún punto se aparta más de medio escalón de su valor ideal.</li>
+  <li><strong>Monotonía:</strong> que la salida no retroceda al subir el código. Con una <span class="ref" data-nota="dnl">DNL</span> peor que −1 LSB en algún escalón, se pierde.<span class="nota-margen" popover id="nota-dnl"><b>dnl · differential nonlinearity</b>No linealidad diferencial: cuánto se aparta cada escalón de 1 LSB (nivel 3).</span></li>
+  <li><strong>Exactitud:</strong> cuánto se aparta la salida real de la ideal, incluyendo la incertidumbre de la referencia y el offset del amplificador. Un ejemplo de hoja de datos de calidad media: «0,2 % de plena escala + ½ LSB».</li>
+  <li><strong>Tiempo de establecimiento:</strong> lo que tarda la salida en acercarse «lo suficiente» a su valor final después de un cambio de código; un ejemplo típico es «500 ns para 0,2 % de plena escala».</li>
+  <li><strong>Glitch:</strong> el pico de la transición mayor, que se mide como un área.</li>
+</ul>
+
+<h3>Cargar la salida cuesta LSB</h3>
+
+<p>Las redes de resistencias tienen una impedancia de salida: la cadena la tiene dependiente del código, la R-2R en modo tensión la tiene constante (Kester, MT-014 y MT-015). Con una carga resistiva queda un divisor, y el error depende de la relación entre las dos.</p>
+
+<p>Un ejemplo con valores supuestos: una red con 10 kΩ de impedancia de salida sobre una carga de 100 kΩ pierde 10 / (10 + 100) ≈ 9 % de la tensión. Con 8 bits eso son unos 23 LSB. Por eso los DAC integrados llevan un amplificador seguidor en la salida: esconde la impedancia de la red y entrega la tensión con una impedancia baja.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso rápido</h4>
+  <p class="pregunta">Querés generar una senoide de audio con un PWM de 8 bits a 100 kHz y un filtro RC que mantiene el rizado por debajo de 1 LSB. ¿Qué problema vas a tener?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El PWM sí puede llegar a 8 bits de resolución; el problema es otro: el filtro necesario es lento.">El PWM no puede tener 8 bits de resolución.</button>
+    <button type="button" data-por-que="Con RC ≥ 640 µs, asentarse a ½ LSB toma unos 4 ms. La salida cambia unas 250 veces por segundo, muy poco para audio.">El filtro es tan lento que la salida cambia solo unas 250 veces por segundo.</button>
+    <button type="button" data-por-que="El rizado se calculó justamente para quedar por debajo de 1 LSB. El problema es la velocidad, no el rizado.">El rizado va a superar los 5 V.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>La salida de un DAC es una escalera: trae imágenes en <var>f</var><sub>c</sub> ± <var>f</var> y una envolvente que atenúa 3,92 dB en Nyquist. El filtro anti-imágenes es el antialiasing al revés.</li>
+    <li>El MSB pesa 2<sup><var>N</var>−1</sup> LSB y tolera un error de 1 LSB: 0,78 % con 8 bits y 0,049 % con 12. De ahí salen todas las estructuras.</li>
+    <li>La cadena de resistencias y la termométrica son monótonas por construcción, pero cuestan 2<sup><var>N</var></sup> elementos. R-2R y ponderada necesitan relaciones exactas.</li>
+    <li>En la transición mayor las llaves no conmutan juntas y aparece un pico; se mide como área frente al escalón.</li>
+    <li>PWM con RC cambia hardware por velocidad: 8 bits a 100 kHz tarda unos 4 ms en asentarse. El sigma-delta reparte el error hacia arriba y permite filtros más rápidos.</li>
+  </ul>
+</div>
+
+<p>Para ver cómo lo hacen los micros reales, con el DAC del ESP32, el modulador sigma-delta del ESP32-S3 y el caso del RP2040 sin DAC, seguí en <a href="04b-dac-esp32.html">«El DAC del ESP32 y las alternativas sin DAC»</a>.</p>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Taub, H. y Schilling, D. <em>Electrónica digital integrada</em>. Marcombo, Barcelona (traducción de <em>Digital Integrated Electronics</em>, McGraw-Hill, 1977), cap. 14: convertidor D/A con resistores ponderados (14.5), especificaciones (14.11).</li>
+    <li>Kester, W. <em>MT-014: Basic DAC Architectures I: String DACs and Thermometer (Fully Decoded) DACs</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-014.pdf">analog.com/…/MT-014.pdf</a></li>
+    <li>Kester, W. <em>MT-015: Basic DAC Architectures II: Binary DACs</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-015.pdf">analog.com/…/MT-015.pdf</a></li>
+    <li>Kester, W. <em>MT-017: Oversampling Interpolating DACs</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-017.pdf">analog.com/…/MT-017.pdf</a></li>
+    <li>Kester, W. <em>MT-010: The Importance of Data Converter Static Specifications</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-010.pdf">analog.com/…/MT-010.pdf</a></li>
+    <li>Kester, W. <em>MT-022: ADC Architectures III: Sigma-Delta ADC Basics</em>. Analog Devices. <a href="https://www.analog.com/media/en/training-seminars/tutorials/MT-022.pdf">analog.com/…/MT-022.pdf</a></li>
+  </ol>
+  <p class="nota">La cuenta de la exactitud del MSB, el tamaño del glitch de 8 bits, el rizado del PWM y el tiempo de asentamiento son deducciones propias a partir de los hechos de las fuentes. El adelanto de 10 ns, la frecuencia de 100 kHz y las impedancias de 10 kΩ y 100 kΩ son supuestos para ilustrar el cálculo, no datos de un micro. La mejora del sigma-delta se describe sin cifras porque ninguna fuente de este nivel las da.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, micro-esp, tomo-02, nivel-04</footer>
+</body>
+</html>

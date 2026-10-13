@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.26";
+const VERSION = "0.1.50";
 
 const CURSOS = {
   micro: {
@@ -19,11 +19,11 @@ const CURSOS = {
   mundo: {
     titulo: "Tocar el mundo", seccion: "micro",
     niveles: [
-      { f: "01-pin.html", t: "El pin por dentro", d: "La celda de E/S, push-pull y open-drain, la matriz de GPIO y los pines de arranque." },
-      { f: "02-temporizadores-pwm.html", t: "Temporizadores y PWM", d: "Contador, prescaler y comparador: PWM, tiempo muerto y puentes en H." },
-      { f: "03-adc.html", t: "El ADC", d: "Aproximaciones sucesivas por dentro, errores, atenuación y calibración." },
-      { f: "04-dac-touch.html", t: "DAC y sensor táctil", d: "Redes resistivas, sigma-delta y el oscilador de relajación que siente un dedo." },
-      { f: "05-rmt-pcnt.html", t: "Generar y contar pulsos", d: "RMT para trenes de pulsos e infrarrojo; PCNT para encoders en cuadratura." },
+      { f: "01-pin.html", t: "La frontera del micro", d: "Niveles lógicos y margen de ruido, push-pull y open-drain, el disparador Schmitt, las resistencias de pull, el ruido de masa y la protección contra descargas.", c: { f: "01b-pin-esp32.html", t: "Los pines del ESP32, del ESP32-S3 y del RP2040" } },
+      { f: "02-temporizadores-pwm.html", t: "Contar el tiempo", d: "Prescaler, contador y comparador; deriva y jitter; PWM, registro sombra y tiempo muerto de un puente en H.", c: { f: "02b-temporizadores-esp32.html", t: "Los temporizadores y el PWM del ESP32, del ESP32-S3 y del RP2040" } },
+      { f: "03-adc.html", t: "Del voltaje al número", d: "Muestreo, cuantización, aproximaciones sucesivas, tiempo de adquisición y errores de un convertidor.", c: { f: "03b-adc-esp32.html", t: "El ADC del ESP32, del ESP32-S3 y del RP2040" } },
+      { f: "04-dac.html", t: "De número a tensión", d: "La escalera del DAC, cuánta exactitud pide cada bit, el glitch y el PWM y el sigma-delta como DAC de un bit.", c: { f: "04b-dac-esp32.html", t: "El DAC del ESP32 y las alternativas sin DAC" } },
+      { f: "05-rmt-pcnt.html", t: "Pulsos con precisión de hardware", d: "Generar y medir pulsos sin la CPU: pares nivel-duración, el WS2812, la portadora infrarroja, contadores de flancos, encoders en cuadratura y el sensor táctil.", c: { f: "05b-pulsos-esp32.html", t: "El RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040" } },
     ],
   },
   datos: {
@@ -72,6 +72,15 @@ const CURSOS = {
       { f: "07-energia.html", t: "Energía y autonomía", d: "Dormir, despertar, inferir y transmitir: carga por ciclo y meses de batería." },
       { f: "08-palabra-clave.html", t: "Oír una palabra", d: "Micrófono, tramas, espectrograma Mel y WakeNet en el ESP32-S3." },
       { f: "09-sensores.html", t: "Sentir vibraciones", d: "Señales 1D, rasgos y autoencoders para detectar anomalías." },
+    ],
+  },
+  tinyml: {
+    titulo: "Redes neuronales en el micro", seccion: "ia",
+    niveles: [
+      { f: "01-fundamentos.html", t: "Una red neuronal y sus cuentas", d: "Neurona, capa y convolución: cómo contar pesos, MAC y memoria antes de entrenar." },
+      { f: "02-encoger.html", t: "Encoger un modelo", d: "Cuantización a int8, poda y destilación: la cuenta que hay debajo de cada técnica." },
+      { f: "03-del-modelo-al-firmware.html", t: "Del modelo al firmware", d: "El archivo del modelo, la arena de memoria, el intérprete, los núcleos y cómo medir una inferencia." },
+      { f: "04-aceleracion.html", t: "Por qué un acelerador es más rápido", d: "Energía de mover datos, SIMD, vectoriales y NPU: dónde se gana y dónde el límite es la memoria." },
     ],
   },
 };
@@ -237,7 +246,7 @@ function montarTemario() {
       <a class="panel" href="${n.f}">
         <h3>${n.t}</h3>
         <p>${n.d}</p>
-        <span class="meta">${hechos.includes(n.f) ? "[✓] completado" : "[ ] pendiente"}</span>
+        <span class="meta">${hechos.includes(n.f) ? "[✓] completado" : "[ ] pendiente"}${n.c ? " · con página de componentes" : ""}</span>
       </a>
     </li>`).join("");
   const total = document.querySelector("[data-avance]");
@@ -257,13 +266,19 @@ function montarAvancePortada() {
   });
 }
 
+// data-nivel "3" es la página de concepto del nivel 3; "3b" es su página de componentes (campo opcional c en CURSOS)
+function nivelDeLaPagina(b) {
+  const m = /^(\d+)(b?)$/.exec(b.nivel || "");
+  return m ? { i: Number(m[1]) - 1, comp: m[2] === "b" } : { i: NaN, comp: false };
+}
+
 // ---- sidebar de los niveles: niveles del tomo; el nivel abierto despliega sus secciones y marca la que se lee ----
 const SECCIONES = { micro: "Microcontroladores", ia: "IA en el borde" };
 function montarSidebar() {
   const b = document.body.dataset, curso = CURSOS[b.curso];
   if (!curso || !b.nivel) return;
   const ids = Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === curso.seccion), t = ids.indexOf(b.curso);
-  const hechos = LS.get(clave(b.curso), []), actual = Number(b.nivel) - 1;
+  const hechos = LS.get(clave(b.curso), []), { i: actual, comp } = nivelDeLaPagina(b);
   const hs = [...document.querySelectorAll(".leccion > h2")];   // las fuentes quedan afuera (van dentro de su section)
   hs.forEach((h) => {
     if (h.id) return;
@@ -277,7 +292,7 @@ function montarSidebar() {
     <p class="sb-eyebrow">${SECCIONES[curso.seccion]}, Tomo ${t + 1}</p>
     <a class="sb-tomo" href="index.html">${curso.titulo}</a>
     <ol class="sb-niveles">${curso.niveles.map((n, k) => `
-      <li${k === actual ? ' class="actual"' : ""}><a href="${n.f}"${k === actual ? ' aria-current="page"' : ""}><span>${String(k + 1).padStart(2, "0")}</span>${n.t}${hechos.includes(n.f) ? '<i title="completado">✓</i>' : ""}</a>${k === actual ? '<ol class="sb-secciones"></ol>' : ""}</li>`).join("")}
+      <li${k === actual ? ' class="actual"' : ""}><a href="${n.f}"${k === actual && !comp ? ' aria-current="page"' : ""}><span>${String(k + 1).padStart(2, "0")}</span>${n.t}${hechos.includes(n.f) ? '<i title="completado">✓</i>' : ""}</a>${k === actual && !comp ? '<ol class="sb-secciones"></ol>' : ""}${n.c ? `<a class="sb-comp" href="${n.c.f}"${k === actual && comp ? ' aria-current="page"' : ""}>↳ componentes</a>` : ""}${k === actual && comp ? '<ol class="sb-secciones"></ol>' : ""}</li>`).join("")}
     </ol>
     <p class="sb-tomos">${t > 0 ? `<a href="../${ids[t - 1]}/index.html">← Tomo ${t}</a>` : "<span></span>"}${t < ids.length - 1 ? `<a href="../${ids[t + 1]}/index.html">Tomo ${t + 2} →</a>` : ""}</p>`;
   const ol = aside.querySelector(".sb-secciones");
@@ -320,9 +335,10 @@ function montarNavLeccion() {
   const curso = CURSOS[b.curso];
   const cont = document.querySelector("[data-nav-niveles]");
   if (!curso || !cont) return;
-  const i = Number(b.nivel) - 1;
+  const { i, comp } = nivelDeLaPagina(b);
   if (!curso.niveles[i]) return;   // data-nivel fuera de CURSOS: que no corte el quiz ni lo que sigue
-  const ant = curso.niveles[i - 1], sig = curso.niveles[i + 1];
+  // la página de componentes vuelve a su concepto y sigue con el nivel siguiente; no marca avance
+  const ant = comp ? curso.niveles[i] : curso.niveles[i - 1], sig = curso.niveles[i + 1];
   const f = curso.niveles[i].f;
   const hechos = LS.get(clave(b.curso), []);
   // último nivel: ofrece el primer nivel del tomo siguiente (misma profundidad de carpetas)
@@ -332,15 +348,16 @@ function montarNavLeccion() {
     ? `<a href="../${idProx}/${prox.niveles[0].f}"><small>siguiente tomo →</small><span>${prox.titulo}</span></a>`
     : `<a href="index.html"><small>fin del tomo →</small><span>Temario</span></a>`;
 
-  cont.innerHTML = `
+  cont.innerHTML = `${comp ? "" : `
     <div class="completar">
       <button class="btn" type="button" data-completar>${hechos.includes(f) ? "[✓] nivel completado" : "[ ] marcar nivel como completado"}</button>
-    </div>
+    </div>`}
     <nav class="nav-niveles" aria-label="Niveles">
-      ${ant ? `<a href="${ant.f}"><small>← anterior</small><span>${ant.t}</span></a>` : `<a href="index.html"><small>← volver</small><span>Temario</span></a>`}
+      ${ant ? `<a href="${ant.f}"><small>${comp ? "← el concepto" : "← anterior"}</small><span>${ant.t}</span></a>` : `<a href="index.html"><small>← volver</small><span>Temario</span></a>`}
       ${sig ? `<a href="${sig.f}"><small>siguiente →</small><span>${sig.t}</span></a>` : finTomo}
     </nav>`;
-  cont.querySelector("[data-completar]").onclick = (e) => {
+  const btnCompletar = cont.querySelector("[data-completar]");
+  if (btnCompletar) btnCompletar.onclick = (e) => {
     let h = LS.get(clave(b.curso), []);
     const hecho = !h.includes(f);
     h = hecho ? [...h, f] : h.filter((x) => x !== f);
@@ -363,6 +380,45 @@ function montarQuiz() {
         fb.textContent = (i === ok ? "¡Correcto! " : "Casi. ") + (btn.dataset.porQue || "");
       };
     });
+  });
+}
+
+// ---- notas al margen: <span class="ref" data-nota="x"> + <span class="nota-margen" id="nota-x" popover>.
+// Desde 1300 px el CSS las pone en el margen y aparecen al entrar en pantalla; más angosto, el término las abre
+// como tarjeta emergente (al tocar, o al pasar el mouse) ----
+function montarNotas() {
+  const ancha = matchMedia("(min-width: 1300px)");
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".ref[data-nota]").forEach((ref) => {
+    const nota = document.getElementById("nota-" + ref.dataset.nota);
+    if (!nota?.showPopover) return;
+    io.observe(nota);
+    nota.setAttribute("role", "note");
+    nota.insertAdjacentHTML("afterbegin", '<button type="button" class="nota-cerrar" aria-label="cerrar nota">×</button>');
+    nota.firstChild.onclick = () => (nota.matches(":popover-open") ? nota.hidePopover() : nota.classList.add("cerrada"));
+    nota.addEventListener("toggle", (e) => ref.setAttribute("aria-expanded", e.newState === "open"));
+    const abrir = () => { if (!ancha.matches && !nota.matches(":popover-open")) nota.showPopover(); };
+    ref.onclick = abrir;
+    // con mouse, la nota también aparece al pasar por el término y se va al salir de él o de la tarjeta
+    let espera;
+    const sobre = matchMedia("(hover: hover)");
+    const irse = () => { clearTimeout(espera); espera = setTimeout(() => { if (!ref.matches(":hover") && !nota.matches(":hover")) nota.matches(":popover-open") && nota.hidePopover(); }, 250); };
+    ref.addEventListener("mouseenter", () => { clearTimeout(espera); if (sobre.matches) abrir(); });
+    ref.addEventListener("mouseleave", irse);
+    nota.addEventListener("mouseenter", () => clearTimeout(espera));
+    nota.addEventListener("mouseleave", irse);
+    ref.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } };
+    const modo = () => {   // en pantalla ancha el término no es un botón: la nota ya está a la vista
+      if (ancha.matches) { ["tabindex", "role", "aria-controls", "aria-expanded"].forEach((a) => ref.removeAttribute(a)); return; }
+      ref.tabIndex = 0;
+      ref.setAttribute("role", "button");
+      ref.setAttribute("aria-controls", nota.id);
+      ref.setAttribute("aria-expanded", "false");
+    };
+    modo();
+    ancha.addEventListener("change", () => { if (nota.matches(":popover-open")) nota.hidePopover(); modo(); });
   });
 }
 
@@ -395,5 +451,6 @@ document.addEventListener("DOMContentLoaded", () => {
   montarSidebar();
   montarNavLeccion();
   montarQuiz();
+  montarNotas();
   pausarFueraDePantalla();
 });

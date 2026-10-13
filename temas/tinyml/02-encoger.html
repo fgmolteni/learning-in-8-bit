@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 2: Encoger un modelo</title>
+<meta name="description" content="Una red entrenada en float32 no entra en un micro tal cual. Se achica con enteros de 8 bits, podando conexiones y enseñándole a una red chica.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 2: Encoger un modelo">
+<meta property="og:description" content="Una red entrenada en float32 no entra en un micro tal cual. Se achica con enteros de 8 bits, podando conexiones y enseñándole a una red chica.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="tinyml" data-nivel="2">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="02">nivel 02, 16 min de lectura</span>
+  <h1>Encoger un modelo</h1>
+  <p class="bajada">Una red entrenada en float32 no entra en un micro tal cual. Se achica con enteros de 8 bits, podando conexiones y enseñándole a una red chica.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Pasar un valor real a entero de 8 bits y volver, con escala y punto cero.</li>
+    <li>Explicar por qué sumar y multiplicar enteros gasta menos energía que hacerlo en float32.</li>
+    <li>Distinguir cuantizar después de entrenar de entrenar ya cuantizando.</li>
+    <li>Decir qué poda achica la memoria y cuál también acelera el cálculo.</li>
+    <li>Calcular cómo la temperatura cambia la salida de una red.</li>
+  </ul>
+</div>
+
+<h2>Por qué hay que encoger</h2>
+
+<p>La red del nivel 1 usaba 4 bytes por peso. Con 60.000 pesos eran del orden de 240 KB. Un micro tiene del orden de cientos de KB de <span class="ref" data-nota="sram">SRAM</span>.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca.</span> Hay dos salidas: tener menos números o tener números más chicos.</p>
+
+<p>Encoger también ahorra energía. Un <span class="ref" data-nota="mac">MAC</span> con enteros de 8 bits gasta bastante menos que uno en float32.<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red.</span> La tabla de Horowitz, que reproducen los apuntes del MIT, da la cifra por operación (45 nm, 0,9 V). Se mide en <span class="ref" data-nota="pj">picojoules</span> (pJ).<span class="nota-margen" popover id="nota-pj"><b>pj · picojoule</b>Una billonésima de joule (10⁻¹² J). Se usa para medir la energía de una sola operación dentro de un procesador.</span></p>
+
+<figure class="diagrama" data-titulo="fig-2.1 interactivo">
+  <canvas data-widget="energia" width="640" height="200"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.1</b>Energía de una operación en un chip de 45 nm (Horowitz, vía los apuntes del MIT). Una multiplicación float32 gasta 18,5 veces lo que una int8; una suma, 30 veces. Alterná entre suma y multiplicación.</figcaption>
+</figure>
+
+<p>La cuenta: una multiplicación float32 gasta 3,7 pJ y una <span class="ref" data-nota="int8">int8</span>, 0,2 pJ.<span class="nota-margen" popover id="nota-int8"><b>int8 · entero de 8 bits</b>Número entero con signo de 8 bits, de −128 a 127. Cuatro veces más chico que un decimal de 32 bits.</span> Son 3,7 / 0,2 = 18,5 veces más. La suma da 0,9 pJ / 0,03 pJ = 30 veces. Esas razones son el motivo de fondo para cuantizar. Solo se cumplen si el procesador tiene rutas de baja precisión (Reddi, capítulo 10).</p>
+
+<p>Hay tres técnicas, y se combinan. La <strong>cuantización</strong> usa números más chicos. La <strong>poda</strong> quita conexiones. La <strong>destilación</strong> entrena una red chica que imita a una grande. El Tomo 1 ya mostró la primera con una red concreta (<a href="../redes/02-cuantizacion.html">IA en el borde, Tomo 1, nivel 2</a>). Acá se ve la cuenta que hay debajo.</p>
+
+<h2>Cuantización: una regla de tres entre dos rectas</h2>
+
+<p>La <strong>cuantización afín</strong> reparte los valores reales de un rango en pasos enteros. Hacen falta dos números por tensor. La <strong>escala</strong> <var>S</var> dice cuánto vale un paso. El <strong>punto cero</strong> <var>Z</var> dice qué entero representa el cero real. La relación es (Jacob et al., ecuación 1):</p>
+
+<p class="formula"><var>r</var> = <var>S</var> · (<var>q</var> − <var>Z</var>)</p>
+
+<p>Un ejemplo con números del libro de Reddi (libro p. 497). Los valores reales van de −1 a 3. Se guardan en un entero de 8 bits sin signo, de 0 a 255: son 255 pasos. La escala es 4 / 255 ≈ 0,0157. El punto cero es <var>Z</var> = 1 / 0,0157 ≈ 64: así el 0 real cae justo en un entero.</p>
+
+<figure class="diagrama" data-titulo="fig-2.2 interactivo">
+  <canvas data-widget="afin" width="640" height="248"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.2</b>Arriba, los valores reales de −1 a 3 (naranja). Abajo, los enteros de 0 a 255 (azul). El 0 real cae en q = 64, el punto cero (verde). Mové el valor real: el error de la vuelta nunca pasa de medio paso.</figcaption>
+</figure>
+
+<p>Para guardar <var>r</var> = 1,0 se hace 1,0 / (4 / 255) = 63,75 y se suma 64. Da 127,75, que se redondea a 128. Al volver, (4 / 255) · (128 − 64) = 1,0039. El error es 0,0039. Nunca pasa de medio paso, <var>S</var>/2 ≈ 0,0078 (deducción propia). El error máximo de cada valor depende solo de cuánto abarca el rango.</p>
+
+<div class="caja dato">
+  <h4>dato</h4>
+  <p>Pasar de float32 a int8 reduce el tamaño del modelo 4 veces (Jacob et al., p. 9). Los sesgos se guardan en int32, para no perder precisión en la suma (p. 3).</p>
+</div>
+
+<h3>Cómo calcula la red con enteros</h3>
+
+<p>Una capa cuantizada multiplica enteros de 8 bits. El producto de dos int8 ocupa hasta 16 bits y la suma de muchos productos crece más. Por eso el acumulador es de 32 bits. Sze et al. calculan que necesita 2<var>N</var> + <var>M</var> bits (p. 21). En las redes populares, <var>M</var> va de 10 a 16.</p>
+
+<p>Al final hay que volver a 8 bits. La suma está en la escala <var>S</var><sub>1</sub>·<var>S</var><sub>2</sub> y la salida pide <var>S</var><sub>3</sub>. El factor de cambio es <var>M</var> = <var>S</var><sub>1</sub>·<var>S</var><sub>2</sub> / <var>S</var><sub>3</sub>, siempre entre 0 y 1. Jacob et al. lo escriben como un entero por una potencia de 2 (p. 3): un producto y un desplazamiento, sin float. Así la inferencia entera no usa decimales.</p>
+
+<h3>Pesos simétricos, activaciones asimétricas</h3>
+
+<p>Los pesos suelen guardarse con rango simétrico, de −127 a 127, y <var>Z</var> = 0. Las activaciones que salen de una ReLU son siempre positivas. Para ellas conviene el rango asimétrico, que usa los 256 valores (Gholami et al., p. 5–6).</p>
+
+<h3>Un par por tensor o uno por canal</h3>
+
+<p>La <strong>granularidad</strong> dice cuántos pares (<var>S</var>, <var>Z</var>) hay. Jacob et al. usan uno por arreglo entero (p. 3). Eso falla cuando los canales de salida tienen rangos muy distintos: citan diferencias de más de 100 veces (p. 5). La cuantización <strong>por canal</strong> da un par a cada filtro. Gholami et al. la presentan como el método estándar para convoluciones (p. 6–7). Guarda más pares de números por capa.</p>
+
+<figure class="diagrama" data-titulo="fig-2.3 interactivo">
+  <canvas data-widget="quant" data-vista="canal" width="640" height="300"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.3</b>Tres filtros con rangos distintos cuantizados a int8. Con un solo par por tensor, el filtro C usa unos pocos escalones y pierde precisión. Por canal, cada filtro aprovecha los 255 escalones.</figcaption>
+</figure>
+
+<h2>Cuantizar después o durante el entrenamiento</h2>
+
+<p>Hay dos momentos para cuantizar. La <span class="ref" data-nota="ptq">cuantización posentrenamiento</span> (PTQ) toma la red ya entrenada y fija las escalas.<span class="nota-margen" popover id="nota-ptq"><b>ptq · post-training quantization</b>Cuantizar una red ya entrenada, sin reentrenarla. Solo hace falta un puñado de datos para calibrar las escalas.</span> Para elegir el rango de cada tensor se corren unos datos de muestra por la red. Esa es la <strong>calibración</strong> (Gholami et al., p. 6).</p>
+
+<p>La <span class="ref" data-nota="qat">cuantización durante el entrenamiento</span> (QAT) simula el redondeo mientras la red aprende.<span class="nota-margen" popover id="nota-qat"><b>qat · quantization-aware training</b>Entrenar con el redondeo a enteros simulado en cada paso, para que la red aprenda a tolerarlo.</span> Los pesos se ajustan sabiendo que van a perder precisión. Jacob et al. (p. 9) reportan que restaura la exactitud a niveles «casi idénticos» a los del modelo float. Cuesta más: hay que reentrenar.</p>
+
+<p>La elección muchas veces la fija el contexto. En el benchmark MLPerf Tiny, la división cerrada permite PTQ con los datos de calibración dados. Prohíbe reentrenar (Banbury et al., p. 7). Un caso de ganancia sin pérdida está en Hello Edge. Un ejemplo: una red densa (<span class="ref" data-nota="dnn">DNN</span>) de reconocimiento de palabras pasó de 86,66 % a 87,60 % de aciertos. Fue de 32 bits a 8 bits (Zhang et al., tabla 6).<span class="nota-margen" popover id="nota-dnn"><b>dnn · deep neural network</b>Red neuronal profunda. Acá, un modelo hecho solo de capas densas, sin convoluciones.</span> Una diferencia así es ruido de medición, no una mejora segura.</p>
+
+<div class="caja ojo">
+  <h4>ojo</h4>
+  <p>Cuantizar sin calibrar bien rompe canales enteros. Si un canal tiene un valor extremo, el rango se estira y el resto queda en muy pocos pasos. Después de cuantizar, medí la exactitud con datos reales.</p>
+</div>
+
+<h2>Poda: quitar conexiones</h2>
+
+<p>La <strong>poda</strong> pone en cero los pesos que casi no influyen y los saca del modelo. Han et al. redujeron las conexiones de 9 a 13 veces sin perder exactitud (resumen, p. 1). Con cuantización y compresión del archivo, el almacenamiento bajó de 35 a 49 veces. AlexNet pasó de 240 MB a 6,9 MB.</p>
+
+<figure class="diagrama" data-titulo="fig-2.4 interactivo">
+  <canvas data-widget="poda" width="640" height="248"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.4</b>La misma matriz de 8 × 8 pesos, podada de dos formas. Los ceros sueltos ahorran memoria, pero un micro común sigue calculando la matriz entera. Quitar columnas la achica de verdad. Cambiá el porcentaje podado.</figcaption>
+</figure>
+
+<p>Importa dónde se ponen los ceros. En la poda <strong>no estructurada</strong> son sueltos. Ahorra almacenamiento, pero el cálculo irregular es difícil de acelerar (Reddi, libro p. 471; MIT 6.5940, lección 3). En la poda <strong>estructurada</strong> se quitan filtros o columnas enteros y queda una matriz más chica y densa. Li et al. quitaron filtros y redujeron hasta 34 % el costo de inferencia de VGG-16 sobre CIFAR-10 (resumen).</p>
+
+<p>La regla práctica: si buscás menos memoria de archivo, sirve cualquiera. Si buscás menos tiempo de cálculo en un micro común, solo la estructurada achica el trabajo.</p>
+
+<h2>Destilación: que una red chica imite a una grande</h2>
+
+<p>La <strong>destilación</strong> entrena una red chica, la alumna, para que copie la salida de una grande, la maestra. La salida de una red son los <span class="ref" data-nota="logits">logits</span>, que el <span class="ref" data-nota="softmax">softmax</span> convierte en probabilidades.<span class="nota-margen" popover id="nota-logits"><b>logits · salidas crudas</b>Los números que da la última capa antes de volverse probabilidades. Pueden ser negativos o mayores que 1.</span><span class="nota-margen" popover id="nota-softmax"><b>softmax · función exponencial normalizada</b>Convierte una lista de números en probabilidades que suman 1: eleva e a cada número y divide por la suma.</span> Hinton et al. agregan una <strong>temperatura</strong> <var>T</var> que suaviza esa salida (ecuación 1):</p>
+
+<p class="formula"><var>p</var><sub><var>i</var></sub> = exp(<var>z</var><sub><var>i</var></sub> / <var>T</var>) / Σ<sub><var>j</var></sub> exp(<var>z</var><sub><var>j</var></sub> / <var>T</var>)</p>
+
+<p>Con los logits 5 y 1 y <var>T</var> = 1, las probabilidades son 0,982 y 0,018. Con <var>T</var> = 10, 0,599 y 0,401 (cuenta propia; los apuntes del MIT usan estos mismos logits). La maestra a temperatura alta muestra algo más que la clase ganadora: cuánto se parecen las demás. La alumna aprende de esa información extra.</p>
+
+<figure class="diagrama" data-titulo="fig-2.5 interactivo">
+  <canvas data-widget="temperatura" width="640" height="200"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 2.5</b>Softmax de los logits 5 y 1. Con T = 1 la clase 1 se lleva 0,982. Con T = 10 queda 0,599 y 0,401: la salida deja ver cuánto se parecen las clases. Mové la temperatura.</figcaption>
+</figure>
+
+<h2>Qué cuesta cada técnica</h2>
+
+<p>Ninguna es gratis. La cuantización baja la exactitud un poco y exige calibrar. La poda estructurada pide reentrenar. La destilación pide entrenar dos redes. Un modelo que no entra en el micro suele ser el primer motivo para recurrir a ellas. La medición al final decide si alcanzó. De cómo se mide se habla en el nivel 3.</p>
+
+<div class="caja quiz" data-ok="0">
+  <h4>repaso</h4>
+  <p class="pregunta">Los valores reales van de −2 a 6 y se guardan en un entero de 8 bits sin signo (255 pasos). ¿Cuánto vale la escala S?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="El rango mide 6 − (−2) = 8 y hay 255 pasos: S = 8 / 255 ≈ 0,0314.">8 / 255 ≈ 0,0314.</button>
+    <button type="button" data-por-que="6 / 255 ignora el tramo negativo: el rango completo mide 8, no 6.">6 / 255 ≈ 0,0235.</button>
+    <button type="button" data-por-que="1 / 255 no depende del rango. La escala es el ancho del rango sobre el número de pasos.">1 / 255 ≈ 0,0039.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Querés que una red corra más rápido en un micro sin soporte especial. ¿Qué poda conviene?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Los ceros sueltos dejan la matriz del mismo tamaño. Ahorran espacio, pero el cálculo casi no baja.">La no estructurada, con ceros sueltos.</button>
+    <button type="button" data-por-que="Quitar filtros o columnas enteros deja una matriz más chica y densa, y eso sí reduce el trabajo.">La estructurada, que quita filtros enteros.</button>
+    <button type="button" data-por-que="La temperatura es de la destilación, no de la poda.">Subir la temperatura.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Cuantizar es una regla de tres: <var>r</var> = <var>S</var>·(<var>q</var> − <var>Z</var>). El error no pasa de medio paso.</li>
+    <li>Int8 reduce el modelo 4 veces y el MAC gasta bastante menos energía, si el procesador lo soporta.</li>
+    <li>PTQ calibra una red ya entrenada. QAT simula el redondeo al entrenar.</li>
+    <li>Solo la poda estructurada acelera en un micro común.</li>
+    <li>La destilación usa la temperatura para pasar información de la maestra a la alumna.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Jacob, B. et al. <em>Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference</em>. arXiv:1712.05877, 2017: ecuación 1 (p. 3), sesgos int32 y factor M (p. 3), QAT y rango (pp. 5 y 9). <a href="https://arxiv.org/abs/1712.05877">arxiv.org/abs/1712.05877</a></li>
+    <li>Gholami, A. et al. <em>A Survey of Quantization Methods for Efficient Neural Network Inference</em>. arXiv:2103.13630, 2021: simétrica y asimétrica (p. 5), calibración (p. 6) y granularidad (pp. 6–7). <a href="https://arxiv.org/abs/2103.13630">arxiv.org/abs/2103.13630</a></li>
+    <li>Reddi, V. J. <em>Introduction to Machine Learning Systems</em>, vol. I (MLSysBook), capítulo 10: ejemplo de escala y punto cero (p. 497), poda (p. 471) y energía int8 (pp. 493 y 495). <a href="https://mlsysbook.ai/vol1/assets/downloads/Machine-Learning-Systems-Vol1.pdf">mlsysbook.ai</a></li>
+    <li>Han, S. <em>TinyML and Efficient Deep Learning Computing</em>, MIT 6.5940, otoño 2024: lecciones 3 (poda), 5 (cuantización, tabla de energía de Horowitz) y 9 (destilación). <a href="https://hanlab.mit.edu/courses/2024-fall-65940">hanlab.mit.edu/courses/2024-fall-65940</a></li>
+    <li>Han, S., Mao, H. y Dally, W. <em>Deep Compression</em>. arXiv:1510.00149, 2016: resumen, p. 1. <a href="https://arxiv.org/abs/1510.00149">arxiv.org/abs/1510.00149</a></li>
+    <li>Li, H. et al. <em>Pruning Filters for Efficient ConvNets</em>. arXiv:1608.08710, 2016: resumen. <a href="https://arxiv.org/abs/1608.08710">arxiv.org/abs/1608.08710</a></li>
+    <li>Hinton, G., Vinyals, O. y Dean, J. <em>Distilling the Knowledge in a Neural Network</em>. arXiv:1503.02531, 2015: ecuación 1 (p. 2). <a href="https://arxiv.org/abs/1503.02531">arxiv.org/abs/1503.02531</a></li>
+    <li>Sze, V. et al. <em>Efficient Processing of Deep Neural Networks</em>. arXiv:1703.09039v2, 2017: acumulador (p. 21). <a href="https://arxiv.org/abs/1703.09039">arxiv.org/abs/1703.09039</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, 2021: división cerrada (p. 7). <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+    <li>Zhang, Y. et al. <em>Hello Edge: Keyword Spotting on Microcontrollers</em>. arXiv:1711.07128, 2017: tabla 6. <a href="https://arxiv.org/abs/1711.07128">arxiv.org/abs/1711.07128</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, contrastada con las fuentes. Son deducción propia: el cociente de energías, el error máximo de medio paso, las probabilidades con T = 1 y T = 10 y el ejemplo numérico. La energía es de una tecnología de 45 nm: el orden de magnitud sirve, no el valor exacto de un micro actual.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-03, nivel-02</footer>
+</body>
+</html>

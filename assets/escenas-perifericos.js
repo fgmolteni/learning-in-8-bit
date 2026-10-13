@@ -69,7 +69,7 @@ PM.escena("per-matriz", {
     txt(m, SENALES[fi], 222, 30, TK_SENAL[fi] + "3");
     txt(m, "→ " + PINES[co], 222, 42, TK_SENAL[fi] + "3");
     txt(m, "COSTO:", 222, 62, "n4");
-    txt(m, "1-2 CICLOS", 222, 74, "n6");
+    txt(m, "CICLOS EXTRA", 222, 74, "n6");
     txt(m, "DE RELOJ APB", 222, 86, "n6");
     txt(m, "ATAJO:", 222, 106, "n4");
     txt(m, "IO MUX DIRECTO", 222, 118, "n6");
