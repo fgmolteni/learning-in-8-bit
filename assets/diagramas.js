@@ -530,6 +530,7 @@ function widgetSimd(cv) {
   const g = prepCanvas(cv, 216);
   const N = 64; // productos a calcular (un "punto" de convolución de 64 entradas)
   let t = 0;
+  const u = cv.dataset.unidad || "ciclo";        // "instrucción" donde la fuente no da la tasa por ciclo
   const pesos = Array.from({ length: N }, (_, k) => (k * 37) % 7 - 3);
   const act = Array.from({ length: N }, (_, k) => (k * 11) % 5);
 
@@ -544,7 +545,7 @@ function widgetSimd(cv) {
       if (k < hechos && !vec) tramado(g, x0 + k * cw, y0, cw - 2, 16, R(1));
     }
     const suma = pesos.slice(0, hechos).reduce((s, w, k) => s + w * act[k], 0);
-    rotulo(g, `ciclos: ${ciclos}`, MG, y0 + 36, R(5));
+    rotulo(g, `${u === "ciclo" ? "ciclos" : "instrucciones"}: ${ciclos}`, MG, y0 + 36, R(5));
     rotulo(g, `acumulador = ${suma}`, 200, y0 + 36, R(5));
     if (hechos >= N) etiqueta(g, "LISTO", W - MG, y0 + 36, D(3), "right");
   }
@@ -552,10 +553,10 @@ function widgetSimd(cv) {
   function dibujar() {
     limpiar(g);
     const esc = Math.min(N, t), vec = Math.min(N, t * 16);
-    fila(16, "ESCALAR, 1 POR CICLO", esc, Math.min(t, N), 1);
-    fila(96, "PIE SIMD, 16 POR CICLO", vec, Math.min(t, N / 16), 16);
+    fila(16, `ESCALAR, 1 POR ${u.toUpperCase()}`, esc, Math.min(t, N), 1);
+    fila(96, `PIE SIMD, 16 POR ${u.toUpperCase()}`, vec, Math.min(t, N / 16), 16);
     const w = numero(g, "16x", MG, 192, A(3), "left", 28);
-    rotulo(g, "menos ciclos: 64 → 4", MG + w + 12, 192, R(5));
+    rotulo(g, `menos ${u === "ciclo" ? "ciclos" : "instrucciones"}: 64 → 4`, MG + w + 12, 192, R(5));
   }
   document.addEventListener("redibujar", dibujar);
   cada(cv, () => { t = t > N + 12 ? 0 : t + 1; dibujar(); }, 140);
@@ -1454,6 +1455,100 @@ function widgetDosBarras(cv) {
 }
 
 // ------------------------------------------------------------------
+// Widget: costo relativo de un acceso según dónde está el dato (datos en el HTML)
+// data-items: "rótulo|valor;rótulo|valor;…"  ·  data-titulo, data-nota
+// ------------------------------------------------------------------
+function widgetBarras(cv) {
+  const g = prepCanvas(cv, +cv.getAttribute("height"));
+  const items = cv.dataset.items.split(";").map((s) => { const [n, v] = s.split("|"); return { n, v: +v }; });
+  const max = Math.max(...items.map((i) => i.v)), K = [A, B, C, D];
+  let k = items.length;                           // cuántas barras se ven (aparecen de a una)
+  function dibujar() {
+    limpiar(g);
+    etiqueta(g, cv.dataset.titulo || "", MG, 16, R(6));
+    items.forEach((it, i) => {
+      if (i >= k) return;
+      const y = 40 + i * 40, w = Math.max(4, Math.round(360 * it.v / max));
+      etiqueta(g, it.n, MG, y + 12, K[i % 4](3));
+      caja(g, 200, y, w, 24, ["activo", "segundo", "tercero", "cuarto"][i % 4]);
+      numero(g, num(it.v) + "×", 200 + w + 10, y + 12, K[i % 4](3));
+    });
+    rotulo(g, cv.dataset.nota || "", MG, 40 + items.length * 40 + 8, R(5));
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { k = k >= items.length + 3 ? 1 : k + 1; dibujar(); }, 900);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: cuántos elementos procesa una instrucción vectorial (RISC-V «V»): VLMAX = LMUL · VLEN / SEW
+// ------------------------------------------------------------------
+function widgetVector(cv) {
+  const fig = cv.closest("figure");
+  const g = prepCanvas(cv, 216);
+  const p = { vlen: 128, sew: 8, lmul: 1 };
+  function dibujar() {
+    limpiar(g);
+    const { vlen, sew, lmul } = p, por = vlen / sew, vlmax = lmul * por;
+    etiqueta(g, `VLEN = ${vlen} BITS · SEW = ${sew} BITS · LMUL = ${lmul}`, MG, 16, R(6));
+    const Wb = W - 2 * MG - 104, cw = Wb / por;
+    for (let r = 0; r < lmul; r++) {
+      const y = 36 + r * 28;
+      for (let e = 0; e < por; e++) {
+        g.fillStyle = r ? B(3) : A(3);
+        g.fillRect(Math.round(MG + e * cw), y, Math.max(1, Math.round(cw) - 2), 20);
+      }
+      rotulo(g, `registro ${r + 1}`, W - MG, y + 10, r ? B(3) : A(3), "right");
+    }
+    const w = numero(g, String(vlmax), MG, 176, A(3), "left", 30);
+    rotulo(g, `elementos por instrucción = ${lmul} · ${vlen} / ${sew}`, MG + w + 12, 178, R(5));
+    rotulo(g, "el programa no cambia: solo cambia cuántas vueltas da", MG, 204, R(4));
+  }
+  const ctl = fig.querySelector(".controles");
+  if (ctl) {
+    const campos = [["vlen", "VLEN (bits)", [128, 256, 512]], ["sew", "SEW (bits)", [8, 16, 32]], ["lmul", "LMUL", [1, 2, 4]]];
+    ctl.innerHTML = campos.map(([id, n, ops]) => `<label>${n} <select data-k="${id}">${ops.map((o) => `<option${o === p[id] ? " selected" : ""}>${o}</option>`).join("")}</select></label>`).join("");
+    ctl.querySelectorAll("select").forEach((s) => (s.onchange = () => { p[s.dataset.k] = +s.value; dibujar(); }));
+  }
+  document.addEventListener("redibujar", dibujar);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
+// Widget: arreglo sistólico 4 × 4 (los datos pasan de celda en celda; las sumas bajan)
+// ------------------------------------------------------------------
+function widgetSistolico(cv) {
+  const g = prepCanvas(cv, 272);
+  const N = 4, cel = 44, X = 120, Y = 40;
+  let t = 10;                                     // cuadro inicial: todo hecho
+  function dibujar() {
+    limpiar(g);
+    etiqueta(g, "ENTRADAS", MG, 16, A(3)); etiqueta(g, "PESOS FIJOS EN CADA CELDA", X, 16, B(3));
+    for (let r = 0; r < N; r++) {
+      const entra = t - r;                         // la fila r arranca r pasos después (escalonado)
+      // dato que entra por la izquierda
+      g.fillStyle = entra >= 0 && entra < N ? A(4) : R(2); g.fillRect(MG + 40, Y + r * cel + 16, 12, 12);
+      flecha(g, MG + 56, Y + r * cel + 22, X - MG - 60, entra >= 0 && entra < N ? A(3) : R(2));
+      for (let c = 0; c < N; c++) {
+        const k = t - r - c;                       // la ola avanza en diagonal
+        const activa = k >= 0 && k < N, hecha = k >= N;
+        caja(g, X + c * cel, Y + r * cel, cel - 8, cel - 8, activa ? "activo" : hecha ? "a" : "b");
+        if (c < N - 1) flecha(g, X + c * cel + cel - 8, Y + r * cel + 18, 8, activa ? A(3) : R(2));
+        if (r < N - 1) { g.fillStyle = activa ? C(3) : R(2); g.fillRect(X + c * cel + 17, Y + r * cel + cel - 8, 2, 8); }
+      }
+    }
+    const XT = X + N * cel + 24;
+    rotulo(g, "los datos pasan", XT, Y + 16, A(3)); rotulo(g, "de celda a celda", XT, Y + 36, A(3));
+    rotulo(g, "las sumas parciales", XT, Y + 76, C(3)); rotulo(g, "bajan sin volver", XT, Y + 96, C(3)); rotulo(g, "a la memoria", XT, Y + 116, C(3));
+    const w = numero(g, "4", MG, 236, A(3), "left", 30);
+    rotulo(g, "MAC por cada dato leído de la memoria: una fila entera lo usa", MG + w + 12, 238, R(5));
+  }
+  document.addEventListener("redibujar", dibujar);
+  cada(cv, () => { t = t >= 12 ? 0 : t + 1; dibujar(); }, 500);
+  dibujar();
+}
+
+// ------------------------------------------------------------------
 const WIDGETS = {
   timing: widgetTiming, bateria: widgetBateria,
   redcnn: widgetRedCnn, pixeles: widgetPixeles, macs: widgetMacs,
@@ -1462,6 +1557,7 @@ const WIDGETS = {
   neurona: widgetNeurona, entrenar: widgetEntrenar, sram: widgetSram,
   energia: widgetEnergia, afin: widgetAfin, poda: widgetPoda, temperatura: widgetTemperatura,
   recorrido: widgetRecorrido, planificador: widgetPlanificador, dosbarras: widgetDosBarras,
+  barras: widgetBarras, vector: widgetVector, sistolico: widgetSistolico,
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
