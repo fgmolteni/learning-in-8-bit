@@ -38,16 +38,16 @@
 
 <h2>Por qué hay que encoger</h2>
 
-<p>La red del nivel 1 usaba 4 bytes por peso. Con 60.000 pesos eran del orden de 240 KB. Un micro tiene del orden de cientos de KB de SRAM. Hay dos salidas: tener menos números o tener números más chicos.</p>
+<p>La red del nivel 1 usaba 4 bytes por peso. Con 60.000 pesos eran del orden de 240 KB. Un micro tiene del orden de cientos de KB de <span class="ref" data-nota="sram">SRAM</span>.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca.</span> Hay dos salidas: tener menos números o tener números más chicos.</p>
 
-<p>Encoger también ahorra energía. Un MAC con enteros de 8 bits gasta bastante menos que uno en float32. La tabla de Horowitz, que reproducen los apuntes del MIT, da la cifra por operación (45 nm, 0,9 V). Se mide en <span class="ref" data-nota="pj">picojoules</span> (pJ).<span class="nota-margen" popover id="nota-pj"><b>pj · picojoule</b>Una billonésima de joule (10⁻¹² J). Se usa para medir la energía de una sola operación dentro de un procesador.</span></p>
+<p>Encoger también ahorra energía. Un <span class="ref" data-nota="mac">MAC</span> con enteros de 8 bits gasta bastante menos que uno en float32.<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red.</span> La tabla de Horowitz, que reproducen los apuntes del MIT, da la cifra por operación (45 nm, 0,9 V). Se mide en <span class="ref" data-nota="pj">picojoules</span> (pJ).<span class="nota-margen" popover id="nota-pj"><b>pj · picojoule</b>Una billonésima de joule (10⁻¹² J). Se usa para medir la energía de una sola operación dentro de un procesador.</span></p>
 
 <figure class="diagrama" data-titulo="fig-2.1">
   <svg viewBox="0 0 640 208" role="img" aria-label="Cuatro barras de energía por operación: suma int8 0,03 picojoules, suma float32 0,9, multiplicación int8 0,2 y multiplicación float32 3,7."><text x="176" y="46" class="sv-lbl f6" text-anchor="end" font-size="16">suma int8</text><rect x="192" y="24" width="4" height="28" class="fa1 sa3" stroke-width="2"/><text x="204" y="44" class="sv-lbl fa3" text-anchor="start" font-size="16">0,03 pJ</text><text x="176" y="86" class="sv-lbl f6" text-anchor="end" font-size="16">suma float32</text><rect x="192" y="64" width="78" height="28" class="fd1 sd3" stroke-width="2"/><text x="278" y="84" class="sv-lbl fd3" text-anchor="start" font-size="16">0,9 pJ</text><text x="176" y="126" class="sv-lbl f6" text-anchor="end" font-size="16">mult. int8</text><rect x="192" y="104" width="17" height="28" class="fa1 sa3" stroke-width="2"/><text x="217" y="124" class="sv-lbl fa3" text-anchor="start" font-size="16">0,2 pJ</text><text x="176" y="166" class="sv-lbl f6" text-anchor="end" font-size="16">mult. float32</text><rect x="192" y="144" width="320" height="28" class="fd1 sd3" stroke-width="2"/><text x="520" y="164" class="sv-lbl fd3" text-anchor="start" font-size="16">3,7 pJ</text><text x="16" y="196" class="sv-lbl f4" text-anchor="start" font-size="16">45 nm, 0,9 V (Horowitz, ISSCC 2014, vía MIT 6.5940)</text></svg>
   <figcaption><b>fig 2.1</b>Una multiplicación int8 gasta unas 18 veces menos energía que una de float32 (cuenta propia sobre la tabla).</figcaption>
 </figure>
 
-<p>La cuenta: una multiplicación float32 gasta 3,7 pJ y una int8, 0,2 pJ. Son 3,7 / 0,2 = 18,5 veces más. La suma da 0,9 / 0,03 = 30 veces. Esas razones son el motivo de fondo para cuantizar. Solo se cumplen si el procesador tiene rutas de baja precisión (Reddi, capítulo 10).</p>
+<p>La cuenta: una multiplicación float32 gasta 3,7 pJ y una <span class="ref" data-nota="int8">int8</span>, 0,2 pJ.<span class="nota-margen" popover id="nota-int8"><b>int8 · entero de 8 bits</b>Número entero con signo de 8 bits, de −128 a 127. Cuatro veces más chico que un decimal de 32 bits.</span> Son 3,7 / 0,2 = 18,5 veces más. La suma da 0,9 pJ / 0,03 pJ = 30 veces. Esas razones son el motivo de fondo para cuantizar. Solo se cumplen si el procesador tiene rutas de baja precisión (Reddi, capítulo 10).</p>
 
 <p>Hay tres técnicas, y se combinan. La <strong>cuantización</strong> usa números más chicos. La <strong>poda</strong> quita conexiones. La <strong>destilación</strong> entrena una red chica que imita a una grande. El Tomo 1 ya mostró la primera con una red concreta (<a href="../redes/02-cuantizacion.html">IA en el borde, Tomo 1, nivel 2</a>). Acá se ve la cuenta que hay debajo.</p>
 
@@ -64,7 +64,7 @@
   <figcaption><b>fig 2.2</b>Arriba, los valores reales (naranja). Abajo, los enteros de 8 bits (azul). El 0 real cae en q = 64, el punto cero (verde).</figcaption>
 </figure>
 
-<p>Para guardar <var>r</var> = 1,0 se hace 1,0 / 0,0157 = 63,75 y se suma 64. Da 127,75, que se redondea a 128. Al volver, 0,0157 · (128 − 64) = 1,0039. El error es 0,0039. Nunca pasa de medio paso, <var>S</var>/2 ≈ 0,0078 (deducción propia). El error máximo de cada valor depende solo de cuánto abarca el rango.</p>
+<p>Para guardar <var>r</var> = 1,0 se hace 1,0 / (4 / 255) = 63,75 y se suma 64. Da 127,75, que se redondea a 128. Al volver, (4 / 255) · (128 − 64) = 1,0039. El error es 0,0039. Nunca pasa de medio paso, <var>S</var>/2 ≈ 0,0078 (deducción propia). El error máximo de cada valor depende solo de cuánto abarca el rango.</p>
 
 <div class="caja dato">
   <h4>dato</h4>
@@ -91,7 +91,7 @@
 
 <p>La <span class="ref" data-nota="qat">cuantización durante el entrenamiento</span> (QAT) simula el redondeo mientras la red aprende.<span class="nota-margen" popover id="nota-qat"><b>qat · quantization-aware training</b>Entrenar con el redondeo a enteros simulado en cada paso, para que la red aprenda a tolerarlo.</span> Los pesos se ajustan sabiendo que van a perder precisión. Jacob et al. (p. 9) reportan que restaura la exactitud a niveles «casi idénticos» a los del modelo float. Cuesta más: hay que reentrenar.</p>
 
-<p>La elección muchas veces la fija el contexto. En el benchmark MLPerf Tiny, la división cerrada permite PTQ con los datos de calibración dados. Prohíbe reentrenar (Banbury et al., p. 7). Un caso de ganancia sin pérdida está en Hello Edge. Una red densa (DNN) de reconocimiento de palabras pasó de 86,66 % con 32 bits a 87,60 % con 8 bits (Zhang et al., tabla 6). Una diferencia así es ruido de medición, no una mejora segura.</p>
+<p>La elección muchas veces la fija el contexto. En el benchmark MLPerf Tiny, la división cerrada permite PTQ con los datos de calibración dados. Prohíbe reentrenar (Banbury et al., p. 7). Un caso de ganancia sin pérdida está en Hello Edge. Una red densa (<span class="ref" data-nota="dnn">DNN</span>) de reconocimiento de palabras pasó de 86,66 % con 32 bits a 87,60 % con 8 bits (Zhang et al., tabla 6).<span class="nota-margen" popover id="nota-dnn"><b>dnn · deep neural network</b>Red neuronal profunda. Acá, un modelo hecho solo de capas densas, sin convoluciones.</span> Una diferencia así es ruido de medición, no una mejora segura.</p>
 
 <div class="caja ojo">
   <h4>ojo</h4>
@@ -107,7 +107,7 @@
   <figcaption><b>fig 2.3</b>La poda suelta deja una matriz del mismo tamaño con huecos. La poda por columnas la achica de verdad.</figcaption>
 </figure>
 
-<p>Importa dónde se ponen los ceros. En la poda <strong>no estructurada</strong> son sueltos. Ahorra almacenamiento, pero el cálculo irregular es difícil de acelerar (Reddi, libro p. 471; MIT 6.5940, lección 3). En la poda <strong>estructurada</strong> se quitan filtros o columnas enteros y queda una matriz más chica y densa. Li et al. quitaron filtros y redujeron hasta 34 % el costo de inferencia de VGG-16 (resumen).</p>
+<p>Importa dónde se ponen los ceros. En la poda <strong>no estructurada</strong> son sueltos. Ahorra almacenamiento, pero el cálculo irregular es difícil de acelerar (Reddi, libro p. 471; MIT 6.5940, lección 3). En la poda <strong>estructurada</strong> se quitan filtros o columnas enteros y queda una matriz más chica y densa. Li et al. quitaron filtros y redujeron hasta 34 % el costo de inferencia de VGG-16 sobre CIFAR-10 (resumen).</p>
 
 <p>La regla práctica: si buscás menos memoria de archivo, sirve cualquiera. Si buscás menos tiempo de cálculo en un micro común, solo la estructurada achica el trabajo.</p>
 
