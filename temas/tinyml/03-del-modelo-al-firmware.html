@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 3: Del modelo al firmware</title>
+<meta name="description" content="Entrenar la red es la mitad del trabajo. La otra mitad es el archivo que llega a la flash, la arena de memoria que usa y la forma de medir cuánto tarda.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 3: Del modelo al firmware">
+<meta property="og:description" content="Entrenar la red es la mitad del trabajo. La otra mitad es el archivo que llega a la flash, la arena de memoria que usa y la forma de medir cuánto tarda.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="tinyml" data-nivel="3">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="03">nivel 03, 17 min de lectura</span>
+  <h1>Del modelo al firmware</h1>
+  <p class="bajada">Entrenar la red es la mitad del trabajo. La otra mitad es el archivo que llega a la flash, la arena de memoria que usa y la forma de medir cuánto tarda.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Seguir un modelo desde el entrenamiento hasta la salida en el micro.</li>
+    <li>Calcular el pico de memoria de una arena a partir de la vida de cada tensor.</li>
+    <li>Decir qué cuesta un intérprete y cuándo conviene generar código en su lugar.</li>
+    <li>Explicar por qué un núcleo escrito para el procesador acelera una capa.</li>
+    <li>Medir latencia y energía de una inferencia con un procedimiento repetible.</li>
+  </ul>
+</div>
+
+<h2>El recorrido: de los datos a la salida</h2>
+
+<p>Un modelo cuantizado todavía no corre en el micro. Hay que empaquetarlo, grabarlo y ejecutarlo con un programa que entienda su formato. En la PC se entrena y se cuantiza (nivel 2). Después se <strong>convierte</strong>: el grafo de capas y los pesos van a un solo archivo.</p>
+
+<figure class="diagrama" data-titulo="fig-3.1">
+  <canvas data-widget="recorrido" width="640" height="232"></canvas>
+  <figcaption><b>fig 3.1</b>Lo que sale de la PC es un archivo. En el micro, un intérprete lee ese archivo, reparte la arena y llama a los núcleos capa por capa.</figcaption>
+</figure>
+
+<p>Ese archivo suele usar un formato como <span class="ref" data-nota="flatbuffer">FlatBuffer</span>, el de <span class="ref" data-nota="tflm">TensorFlow Lite Micro</span> (David et al., sección 4.3).<span class="nota-margen" popover id="nota-flatbuffer"><b>flatbuffer · serialización binaria</b>Formato de archivo que permite leer los datos en su lugar, sin decodificarlos. Lo creó Google.</span><span class="nota-margen" popover id="nota-tflm"><b>tflm · tensorflow lite micro</b>Intérprete de redes neuronales para micros, hecho por Google. Corre con memoria fija.</span> Queda en la <span class="ref" data-nota="flash">flash</span> junto con el programa.<span class="nota-margen" popover id="nota-flash"><b>flash · memoria no volátil</b>Memoria que conserva su contenido sin energía. Guarda el programa y el modelo; se lee más lento que la SRAM.</span> En el micro, un <strong>intérprete</strong> recorre el grafo. Para cada capa llama a un <strong>núcleo</strong>, la rutina que hace la cuenta.</p>
+
+<p>Las tres partes tienen trabajos distintos. El archivo guarda qué red es. El intérprete decide el orden y la memoria. Los núcleos hacen casi todas las cuentas. Cada parte puede cambiarse sin tocar las otras.</p>
+
+<h2>La arena: toda la memoria, reservada de antemano</h2>
+
+<p>Un micro no puede pedir memoria sueltamente durante la inferencia. Podría fallar por fragmentación o tardar distinto cada vez. Por eso la aplicación entrega al intérprete un bloque fijo, la <strong>arena</strong>, y solo se reparte al arrancar. Durante la inferencia no se asigna nada (David et al., sección 4.4, p. 6).</p>
+
+<p>La arena tiene dos zonas. La <strong>cola</strong> guarda lo que vive todo el programa, como las descripciones de los tensores. La <strong>cabeza</strong> guarda lo que vive una inferencia: las salidas de cada capa. Las dos crecen una hacia la otra. El espacio de en medio sirve de zona de trabajo al planificar (p. 6, figura 3).</p>
+
+<h3>El planificador: reutilizar direcciones</h3>
+
+<p>Una activación se necesita desde que se calcula hasta que la usa la última capa que la lee. Después su lugar queda libre. El <strong>planificador</strong> aprovecha eso: pone dos tensores en la misma dirección si nunca viven a la vez. Usa la regla <em>first-fit decreasing</em>: ordena de mayor a menor y coloca cada uno en el primer hueco libre (p. 7).</p>
+
+<p>Un ejemplo con cuatro tensores (valores supuestos). A mide 40 KB y vive en los nodos 0 y 1. B mide 80 KB y vive en 1 y 2. C mide 40 KB y vive en 2 y 3. D mide 20 KB y vive en 3 y 4.</p>
+
+<figure class="diagrama" data-titulo="fig-3.2 interactivo">
+  <canvas data-widget="planificador" width="640" height="296"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 3.2</b>Cada bloque es un tensor: su ancho es el tiempo que vive y su alto, su tamaño. Con PASO se ubica uno por vez: C reutiliza el lugar de A, y D el de B. El pico baja de 180 KB a 120 KB.</figcaption>
+</figure>
+
+<ol>
+  <li><strong>Ordenar.</strong> B (80 KB), después A y C (40 KB), por último D (20 KB).</li>
+  <li><strong>Ubicar B.</strong> No hay nada todavía: va a la dirección 0 KB.</li>
+  <li><strong>Ubicar A.</strong> Vive con B en el nodo 1, así que no puede pisarlo. Va a la dirección 80 KB.</li>
+  <li><strong>Ubicar C.</strong> Vive con B en el nodo 2, pero A ya murió. Ocupa el lugar de A: dirección 80 KB.</li>
+  <li><strong>Ubicar D.</strong> Vive con C en el nodo 3, y B ya murió. Va a la dirección 0 KB.</li>
+</ol>
+
+<p class="formula">sin reutilizar: 40 + 80 + 40 + 20 = 180 KB · con el planificador: 80 + 40 = 120 KB</p>
+
+<p>La arena necesita 120 KB, un tercio menos que la suma de todos los tensores (deducción propia). El pico lo marca el nodo donde más tensores viven juntos: acá, 120 KB en los nodos 1 y 2. Esa cuenta decide si la red entra. Se repite con los números reales de cada red (<a href="../borde/02-memoria.html">IA en el borde, Tomo 2, nivel 2</a>).</p>
+
+<div class="caja dato">
+  <h4>dato</h4>
+  <p>La red de detección de personas de TFLM usa 81,79 KB en total (David et al., tabla 3). Son 26,50 KB persistentes y 55,30 KB no persistentes.</p>
+</div>
+
+<h2>Lo que cuesta el intérprete</h2>
+
+<p>Leer el grafo y despachar cada capa agrega trabajo. David et al. lo midieron en un Cortex-M4 a 96 MHz (tabla 2a). En la red de detección de personas, el intérprete cuesta menos del 0,1 % del tiempo. En la de palabra clave de Google (Hotword), 3,3 % con los núcleos de referencia y 4,1 % con los optimizados.</p>
+
+<p>La diferencia sale de la cuenta. Una red con capas grandes gasta casi todo el tiempo dentro de los núcleos. Una red de capas chicas gasta una parte mayor en decidir qué llamar. Si un modelo tiene pocas capas y muy grandes, el intérprete casi no pesa.</p>
+
+<p>¿Cuánto tarda una inferencia completa? En esa tabla, la detección de personas con núcleos optimizados suma 4.857,7 mil ciclos, contra 18.990,8 mil con los de referencia. Con el reloj de 96 MHz:</p>
+
+<p class="formula"><var>t</var> = ciclos / <var>f</var> = 4.857.700 / 96.000.000 Hz ≈ 50,6 ms</p>
+
+<p>Si esos ciclos son los de una inferencia completa (supuesto), son unos 50,6 ms. Los núcleos optimizados dan 18.990,8 / 4.857,7 = 3,9 veces menos ciclos (deducción propia).</p>
+
+<h2>Núcleos escritos para el procesador</h2>
+
+<p>Un núcleo optimizado conoce el procesador. <span class="ref" data-nota="cmsis">CMSIS-NN</span> es la biblioteca de núcleos de Arm para los Cortex-M.<span class="nota-margen" popover id="nota-cmsis"><b>cmsis-nn · núcleos de red neuronal de arm</b>Biblioteca de funciones de Arm para ejecutar capas de redes en procesadores Cortex-M. Usa las instrucciones de producto doble de 16 bits.</span> Lai et al. la midieron en una red de CIFAR-10 sobre un Cortex-M7 a 216 MHz (tablas 1 y 2). Tardó 99,1 ms contra 456,4 ms con las funciones base de <span class="ref" data-nota="dsp">CMSIS-DSP</span>.<span class="nota-margen" popover id="nota-dsp"><b>dsp · digital signal processing</b>Procesamiento digital de señales. CMSIS-DSP es la biblioteca de Arm con funciones de señales para los Cortex-M.</span></p>
+
+<figure class="diagrama" data-titulo="fig-3.3">
+  <canvas data-widget="dosbarras" data-titulo="RED DE CIFAR-10 · CORTEX-M7 A 216 MHZ" data-a="CMSIS-DSP BASE|456.4|ms" data-b="CMSIS-NN|99.1|ms" data-leyenda="más rápido con núcleos escritos para el procesador" width="640" height="176"></canvas>
+  <figcaption><b>fig 3.3</b>Los mismos cálculos con núcleos escritos para el procesador pasan de 456,4 ms a 99,1 ms (Lai et al.).</figcaption>
+</figure>
+
+<p class="formula">456,4 ms / 99,1 ms ≈ 4,6 veces</p>
+
+<p>Esas 4,6 veces son contra funciones base de CMSIS-DSP, no contra código C común. La ganancia viene de dos cosas. Los núcleos convierten los pesos de 8 bits a 16 bits para usar una instrucción que hace dos multiplicaciones por vez. Y reordenan los datos para leerlos en orden.</p>
+
+<p>Se puede estimar qué tan eficiente es. A 216 MHz, 99,1 ms son 99,1 ms · 216 MHz ≈ 21,4 millones de ciclos. La red hace 24,7 millones de operaciones. Si una operación cuenta 2 por cada MAC, son 12,35 millones de <span class="ref" data-nota="mac">MAC</span>, así que:<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red.</span></p>
+
+<p class="formula">21,4 M ciclos / 12,35 M MAC ≈ 1,7 ciclos por MAC</p>
+
+<p>Es una cuenta propia, con ese supuesto sobre qué cuenta como operación. Lo que enseña es el orden de magnitud: aun optimizado, un MAC cuesta más de un ciclo en un Cortex-M7.</p>
+
+<h3>Memoria auxiliar: im2col</h3>
+
+<p>Para usar la multiplicación de matrices, una convolución se reordena primero con <span class="ref" data-nota="im2col">im2col</span>: cada posición del filtro se copia a una fila.<span class="nota-margen" popover id="nota-im2col"><b>im2col · image to column</b>Truco que copia los parches de la imagen a una matriz, para convertir la convolución en una multiplicación de matrices. Gasta memoria extra.</span> Eso gasta memoria. Lai et al. calcularon la memoria de la red de CIFAR-10. Con la matriz completa eran unos 332 KB. Con la versión parcial, que arma pocas filas a la vez, unos 133 KB.</p>
+
+<figure class="diagrama" data-titulo="fig-3.4">
+  <canvas data-widget="dosbarras" data-titulo="MEMORIA MÁXIMA DE LA MISMA RED" data-a="SIN IM2COL PARCIAL|332|KB" data-b="CON IM2COL PARCIAL|133|KB" data-leyenda="menos memoria: la red pasa a entrar" width="640" height="176"></canvas>
+  <figcaption><b>fig 3.4</b>Armar la matriz auxiliar de a pocas filas baja la memoria máxima de unos 332 KB a unos 133 KB (Lai et al.).</figcaption>
+</figure>
+
+<p>Esos 332 KB no cabían en la placa. Con 133 KB la red corrió. Un detalle de implementación decide si el modelo entra: 332 / 133 ≈ 2,5 veces menos memoria (deducción propia).</p>
+
+<h2>Generar código en vez de interpretar</h2>
+
+<p>La alternativa al intérprete es generar el código de la red. Un compilador lee el modelo y escribe un programa. Ese programa llama a los núcleos en el orden exacto, con las direcciones de la arena ya decididas. Lin et al. lo hicieron en MCUNet con un motor llamado TinyEngine.</p>
+
+<p>Pasar de intérprete a generación de código evita guardar en RAM los metadatos del modelo. Baja la memoria 2,1 veces y gana 22 % de eficiencia contra CMSIS-NN (p. 5). El resumen da más: 3,4 veces menos memoria y entre 1,7 y 3,3 veces más rápido que TFLM y CMSIS-NN. El motivo del contexto es claro. Un Cortex-M7 típico tiene 320 KB de <span class="ref" data-nota="sram">SRAM</span> y 1 MB de flash.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca.</span> MobileNetV2 excede el límite de memoria pico unas 22 veces (p. 1).</p>
+
+<div class="caja ojo">
+  <h4>ojo</h4>
+  <p>Generar código ahorra memoria y tiempo, pero ata el programa a un modelo. Cambiar la red obliga a regenerar y volver a compilar. Un intérprete cambia el modelo sin tocar el programa.</p>
+</div>
+
+<h2>Medir: qué y cómo</h2>
+
+<p>Medir bien importa tanto como optimizar. Una cifra sin procedimiento no se puede comparar. El benchmark <span class="ref" data-nota="mlperf">MLPerf Tiny</span> define cómo se mide.<span class="nota-margen" popover id="nota-mlperf"><b>mlperf tiny · benchmark de mlcommons</b>Conjunto de tareas y modelos de referencia, con un procedimiento común de medición, para comparar micros que corren redes chicas.</span> Para la latencia, corre cinco veces al menos 10 s y 10 iteraciones cada una. El puntaje es la mediana de inferencias por segundo. Para la energía, usa el mismo método. Mide la energía total de la ventana y la reparte en microjoules por inferencia (Banbury et al., sección 5.3, p. 8).</p>
+
+<p>La mediana sirve porque una corrida suelta puede salir mal por una interrupción o un cambio de reloj. Cinco corridas y la mediana descartan los extremos. La energía de una inferencia sigue una cuenta simple:</p>
+
+<p class="formula"><var>E</var> = <var>V</var> · <var>I</var> · <var>t</var></p>
+
+<p>Supongamos 3,3 V, 50 mA y 50 ms. Entonces <var>E</var> = 3,3 V · 0,05 A · 0,05 s ≈ 8,25 mJ. En un micro real, esos valores salen de medir la corriente durante la inferencia. La corriente de reposo del manual no sirve.</p>
+
+<p>El benchmark fija cuatro tareas con su modelo de referencia (Banbury et al., tabla 1). KWS (<em>keyword spotting</em>) es detectar una palabra clave en un audio. VWW (<em>visual wake words</em>) es decidir si hay una persona en una imagen.</p>
+
+<div class="tabla-scroll">
+<table>
+  <thead><tr><th>Tarea</th><th>Modelo</th><th>Tamaño</th><th>Calidad de referencia</th></tr></thead>
+  <tbody>
+    <tr><td><b>Palabra clave</b> (KWS)</td><td>DS-CNN</td><td>52,5 KB</td><td>90 % de aciertos</td></tr>
+    <tr><td><b>Persona en imagen</b> (VWW)</td><td>MobileNetV1</td><td>325 KB</td><td>80 %</td></tr>
+    <tr><td><b>Imagen chica</b></td><td>ResNet</td><td>96 KB</td><td>85 %</td></tr>
+    <tr><td><b>Anomalía</b></td><td>autoencoder</td><td>270 KB</td><td>AUC 0,85</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Tres tensores viven así. X mide 30 KB y vive en los nodos 0 y 1. Y mide 50 KB y vive en 1 y 2. Z mide 30 KB y vive en 2 y 3. ¿Cuánta arena necesita como mínimo?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="110 KB es la suma de todos. Con reutilización alcanza menos, porque X y Z nunca viven a la vez.">110 KB.</button>
+    <button type="button" data-por-que="En el nodo 1 viven X e Y juntos (80 KB), y en el 2, Y y Z (80 KB). El pico es 80 KB.">80 KB.</button>
+    <button type="button" data-por-que="50 KB es solo el tensor más grande. Falta el que vive junto con él en cada nodo.">50 KB.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">¿Por qué MLPerf Tiny usa la mediana de cinco corridas para la latencia y no una sola medición?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="Una sola corrida puede ser la mejor. La mediana no busca el mejor caso.">Porque la mejor corrida es la más honesta.</button>
+    <button type="button" data-por-que="El promedio también se mueve con un valor extremo. La mediana lo ignora.">Porque da el mismo valor que el promedio.</button>
+    <button type="button" data-por-que="Una interrupción o un cambio de reloj puede arruinar una corrida. La mediana descarta esos extremos.">Porque una corrida suelta puede salir mal y la mediana descarta los extremos.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Un modelo llega al micro como un archivo que lee un intérprete y ejecutan núcleos.</li>
+    <li>La arena se reserva al arrancar. El planificador reutiliza direcciones y su pico decide si la red entra.</li>
+    <li>El intérprete cuesta poco en redes de capas grandes. Generar código ahorra memoria pero ata el programa al modelo.</li>
+    <li>Los núcleos optimizados dan 4,6 veces sobre las funciones base, y aun así un MAC cuesta más de un ciclo.</li>
+    <li>Medir bien es repetir: cinco corridas y la mediana, con energía total de la ventana.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>David, R. et al. <em>TensorFlow Lite Micro: Embedded Machine Learning on TinyML Systems</em>. MLSys 2021, arXiv:2010.08678: serialización (sección 4.3), memoria (4.4, pp. 6–7), evaluación (tablas 2a y 3, p. 10). <a href="https://arxiv.org/abs/2010.08678">arxiv.org/abs/2010.08678</a></li>
+    <li>Lai, L., Suda, N. y Chandra, V. <em>CMSIS-NN: Efficient Neural Network Kernels for Arm Cortex-M CPUs</em>. arXiv:1801.06601, 2018: tablas 1 y 2 (p. 9). Artículo del fabricante. <a href="https://arxiv.org/abs/1801.06601">arxiv.org/abs/1801.06601</a></li>
+    <li>Lin, J. et al. <em>MCUNet: Tiny Deep Learning on IoT Devices</em>. arXiv:2007.10319, 2020: resumen y pp. 1 y 5. <a href="https://arxiv.org/abs/2007.10319">arxiv.org/abs/2007.10319</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, 2021: tabla 1 (p. 4) y sección 5.3 (p. 8). <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+    <li>Reddi, V. J. <em>Introduction to Machine Learning Systems</em>, vol. I (MLSysBook): capítulos 11 y 12 sobre compiladores, runtimes y medición. <a href="https://mlsysbook.ai/vol1/assets/downloads/Machine-Learning-Systems-Vol1.pdf">mlsysbook.ai</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, contrastada con las fuentes. Son deducción propia: los ejemplos de arena (valores supuestos), la reducción de 3,9 veces, los 50,6 ms (supuesto: ciclos de una inferencia completa), los 1,7 ciclos por MAC (supuesto: operaciones = 2 × MAC), el cociente de 2,5 veces y el ejemplo de energía.</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-03, nivel-03</footer>
+</body>
+</html>

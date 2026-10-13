@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivel 1: Una red neuronal y sus cuentas</title>
+<meta name="description" content="Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Apuntes en bits">
+<meta property="og:title" content="Nivel 1: Una red neuronal y sus cuentas">
+<meta property="og:description" content="Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.">
+<link rel="icon" href="../../assets/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../assets/icono-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/style.css">
+<script src="../../assets/site.js"></script>
+<script src="../../assets/diagramas.js" defer></script>
+</head>
+<body data-raiz="../../" data-curso="tinyml" data-nivel="1">
+
+<main class="leccion">
+<header>
+  <span class="nivel-chip" data-n="01">nivel 01, 15 min de lectura</span>
+  <h1>Una red neuronal y sus cuentas</h1>
+  <p class="bajada">Una red neuronal es una función con muchos números ajustables. Para saber si entra en un micro, alcanza con contar sus pesos, sus multiplicaciones y su memoria.</p>
+</header>
+
+<div class="caja objetivos">
+  <h4>al terminar este nivel vas a poder…</h4>
+  <ul>
+    <li>Calcular a mano la salida de una neurona y decir qué hace la activación.</li>
+    <li>Contar pesos y multiplicaciones de una capa densa y de una convolución.</li>
+    <li>Explicar por qué entrenar y inferir son trabajos distintos, y cuál corre en el micro.</li>
+    <li>Estimar cuánta memoria piden los pesos y las activaciones de una red.</li>
+    <li>Decidir si una red entra en una memoria dada, antes de probarla.</li>
+  </ul>
+</div>
+
+<h2>Una neurona es una cuenta chica</h2>
+
+<p>Una <strong>red neuronal</strong> es una función: recibe una lista de números y devuelve otra. Por dentro hay muchas cuentas iguales y simples. Lo que cambia el resultado son los números que la red guarda. Se ajustan una sola vez, al entrenarla.</p>
+
+<p>La cuenta básica es la <strong>neurona</strong>. Multiplica cada entrada por un número propio, el <strong>peso</strong>. Suma los productos y le agrega un número fijo, el <strong>sesgo</strong>. Cada producto más su suma es una operación de multiplicar y acumular, un <span class="ref" data-nota="mac">MAC</span>.<span class="nota-margen" popover id="nota-mac"><b>mac · multiply-accumulate</b>Multiplicar dos números y sumar el resultado a un acumulador. Es la operación que más repite una red y la unidad con la que se mide su costo.</span> La neurona de la figura 1.1 hace tres.</p>
+
+<p class="formula"><var>s</var> = Σ <var>w</var><sub><var>i</var></sub> · <var>x</var><sub><var>i</var></sub> + <var>b</var></p>
+
+<figure class="diagrama" data-titulo="fig-1.1 interactivo">
+  <canvas data-widget="neurona" width="640" height="264"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.1</b>Cada fila es un MAC: la entrada (naranja) por el peso (azul) se suma al acumulador (verde), que empieza en el sesgo. Con los valores de partida da 0,5, 1,5, 2,5 y 3,25, y la ReLU (magenta) deja pasar el 3,25. Mové las entradas: si la suma da negativa, la salida es 0.</figcaption>
+</figure>
+
+<p>Con los números de la figura, la suma da 0,5·2 + (−1)·(−1) + 0,25·3 + 0,5 = 3,25. Todavía falta un paso: la <strong>activación</strong>, una función que se aplica al resultado. La más usada es la <span class="ref" data-nota="relu">ReLU</span>, que deja pasar los positivos y pone cero en los negativos.<span class="nota-margen" popover id="nota-relu"><b>relu · rectified linear unit</b>Función que devuelve el mayor entre cero y su entrada. Es barata de calcular: una comparación.</span> Acá deja pasar 3,25.</p>
+
+<h3>Para qué sirve la activación</h3>
+
+<p>Sin activación, apilar capas no serviría de nada. Una suma ponderada de sumas ponderadas es otra suma ponderada. Toda la red se reduciría a una sola capa (Zhang et al., sección 5.1). La activación rompe esa linealidad. Por eso una red de varias capas puede aprender formas que una sola no alcanza.</p>
+
+<div class="caja dato">
+  <h4>dato</h4>
+  <p>Una red con una sola capa oculta puede aproximar cualquier función continua en un dominio acotado. Solo necesita suficientes neuronas (Goodfellow et al., sección 6.4.1, p. 194). Que pueda no dice que la entrenes bien.</p>
+</div>
+
+<h2>Una capa son muchas neuronas a la vez</h2>
+
+<p>Una <strong>capa densa</strong> junta varias neuronas que miran las mismas entradas. Con <var>m</var> entradas y <var>n</var> neuronas hay <var>m</var>·<var>n</var> pesos, uno por cada par. Cada peso se usa una vez por dato. Los MAC también son <var>m</var>·<var>n</var> (Goodfellow et al., sección 9.2, p. 330).</p>
+
+<p class="formula">pesos = MAC = <var>m</var> · <var>n</var></p>
+
+<p>Un ejemplo: una capa de 1.000 entradas y 128 neuronas tiene 1.000 · 128 = 128.000 pesos. Hace 128.000 MAC por dato. Es un caso chico. Sirve de escala la red LeNet, que lee dígitos escritos a mano. Tiene unos 60.000 pesos y hace 341.000 MAC por imagen (Sze et al., p. 8).</p>
+
+<p>La salida de una capa es la entrada de la siguiente. Apilar capas expresa una idea. La función que buscás es una composición de funciones más simples (Goodfellow et al., sección 6.4.1, p. 196). La primera capa detecta rasgos chicos y las siguientes los combinan.</p>
+
+<h2>Entrenar e inferir son trabajos distintos</h2>
+
+<p>Los pesos no vienen de fábrica. Se encuentran con un lazo de dos tiempos. Primero se hace una pasada hacia adelante con un dato de ejemplo y se mide el error contra la respuesta correcta. Después una pasada hacia atrás reparte ese error entre los pesos y los corrige un poco. Esa segunda pasada es la <strong>retropropagación</strong>.</p>
+
+<figure class="diagrama" data-titulo="fig-1.2 interactivo">
+  <canvas data-widget="entrenar" width="640" height="256"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.2</b>Entrenar recorre la red adelante y atrás, unas 2 pasadas por ejemplo, y guarda pesos, gradientes, estado del optimizador y todas las activaciones. Inferir la recorre una vez con los pesos fijos y solo guarda las activaciones de la capa en curso. Alterná los dos modos.</figcaption>
+</figure>
+
+<p>Una pasada hacia atrás cuesta del mismo orden que una hacia adelante (Goodfellow et al., sección 6.5.3, p. 205–206; Nielsen, capítulo 2). El lazo se repite con muchos ejemplos. Además, para corregir los pesos hay que conservar las salidas de cada capa (Sze et al., p. 4). Entrenar también suele pedir más precisión numérica que usar la red.</p>
+
+<p>La cuenta de memoria se nota. Para entrenar, los apuntes de CS231n estiman que la memoria de los parámetros se multiplica por 3 o más. Hay que guardar también los gradientes y el estado del optimizador. Usar la red ya entrenada es la <strong>inferencia</strong>. Es una sola pasada hacia adelante, con pesos fijos y sin guardar nada de más. Es lo único que corre en el micro.</p>
+
+<div class="caja ojo">
+  <h4>ojo</h4>
+  <p>Una red entrenada en la PC con decimales de 32 bits no da la misma salida en el micro. Allá corre con enteros. Hay que medir esa diferencia (se ve en el nivel 2).</p>
+</div>
+
+<h2>La convolución comparte pesos</h2>
+
+<p>Una capa densa no es práctica para imágenes. Tomá una imagen en gris de 96×96 píxeles, que son 9.216 valores. Si la capa debe devolver 8 mapas del mismo tamaño, son 96·96·8 = 73.728 salidas. Una capa densa tendría 9.216 · 73.728 = 679.477.248 pesos (cuenta propia). No entra en ningún micro.</p>
+
+<p>La solución es la <strong>convolución</strong>: un filtro chico que se desliza por la imagen. En cada lugar usa los mismos pesos (CS231n, «Convolutional Layer»). Un filtro de 3×3 tiene 9 pesos. Para 8 filtros hay 72 pesos y 8 sesgos, 80 números en total. La figura 1.3 lo muestra paso a paso, con un filtro que encuentra bordes.</p>
+
+<figure class="diagrama" data-titulo="fig-1.3 interactivo">
+  <canvas data-widget="conv" width="640" height="288"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.3</b>El recuadro recorre la imagen de 10 × 10; en cada una de las 64 posiciones se hacen 9 multiplicaciones y una suma. En la salida, las celdas sólidas son valores positivos y las tramadas, negativos. El filtro de bordes verticales «se enciende» en los lados de la casa.</figcaption>
+</figure>
+
+<p>Un filtro de lado <var>F</var> recorre una entrada de lado <var>W</var> con salto <var>S</var> y borde <var>P</var>. La salida tiene este lado:</p>
+
+<p class="formula"><var>W</var><sub>2</sub> = (<var>W</var><sub>1</sub> − <var>F</var> + 2<var>P</var>) / <var>S</var> + 1</p>
+
+<p>En la figura: (10 − 3 + 0) / 1 + 1 = 8. Son 8 · 8 = 64 posiciones de 9 MAC: 576 MAC. Cada valor de salida cuesta <var>F</var>² MAC por canal de entrada. Sumá ahora los canales: <var>C</var><sub>e</sub> de entrada, <var>C</var><sub>s</sub> de salida y una salida de <var>H</var>×<var>W</var>. El costo total es <var>H</var>·<var>W</var>·<var>F</var>²·<var>C</var><sub>e</sub>·<var>C</var><sub>s</sub> (Zhang et al., sección 7.4).</p>
+
+<p>Para el ejemplo, 96 · 96 · 9 · 1 · 8 = 663.552 MAC (cuenta propia). Son pocos pesos pero muchas cuentas: cada peso se usa 9.216 veces, una por posición. En una capa densa se usa una. Mirá VGG-16 en la tabla de Sze et al. (p. 11). Sus capas convolucionales hacen 15,3 mil millones de MAC con 14,7 millones de pesos.</p>
+
+<p>De ahí sale una regla de costos. Una capa densa pesa mucho y calcula poco por peso. Una convolución pesa poco y calcula mucho por peso. En un micro, el peso va a la memoria y el cálculo va al tiempo. Los dos tienen un tope.</p>
+
+<h3>La convolución separable: partir la cuenta</h3>
+
+<p>Una convolución estándar mezcla dos cosas a la vez: la vecindad espacial y los canales. La <strong>separable</strong> las separa. Primero un filtro de 3×3 por canal, sin mezclar canales. Después un filtro de 1×1 que mezcla los canales. Es la base de las redes pensadas para micros.</p>
+
+<p>Tomá 32 canales de entrada, 64 de salida y un mapa de 28×28, como en la figura 1.4. La estándar tiene 3·3·32·64 = 18.432 pesos y hace 784·18.432 = 14.450.688 MAC. La separable tiene 9·32 + 32·64 = 2.336 pesos y hace 784·2.336 = 1.831.424 MAC. Es 7,9 veces menos, con la misma forma de entrada y salida (cuenta propia).</p>
+
+<figure class="diagrama" data-titulo="fig-1.4 interactivo">
+  <canvas data-widget="separable" width="640" height="262"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.4</b>Una capa de 28 × 28 con 32 canales de entrada y 64 de salida. En la estándar, cada filtro mira los 32 canales a la vez. En la separable, la etapa 1 filtra cada canal por su lado y la etapa 2 los mezcla con un 1 × 1. Alterná los modos y compará los MAC.</figcaption>
+</figure>
+
+<h2>Memoria: pesos y activaciones</h2>
+
+<p>La red ocupa memoria de dos maneras. Los <strong>pesos</strong> son constantes y viven en la <span class="ref" data-nota="flash">flash</span>.<span class="nota-margen" popover id="nota-flash"><b>flash · memoria no volátil</b>Memoria que conserva su contenido sin energía. Guarda el programa y el modelo; se lee más lento que la SRAM.</span> Las <strong>activaciones</strong> son las salidas de cada capa y viven en la <span class="ref" data-nota="sram">SRAM</span> mientras se calculan.<span class="nota-margen" popover id="nota-sram"><b>sram · static random-access memory</b>Memoria rápida dentro del micro. Se lee y se escribe en pocos ciclos, pero hay poca: del orden de cientos de KB.</span> Cada valor ocupa 4 bytes en decimal de 32 bits o 1 byte en <span class="ref" data-nota="int8">int8</span>.<span class="nota-margen" popover id="nota-int8"><b>int8 · entero de 8 bits</b>Número entero con signo de 8 bits, de −128 a 127. Cuatro veces más chico que un decimal de 32 bits.</span> Cómo se pasa de uno al otro es el tema del nivel 2.</p>
+
+<p>Los pesos de LeNet son unos 60.000. En decimal de 32 bits son del orden de 240 KB. En int8, del orden de 60 KB (cuenta propia). VGG-16 tiene 138 millones: en int8 serían del orden de 138 MB. Un ESP32-S3 tiene 512 KB de SRAM (<a href="../micro/04-memoria.html">Microcontroladores, Tomo 1, nivel 4</a>). La flash es de varios MB. Esa red no entra ni lejos.</p>
+
+<p>Las activaciones se cuentan por capa. La salida de la convolución del ejemplo tiene 96·96·8 = 73.728 valores, 73.728 bytes en int8. Mientras se calcula, la entrada también tiene que estar: 9.216 bytes + 73.728 bytes = 82.944 bytes. Ese pico por capa decide cuánta SRAM necesita la red (<a href="../borde/02-memoria.html">IA en el borde, Tomo 2, nivel 2</a>).</p>
+
+<figure class="diagrama" data-titulo="fig-1.5 interactivo">
+  <canvas data-widget="sram" width="640" height="248"></canvas>
+  <div class="controles"></div>
+  <figcaption><b>fig 1.5</b>Los 512 KB de SRAM del ESP32-S3, un cuadro por KB. Los pesos de LeNet ocupan casi la mitad en float32 y un octavo en int8; el pico de la capa del ejemplo, un sexto. VGG-16 no entra de ninguna forma.</figcaption>
+</figure>
+
+<h2>Qué cabe en un micro</h2>
+
+<p>Un micro tiene del orden de decenas a cientos de KB de SRAM. Eso alcanza para redes chicas que hacen una sola cosa. El benchmark <span class="ref" data-nota="mlperf">MLPerf Tiny</span> fija cuatro tareas de referencia (Banbury et al., 2021). Son detectar una palabra clave, detectar una persona en una imagen, clasificar una imagen chica y detectar anomalías en una señal.<span class="nota-margen" popover id="nota-mlperf"><b>mlperf tiny · benchmark de MLCommons</b>Conjunto de cuatro tareas y modelos de referencia para comparar cuánto tarda y cuánta energía gasta cada micro al correr redes chicas.</span> Dos de ellas se recorren en <a href="../borde/08-palabra-clave.html">IA en el borde, Tomo 2, nivel 8</a> y en <a href="../borde/09-sensores.html">nivel 9</a>.</p>
+
+<p>Una red que no entra falla de dos maneras. Si no cabe en la memoria, el programa no arranca o la reserva de la arena falla. Si cabe pero tarda de más, se pierden cuadros o se pasa el presupuesto de energía. En los dos casos la cuenta de este nivel lo anticipa antes de entrenar nada.</p>
+
+<div class="caja quiz" data-ok="1">
+  <h4>repaso</h4>
+  <p class="pregunta">Una capa densa tiene 200 entradas y 50 neuronas. ¿Cuántos MAC hace por cada dato?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="250 es la suma de entradas y neuronas. Cada neurona multiplica sus 200 entradas, así que se multiplica, no se suma.">250.</button>
+    <button type="button" data-por-que="Cada una de las 50 neuronas hace 200 MAC: 200 · 50 = 10.000, igual que los pesos de la capa.">10.000.</button>
+    <button type="button" data-por-que="200 son solo las entradas. Falta repetir la cuenta para cada neurona.">200.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja quiz" data-ok="2">
+  <h4>repaso</h4>
+  <p class="pregunta">Una convolución de 3×3 pasa de 16 a 32 canales. ¿Cuántos pesos tiene, sin contar los sesgos?</p>
+  <div class="opciones">
+    <button type="button" data-por-que="512 es 16 · 32: faltan los 9 pesos de cada filtro de 3×3.">512.</button>
+    <button type="button" data-por-que="Esa cifra mezcla el tamaño de la salida. El número de pesos no depende del tamaño de la imagen.">2.654.208.</button>
+    <button type="button" data-por-que="3 · 3 · 16 · 32 = 4.608. Cada uno de los 32 filtros tiene 3·3·16 pesos.">4.608.</button>
+  </div>
+  <p class="feedback" aria-live="polite"></p>
+</div>
+
+<div class="caja clave">
+  <h4>para llevar</h4>
+  <ul>
+    <li>Una neurona es una suma ponderada más un sesgo, seguida de una activación.</li>
+    <li>Capa densa: pesos = MAC = entradas · neuronas. Convolución: pocos pesos, muchos MAC.</li>
+    <li>Entrenar es un lazo que ajusta pesos. En el micro solo corre la inferencia.</li>
+    <li>Memoria: pesos × bytes por valor, más el pico de activaciones por capa.</li>
+    <li>Contar antes de entrenar dice si la red puede entrar.</li>
+  </ul>
+</div>
+
+<section class="fuentes">
+  <h2>Fuentes</h2>
+  <ol>
+    <li>Goodfellow, I., Bengio, Y. y Courville, A. <em>Deep Learning</em>. MIT Press, 2016: secciones 6.3.1 (ReLU, p. 188), 6.4.1 (aproximación universal y composición, pp. 194 y 196), 6.5.2–6.5.3 (retropropagación, pp. 203–206) y 9.2 (parámetros de una capa, p. 330). <a href="https://www.deeplearningbook.org/">deeplearningbook.org</a></li>
+    <li>Zhang, A., Lipton, Z., Li, M. y Smola, A. <em>Dive into Deep Learning</em> 1.0.3. Cambridge University Press, 2023: secciones 5.1 (activaciones y linealidad) y 7.4 (costo de la convolución con varios canales). <a href="https://d2l.ai/">d2l.ai</a></li>
+    <li>Nielsen, M. <em>Neural Networks and Deep Learning</em>, capítulo 2 (costo de la retropropagación). <a href="http://neuralnetworksanddeeplearning.com/chap2.html">neuralnetworksanddeeplearning.com/chap2.html</a> (el certificado del sitio no valida).</li>
+    <li>Stanford CS231n. <em>Convolutional Neural Networks</em>, apuntes: «Convolutional Layer», «Case Studies» y «Computational Considerations». <a href="https://cs231n.github.io/convolutional-networks/">cs231n.github.io/convolutional-networks</a></li>
+    <li>Sze, V., Chen, Y.-H., Yang, T.-J. y Emer, J. <em>Efficient Processing of Deep Neural Networks: A Tutorial and Survey</em>. arXiv:1703.09039v2, 2017: pp. 3–4 (entrenar e inferir), p. 8 (LeNet) y p. 11 (tabla II). <a href="https://arxiv.org/abs/1703.09039">arxiv.org/abs/1703.09039</a></li>
+    <li>Banbury, C. et al. <em>MLPerf Tiny Benchmark</em>. arXiv:2106.07597, 2021: tareas de referencia. <a href="https://arxiv.org/abs/2106.07597">arxiv.org/abs/2106.07597</a></li>
+  </ol>
+  <p class="nota">Investigación asistida por IA, contrastada con las fuentes por una segunda pasada. Las cuentas de convolución, memoria y separable son deducción propia a partir de las fórmulas citadas. Los tamaños en bytes suponen 4 bytes por valor en decimal de 32 bits y 1 byte en int8 (supuesto).</p>
+</section>
+
+<div data-nav-niveles></div>
+</main>
+<footer class="pie">apuntes.bin, ia-borde, tomo-03, nivel-01</footer>
+</body>
+</html>
