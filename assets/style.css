@@ -19,6 +19,7 @@
      a naranja = dato, lo que se explica · b azul = reloj, tiempo, la contraparte · c verde = control,
      selección, habilitación · d magenta = evento, interrupción, respuesta. Sin señales, van por orden a b c d */
   --b1: var(--azul1); --b2: var(--azul2); --b3: var(--azul3); --b4: var(--azul4);
+  --c1: var(--verde1); --c2: var(--verde2); --c3: var(--verde3); --c4: var(--verde4);
 
   /* escala de espacios en múltiplos de 8 px (la grilla de las figuras) */
   --e1: .5rem; --e2: 1rem; --e3: 1.5rem; --e4: 2rem; --e5: 3rem; --e6: 4rem;
