@@ -11,3 +11,7 @@ CLAUDE.md
 # capturas de prueba de agentes (no son parte del sitio)
 /*.png
 .claude/settings.local.json
+# contexto de diseño de impeccable (uso local)
+PRODUCT.md
+DESIGN.md
+.impeccable/
