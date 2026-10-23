@@ -484,7 +484,7 @@ a:hover { text-decoration-color: var(--a3); }
 }
 /* cuadro de rótulo de un plano: campos chicos en mono, valores en tinta */
 .rotulo {
-  display: grid; grid-template-columns: 2fr 1fr 1.5fr .8fr; margin: 0 0 var(--e5);
+  display: grid; grid-template-columns: 1.4fr 1.4fr 1.3fr 1.3fr .6fr; margin: 0 0 var(--e5);
   border: var(--marco); border-top: 0; background: var(--fondo);
   font-family: var(--f-mono);
 }
@@ -501,23 +501,32 @@ a:hover { text-decoration-color: var(--a3); }
 .hero-plano h1 em { font-style: normal; color: var(--a3); }
 .hero-plano p { max-width: 44ch; font-size: 1.125rem; text-wrap: pretty; }
 /* fig. 1: marco de plano sobre el campo, con regla numerada arriba; los bloques son enlaces a los tomos */
-.plano { margin: 0; padding: 0 1rem 1rem; background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja); }
-.plano-regla { display: grid; grid-template-columns: repeat(8, 1fr); margin: 0 -1rem .75rem; border-bottom: 1px solid var(--linea-fuerte); }
-.plano-regla span { padding: .15rem 0; text-align: center; font-family: var(--f-mono); font-size: .6875rem; color: var(--texto-suave); border-left: 1px solid var(--linea); }
-.plano-regla span:first-child { border-left: 0; }
+.plano { margin: 0; padding: 1rem; background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja); }
 /* la fig. 1 llena su columna: es un plano, no una figura de lección a 640 px */
 .plano svg { display: block; width: 100%; height: auto; }
+/* cada figura viene en dos cortes: ancha, con el marco de zonas (A1…E8), y alta para pantallas angostas */
+.plano .fig-alta { display: none; max-width: 360px; margin-inline: auto; }
 .plano svg a { cursor: pointer; text-decoration: none; }
 .plano svg a:hover .bloque, .plano svg a:focus-visible .bloque { stroke-width: 4; }
-.plano svg a:focus-visible { outline: none; }
-.plano svg a:focus-visible .bloque { stroke: var(--n6); }
 .plano figcaption { margin-top: .75rem; padding-top: .6rem; border-top: 1px solid var(--linea-fuerte); font-size: .9375rem; line-height: 1.5; color: var(--texto); }
 .plano figcaption b { font-family: var(--f-mono); font-weight: 500; font-size: .8125rem; color: var(--a3); margin-right: .5rem; }
 /* leyenda de los callouts, como el despiece de un manual: número en caja + tomo */
-.plano-leyenda { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0 1rem; font-size: .9375rem; }
-.plano-leyenda a { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; color: var(--texto); text-decoration: none; }
+.plano-leyenda { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0 1.5rem; font-size: .9375rem; }
+.plano-leyenda a, .plano-leyenda li.pronto { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; color: var(--texto); text-decoration: none; }
 .plano-leyenda a:hover { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--a3); }
-.plano-leyenda span { flex: none; display: grid; place-items: center; width: 1.4rem; height: 1.4rem; background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.1rem; line-height: 1; }
+.plano-leyenda li.pronto { color: var(--texto-suave); }
+.plano-leyenda small { margin-left: auto; padding-left: .5rem; font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap; }
+.plano-leyenda .num, .callout {
+  flex: none; display: grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 .2rem;
+  background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.1rem; line-height: 1;
+}
+/* tomo que todavía no existe: la misma caja, punteada y tenue */
+.plano-leyenda .num.pronto, .callout.pronto { background: var(--fondo); color: var(--texto-suave); outline: 2px dashed var(--texto-suave); outline-offset: -2px; }
+/* la fig. 2 vive dentro de su hoja (la de IA): sin sombra propia, separada del rótulo por la línea de la hoja */
+.hoja .plano-hoja { border: 0; border-bottom: 1px solid var(--linea-fuerte); box-shadow: none; padding: var(--e3); }
+.hoja .plano-hoja svg.fig-ancha { max-width: 960px; margin-inline: auto; }
+.hoja .plano-hoja figcaption, .hoja .plano-hoja .plano-leyenda { max-width: 960px; margin-inline: auto; }
+.rotulo dd a, .hoja-datos dd a { color: inherit; text-decoration: underline; text-decoration-color: var(--a3); text-underline-offset: 3px; }
 @media (max-width: 1000px) {
   .hero-cuerpo { grid-template-columns: 1fr; }
   .hero-plano p { max-width: 60ch; }
@@ -525,7 +534,8 @@ a:hover { text-decoration-color: var(--a3); }
 @media (max-width: 640px) {
   .hero.hero-plano { padding-bottom: var(--e4); }
   .rotulo { grid-template-columns: 1fr 1fr; margin-bottom: var(--e4); }
-  .rotulo > div:nth-child(3) { border-left: 0; }
+  .rotulo > div:nth-child(odd) { border-left: 0; }
+  .rotulo > div:last-child { grid-column: 1 / -1; }
   .rotulo > div:nth-child(n+3) { border-top: 1px solid var(--linea-fuerte); }
   .plano { padding: 0 .5rem .75rem; }
   .plano-regla { margin: 0 -.5rem .5rem; }
@@ -576,10 +586,9 @@ body.portada main.contenedor { max-width: none; background: none; border: 0; pad
 .hoja .libro { background: var(--fondo); border-color: var(--linea-fuerte); }
 .hoja .libro.bloqueado { background: transparent; }
 /* número de la fig. 1 en la tarjeta: la misma caja que el callout del plano */
-.callout {
-  position: absolute; top: -1px; right: -1px; display: grid; place-items: center; width: 1.6rem; height: 1.6rem;
-  background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.2rem; line-height: 1;
-}
+.libro .callout { position: absolute; top: -1px; right: -1px; min-width: 1.6rem; height: 1.6rem; font-size: 1.2rem; }
+/* zona de la tarjeta en su figura ("fig. 1 · B2"): en móvil las figuras van en corte alto, sin zonas, y se oculta */
+.libro .zona { font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); }
 
 .estante {
   display: grid; gap: 0;
@@ -978,8 +987,10 @@ footer.pie.pie-portada {
 }
 /* portada en móvil: la fig. 1 no baja de 560 px (se desplaza de costado) y los datos de la hoja van en columna */
 @media (max-width: 640px) {
-  .plano { overflow-x: auto; }
-  .plano svg { min-width: 560px; }
+  .plano .fig-ancha { display: none; }
+  .plano .fig-alta { display: block; }
+  .plano-leyenda small, .libro .zona, .solo-ancha { display: none; }
+  .hoja .plano-hoja { padding: var(--e2) 1rem; }
   .hoja-datos { grid-template-columns: 1fr; }
   .hoja-datos > div + div { border-left: 0; border-top: 1px solid var(--linea-fuerte); }
   .hoja-titulo { padding: var(--e2) 1rem; }
