@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Apuntes en bits</title>
-<meta name="description" content="Biblioteca personal para aprender temas profundos de forma didáctica, con estética pixel art.">
+<meta name="description" content="Microcontroladores ESP e IA en el borde explicados por dentro, nivel por nivel: diagramas, animaciones y cifras de las hojas de datos, en castellano.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Apuntes en bits">
 <meta property="og:title" content="Apuntes en bits">
-<meta property="og:description" content="Biblioteca personal para aprender temas profundos de forma didáctica, con estética pixel art.">
+<meta property="og:description" content="Microcontroladores ESP e IA en el borde explicados por dentro, nivel por nivel: diagramas, animaciones y cifras de las hojas de datos, en castellano.">
 <link rel="icon" href="./assets/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,120 +17,261 @@
 <script src="assets/site.js"></script>
 <script src="assets/ascii.js" defer></script>
 </head>
-<body data-raiz="./">
+<body class="portada" data-raiz="./">
 
-<header class="hero hero-ascii">
-  <canvas class="ascii-fondo" data-ascii aria-hidden="true"></canvas>
-  <div class="eyebrow">Proyecto / Biblioteca</div>
-  <h1>Apuntes<br>en bits<span class="cursor"></span></h1>
-  <p>Temas difíciles, un nivel por vez. Sin código: ideas, diagramas y animaciones.</p>
+<header class="hero hero-plano">
+  <dl class="rotulo">
+    <div><dt>título</dt><dd>Apuntes en bits</dd></div>
+    <div><dt>doc. n.º</dt><dd>APB-0001</dd></div>
+    <div><dt>contenido</dt><dd data-doc-contenido>8 tomos · 38 niveles</dd></div>
+    <div><dt>rev.</dt><dd data-doc-rev>0.1.51</dd></div>
+  </dl>
+  <div class="hero-cuerpo">
+    <div class="hero-texto">
+      <h1>Cada bloque del micro, explicado <em>por dentro.</em></h1>
+      <p>Apuntes en bits: microcontroladores ESP e IA en el borde, un nivel por vez, con diagramas, animaciones y cifras de las hojas de datos.</p>
+      <div class="hero-acciones" data-seguir>
+        <a class="btn" href="temas/micro/index.html">empezá por el Tomo 1 <kbd>→</kbd></a>
+      </div>
+    </div>
+    <figure class="plano">
+      <div class="plano-regla" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+      <svg viewBox="0 0 640 400" width="640" height="400" role="img" aria-labelledby="fig1-tit">
+        <title id="fig1-tit">Diagrama de bloques del ESP32-S3: CPU con PIE, memoria, bus del sistema, E/S y comunicación</title>
+        <a href="temas/micro/index.html" aria-label="1: El microcontrolador por dentro">
+          <rect x="32" y="56" width="8" height="4" class="f3"/><rect x="480" y="56" width="8" height="4" class="f3"/><rect x="32" y="80" width="8" height="4" class="f3"/><rect x="480" y="80" width="8" height="4" class="f3"/><rect x="32" y="104" width="8" height="4" class="f3"/><rect x="480" y="104" width="8" height="4" class="f3"/><rect x="32" y="128" width="8" height="4" class="f3"/><rect x="480" y="128" width="8" height="4" class="f3"/><rect x="32" y="152" width="8" height="4" class="f3"/><rect x="480" y="152" width="8" height="4" class="f3"/><rect x="32" y="176" width="8" height="4" class="f3"/><rect x="480" y="176" width="8" height="4" class="f3"/><rect x="32" y="200" width="8" height="4" class="f3"/><rect x="480" y="200" width="8" height="4" class="f3"/><rect x="32" y="224" width="8" height="4" class="f3"/><rect x="480" y="224" width="8" height="4" class="f3"/><rect x="32" y="248" width="8" height="4" class="f3"/><rect x="480" y="248" width="8" height="4" class="f3"/><rect x="32" y="272" width="8" height="4" class="f3"/><rect x="480" y="272" width="8" height="4" class="f3"/><rect x="32" y="296" width="8" height="4" class="f3"/><rect x="480" y="296" width="8" height="4" class="f3"/><rect x="32" y="320" width="8" height="4" class="f3"/><rect x="480" y="320" width="8" height="4" class="f3"/><rect x="32" y="344" width="8" height="4" class="f3"/><rect x="480" y="344" width="8" height="4" class="f3"/><rect x="32" y="368" width="8" height="4" class="f3"/><rect x="480" y="368" width="8" height="4" class="f3"/>
+          <rect x="40" y="24" width="440" height="352" class="bloque f1 s4" stroke-width="2"/>
+          <text x="64" y="52" class="sv-tit f6">ESP32-S3</text>
+          <rect x="28" y="12" width="24" height="24" class="f6"/><text x="40" y="31" text-anchor="middle" class="sv-tit f0">1</text>
+        </a>
+        <line x1="156" y1="192" x2="156" y2="208" class="s4" stroke-width="2"/><line x1="368" y1="192" x2="368" y2="208" class="s4" stroke-width="2"/>
+        <line x1="156" y1="232" x2="156" y2="244" class="s4" stroke-width="2"/><line x1="368" y1="232" x2="368" y2="244" class="s4" stroke-width="2"/>
+        <a href="temas/buses/index.html" aria-label="5: Memoria y buses por dentro">
+          <rect x="56" y="208" width="408" height="24" class="bloque f2 s3" stroke-width="2"/>
+          <text x="260" y="226" text-anchor="middle" font-size="16" class="sv-lbl f5">bus del sistema · AHB / APB</text>
+          <rect x="272" y="64" width="192" height="128" class="bloque fb1 sb3" stroke-width="2"/>
+          <text x="284" y="88" class="sv-lbl fb3">memoria</text>
+          <rect x="284" y="100" width="168" height="24" class="f0 sb2" stroke-width="2"/><text x="294" y="118" font-size="16" class="sv-lbl f5">caché</text>
+          <rect x="284" y="128" width="168" height="24" class="f0 sb2" stroke-width="2"/><text x="294" y="146" font-size="16" class="sv-lbl f5">SRAM · 512 KB</text>
+          <rect x="284" y="156" width="168" height="24" class="f0 sb2" stroke-width="2"/><text x="294" y="174" font-size="16" class="sv-lbl f5">ROM · 384 KB</text>
+          <rect x="452" y="52" width="24" height="24" class="f6"/><text x="464" y="71" text-anchor="middle" class="sv-tit f0">5</text>
+        </a>
+        <a href="temas/procesador/index.html" aria-label="4: El procesador por dentro">
+          <rect x="56" y="64" width="200" height="128" class="bloque fa1 sa3" stroke-width="2"/>
+          <text x="68" y="88" class="sv-lbl fa3">CPU · 240 MHz</text>
+          <rect x="68" y="100" width="84" height="44" class="f0 sa2" stroke-width="2"/><text x="110" y="128" text-anchor="middle" font-size="16" class="sv-lbl f5">LX7 · 0</text>
+          <rect x="160" y="100" width="84" height="44" class="f0 sa2" stroke-width="2"/><text x="202" y="128" text-anchor="middle" font-size="16" class="sv-lbl f5">LX7 · 1</text>
+          <rect x="244" y="52" width="24" height="24" class="f6"/><text x="256" y="71" text-anchor="middle" class="sv-tit f0">4</text>
+        </a>
+        <a href="temas/borde/index.html" aria-label="6: Inteligencia en el borde">
+          <rect x="68" y="152" width="176" height="28" class="bloque fa3"/>
+          <text x="78" y="172" font-size="16" class="sv-lbl f0">PIE · SIMD de 128 bits</text>
+          <rect x="216" y="154" width="24" height="24" class="f6"/><text x="228" y="173" text-anchor="middle" class="sv-tit f0">6</text>
+        </a>
+        <a href="temas/mundo/index.html" aria-label="2: Tocar el mundo">
+          <rect x="56" y="244" width="200" height="116" class="bloque fc1 sc3" stroke-width="2"/>
+          <text x="68" y="268" class="sv-lbl fc3">E/S</text>
+          <text x="68" y="296" font-size="16" class="sv-lbl f5">GPIO · PWM · timers</text>
+          <text x="68" y="320" font-size="16" class="sv-lbl f5">ADC · DAC · táctil</text>
+          <text x="68" y="344" font-size="16" class="sv-lbl f5">RMT · PCNT</text>
+          <rect x="244" y="232" width="24" height="24" class="f6"/><text x="256" y="251" text-anchor="middle" class="sv-tit f0">2</text>
+        </a>
+        <a href="temas/datos/index.html" aria-label="3: Mover y procesar datos">
+          <rect x="272" y="244" width="192" height="116" class="bloque fd1 sd3" stroke-width="2"/>
+          <text x="284" y="268" class="sv-lbl fd3">comunicación</text>
+          <text x="284" y="296" font-size="16" class="sv-lbl f5">UART · SPI · I2C</text>
+          <text x="284" y="320" font-size="16" class="sv-lbl f5">I2S · USB</text>
+          <text x="284" y="344" font-size="16" class="sv-lbl f5">DMA</text>
+          <rect x="452" y="232" width="24" height="24" class="f6"/><text x="464" y="251" text-anchor="middle" class="sv-tit f0">3</text>
+        </a>
+        <line x1="464" y1="116" x2="520" y2="116" class="sb3" stroke-width="2" stroke-dasharray="4 4"/>
+        <text x="572" y="104" text-anchor="middle" font-size="16" class="sv-lbl f4">SPI octal</text>
+        <rect x="520" y="80" width="104" height="72" class="f0 s3" stroke-width="2"/>
+        <text x="572" y="110" text-anchor="middle" font-size="16" class="sv-lbl f5">flash</text>
+        <text x="572" y="134" text-anchor="middle" font-size="16" class="sv-lbl f5">PSRAM</text>
+        <line x1="464" y1="300" x2="520" y2="300" class="sd3" stroke-width="2" stroke-dasharray="4 4"/>
+        <rect x="520" y="264" width="104" height="72" class="f0 s3" stroke-width="2"/>
+        <text x="572" y="294" text-anchor="middle" font-size="16" class="sv-lbl f5">sensores</text>
+        <text x="572" y="318" text-anchor="middle" font-size="16" class="sv-lbl f5">cámara</text>
+      </svg>
+      <figcaption><b>fig. 1</b> El ESP32-S3 en bloques. Cada número lleva a su tomo.</figcaption>
+      <ol class="plano-leyenda">
+        <li><a href="temas/micro/index.html"><span>1</span>El microcontrolador por dentro</a></li>
+        <li><a href="temas/mundo/index.html"><span>2</span>Tocar el mundo</a></li>
+        <li><a href="temas/datos/index.html"><span>3</span>Mover y procesar datos</a></li>
+        <li><a href="temas/procesador/index.html"><span>4</span>El procesador por dentro</a></li>
+        <li><a href="temas/buses/index.html"><span>5</span>Memoria y buses por dentro</a></li>
+        <li><a href="temas/borde/index.html"><span>6</span>Inteligencia en el borde</a></li>
+      </ol>
+    </figure>
+  </div>
 </header>
 
 <main class="contenedor">
-  <div class="seccion-titulo">microcontroladores-esp/ (5 tomos disponibles)</div>
+  <section class="hoja" aria-labelledby="micro">
+    <header class="hoja-cab">
+      <div class="hoja-titulo">
+        <h2 id="micro">Microcontroladores ESP</h2>
+        <p>Cómo funciona un microcontrolador por dentro, del pin al procesador, con el ESP32 y el ESP32-S3 como referencia.</p>
+      </div>
+      <dl class="hoja-datos">
+        <div><dt>ruta</dt><dd>microcontroladores-esp/</dd></div>
+        <div><dt>contenido</dt><dd data-contenido-seccion="micro">5 tomos · 23 niveles</dd></div>
+      </dl>
+    </header>
   <div class="estante">
 
-    <a class="libro" href="temas/micro/index.html">
+    <article class="libro" data-curso="micro">
+      <span class="callout" title="Bloque 1 de la fig. 1">1</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="36" y="16" width="4" height="12" class="f4"/><rect x="36" y="84" width="4" height="12" class="f4"/><rect x="16" y="36" width="12" height="4" class="f4"/><rect x="84" y="36" width="12" height="4" class="f4"/><rect x="48" y="16" width="4" height="12" class="f4"/><rect x="48" y="84" width="4" height="12" class="f4"/><rect x="16" y="48" width="12" height="4" class="f4"/><rect x="84" y="48" width="12" height="4" class="f4"/><rect x="60" y="16" width="4" height="12" class="f4"/><rect x="60" y="84" width="4" height="12" class="f4"/><rect x="16" y="60" width="12" height="4" class="f4"/><rect x="84" y="60" width="12" height="4" class="f4"/><rect x="72" y="16" width="4" height="12" class="f4"/><rect x="72" y="84" width="4" height="12" class="f4"/><rect x="16" y="72" width="12" height="4" class="f4"/><rect x="84" y="72" width="12" height="4" class="f4"/><rect x="28" y="28" width="56" height="56" class="f1 s5" stroke-width="2"/><rect x="27" y="27" width="2" height="2" class="f0"/><rect x="83" y="27" width="2" height="2" class="f0"/><rect x="27" y="83" width="2" height="2" class="f0"/><rect x="83" y="83" width="2" height="2" class="f0"/><rect x="40" y="40" width="32" height="32" class="f0 s3" stroke-width="2"/><rect x="52" y="52" width="8" height="8" class="fa4 parpadea"/><rect x="44" y="44" width="4" height="4" class="f4"/><rect x="64" y="44" width="4" height="4" class="f4"/><rect x="44" y="64" width="4" height="4" class="f4"/><rect x="64" y="64" width="4" height="4" class="f4"/></svg>
       </div>
-      <span class="etiqueta">tomo-01, 6 niveles</span>
-      <h3>1. El microcontrolador por dentro</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-01 · 6 niveles</span>
+        <h3><a href="temas/micro/index.html">El microcontrolador por dentro</a></h3>
+      </div>
       <p>La familia ESP, la anatomía del ESP32 y del ESP32-S3, la memoria, el tiempo real y la energía.</p>
-    </a>
+    </article>
 
-    <a class="libro" href="temas/mundo/index.html">
+    <article class="libro" data-curso="mundo">
+      <span class="callout" title="Bloque 2 de la fig. 1">2</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="16" y="44" width="24" height="24" class="f1 s5" stroke-width="2"/><rect x="24" y="52" width="8" height="8" class="f4"/><line x1="40" y1="56" x2="52" y2="56" class="s4" stroke-width="2"/><polyline points="52,72 52,40 64,40 64,72 72,72 72,40 76,40 76,72 88,72 88,40 96,40" class="fn sa3" stroke-width="4"/><line x1="52" y1="84" x2="96" y2="84" class="s2" stroke-width="2"/><rect x="92" y="36" width="8" height="8" class="fa4 parpadea"/></svg>
       </div>
-      <span class="etiqueta">tomo-02, 5 niveles</span>
-      <h3>2. Tocar el mundo</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-02 · 5 niveles</span>
+        <h3><a href="temas/mundo/index.html">Tocar el mundo</a></h3>
+      </div>
       <p>La frontera del pin, el tiempo y el PWM, el ADC, el DAC y los pulsos con el sensor táctil, explicados como conceptos y con las cifras de tres micros.</p>
-    </a>
+    </article>
 
-    <a class="libro" href="temas/datos/index.html">
+    <article class="libro" data-curso="datos">
+      <span class="callout" title="Bloque 3 de la fig. 1">3</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="16" y="24" width="80" height="12" class="f1 s4" stroke-width="2"/><rect x="16" y="76" width="80" height="12" class="f1 s4" stroke-width="2"/><rect x="20" y="28" width="8" height="4" class="f5"/><rect x="36" y="28" width="8" height="4" class="f5"/><rect x="60" y="28" width="8" height="4" class="f5"/><rect x="84" y="28" width="8" height="4" class="f5"/><line x1="56" y1="40" x2="56" y2="66" class="s4" stroke-width="2"/><rect x="48" y="66" width="16" height="2" class="f4"/><rect x="50" y="68" width="12" height="2" class="f4"/><rect x="52" y="70" width="8" height="2" class="f4"/><rect x="54" y="72" width="4" height="2" class="f4"/><rect x="20" y="80" width="8" height="4" class="fa3"/><rect x="36" y="80" width="8" height="4" class="fa3"/><rect x="52" y="80" width="8" height="4" class="fa4 parpadea"/></svg>
       </div>
-      <span class="etiqueta">tomo-03, 5 niveles</span>
-      <h3>3. Mover y procesar datos</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-03 · 5 niveles</span>
+        <h3><a href="temas/datos/index.html">Mover y procesar datos</a></h3>
+      </div>
       <p>UART, SPI, I2C e I2S por dentro, el DMA y el acelerador vectorial PIE del ESP32-S3.</p>
-    </a>
+    </article>
 
-    <a class="libro" href="temas/procesador/index.html">
+    <article class="libro" data-curso="procesador">
+      <span class="callout" title="Bloque 4 de la fig. 1">4</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="28" y="28" width="56" height="56" class="f1 s5" stroke-width="2"/><rect x="40" y="40" width="32" height="32" class="fa1 sa3" stroke-width="2"/><rect x="48" y="48" width="16" height="16" class="fa4"/><rect x="36" y="12" width="4" height="16" class="f4"/><rect x="54" y="12" width="4" height="16" class="f4"/><rect x="72" y="12" width="4" height="16" class="f4"/><rect x="36" y="84" width="4" height="16" class="f4"/><rect x="54" y="84" width="4" height="16" class="f4"/><rect x="72" y="84" width="4" height="16" class="f4"/><rect x="12" y="36" width="16" height="4" class="f4"/><rect x="12" y="54" width="16" height="4" class="f4"/><rect x="12" y="72" width="16" height="4" class="f4"/><rect x="84" y="36" width="16" height="4" class="f4"/><rect x="84" y="54" width="16" height="4" class="f4"/><rect x="84" y="72" width="16" height="4" class="f4"/></svg>
       </div>
-      <span class="etiqueta">tomo-04, 4 niveles</span>
-      <h3>4. El procesador por dentro</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-04 · 4 niveles</span>
+        <h3><a href="temas/procesador/index.html">El procesador por dentro</a></h3>
+      </div>
       <p>Las piezas del procesador, el pipeline, los lazos sin sobrecarga, las ventanas de registros y las excepciones, siguiendo un filtro FIR. Compara Xtensa, RISC-V y Arm.</p>
-    </a>
-    <a class="libro" href="temas/buses/index.html">
+    </article>
+    <article class="libro" data-curso="buses">
+      <span class="callout" title="Bloque 5 de la fig. 1">5</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="16" y="16" width="32" height="32" class="f1 s5" stroke-width="2"/><rect x="64" y="16" width="32" height="32" class="f1 s5" stroke-width="2"/><rect x="16" y="72" width="80" height="24" class="f1 s4" stroke-width="2"/><line x1="32" y1="48" x2="32" y2="72" class="sb3" stroke-width="4"/><line x1="80" y1="48" x2="80" y2="72" class="sa3" stroke-width="4"/><rect x="24" y="80" width="8" height="8" class="f4"/><rect x="40" y="80" width="8" height="8" class="f4"/><rect x="56" y="80" width="8" height="8" class="fa4 parpadea"/><rect x="72" y="80" width="8" height="8" class="f4"/></svg>
       </div>
-      <span class="etiqueta">tomo-05, 3 niveles</span>
-      <h3>5. Memoria y buses por dentro</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-05 · 3 niveles</span>
+        <h3><a href="temas/buses/index.html">Memoria y buses por dentro</a></h3>
+      </div>
       <p>El mapa de memoria, los periféricos como registros en el bus y la caché por dentro.</p>
-    </a>
-    <div class="libro bloqueado" aria-label="Tomo 6, en preparación">
-      <div class="lomo"><span class="pend">?</span></div>
-      <span class="etiqueta">tomo-06, en preparación</span>
-      <h3>6. Cámaras, pantallas y USB</h3>
-      <p>La interfaz de cámara, las pantallas paralelas y el USB nativo.</p>
-    </div>
+    </article>
+    <article class="libro bloqueado">
+      <div class="lomo"><span class="pend" aria-hidden="true">?</span></div>
+      <div class="libro-cab">
+        <span class="etiqueta pronto">tomo-06 · pronto</span>
+        <h3>Cámaras, pantallas y USB</h3>
+      </div>
+      <p>En preparación: la interfaz de cámara, las pantallas paralelas y el USB nativo.</p>
+    </article>
 
   </div>
+  </section>
 
-  <div class="seccion-titulo" style="margin-top:3rem">ia-en-el-borde/ (3 tomos disponibles)</div>
+  <section class="hoja" aria-labelledby="ia">
+    <header class="hoja-cab">
+      <div class="hoja-titulo">
+        <h2 id="ia">IA en el borde</h2>
+        <p>Cómo llega una red neuronal a un microcontrolador: las cuentas, la memoria, la aceleración y casos completos. Cuando hace falta, remite a los tomos de Microcontroladores.</p>
+      </div>
+      <dl class="hoja-datos">
+        <div><dt>ruta</dt><dd>ia-en-el-borde/</dd></div>
+        <div><dt>contenido</dt><dd data-contenido-seccion="ia">3 tomos · 15 niveles</dd></div>
+      </dl>
+    </header>
   <div class="estante">
 
-    <a class="libro" href="temas/redes/index.html">
+    <article class="libro" data-curso="redes">
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><line x1="28" y1="40" x2="60" y2="32" class="s2" stroke-width="2"/><line x1="28" y1="40" x2="60" y2="52" class="s2" stroke-width="2"/><line x1="28" y1="40" x2="60" y2="68" class="s2" stroke-width="2"/><line x1="28" y1="40" x2="60" y2="88" class="s2" stroke-width="2"/><line x1="28" y1="60" x2="60" y2="32" class="s2" stroke-width="2"/><line x1="28" y1="60" x2="60" y2="52" class="s2" stroke-width="2"/><line x1="28" y1="60" x2="60" y2="68" class="s2" stroke-width="2"/><line x1="28" y1="60" x2="60" y2="88" class="s2" stroke-width="2"/><line x1="28" y1="80" x2="60" y2="32" class="s2" stroke-width="2"/><line x1="28" y1="80" x2="60" y2="52" class="s2" stroke-width="2"/><line x1="28" y1="80" x2="60" y2="68" class="s2" stroke-width="2"/><line x1="28" y1="80" x2="60" y2="88" class="s2" stroke-width="2"/><line x1="60" y1="32" x2="92" y2="48" class="s2" stroke-width="2"/><line x1="60" y1="32" x2="92" y2="72" class="s2" stroke-width="2"/><line x1="60" y1="52" x2="92" y2="48" class="s2" stroke-width="2"/><line x1="60" y1="52" x2="92" y2="72" class="s2" stroke-width="2"/><line x1="60" y1="68" x2="92" y2="48" class="s2" stroke-width="2"/><line x1="60" y1="68" x2="92" y2="72" class="s2" stroke-width="2"/><line x1="60" y1="88" x2="92" y2="48" class="s2" stroke-width="2"/><line x1="60" y1="88" x2="92" y2="72" class="s2" stroke-width="2"/><rect x="24" y="36" width="8" height="8" class="f5"/><rect x="24" y="56" width="8" height="8" class="f5"/><rect x="24" y="76" width="8" height="8" class="f5"/><rect x="56" y="28" width="8" height="8" class="f5"/><rect x="56" y="48" width="8" height="8" class="f5"/><rect x="56" y="64" width="8" height="8" class="f5"/><rect x="56" y="84" width="8" height="8" class="f5"/><rect x="88" y="44" width="8" height="8" class="fa4 parpadea"/><rect x="88" y="68" width="8" height="8" class="f5"/></svg>
       </div>
-      <span class="etiqueta">tomo-01, 2 niveles</span>
-      <h3>1. Redes que ven</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-01 · 2 niveles</span>
+        <h3><a href="temas/redes/index.html">Redes que ven</a></h3>
+      </div>
       <p>Qué es una red neuronal convolucional y cómo se la encoge sin romperla.</p>
-    </a>
+    </article>
 
-    <a class="libro" href="temas/borde/index.html">
+    <article class="libro" data-curso="borde">
+      <span class="callout" title="Bloque 6 de la fig. 1">6</span>
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><rect x="36" y="16" width="4" height="12" class="f4"/><rect x="36" y="84" width="4" height="12" class="f4"/><rect x="16" y="36" width="12" height="4" class="f4"/><rect x="84" y="36" width="12" height="4" class="f4"/><rect x="48" y="16" width="4" height="12" class="f4"/><rect x="48" y="84" width="4" height="12" class="f4"/><rect x="16" y="48" width="12" height="4" class="f4"/><rect x="84" y="48" width="12" height="4" class="f4"/><rect x="60" y="16" width="4" height="12" class="f4"/><rect x="60" y="84" width="4" height="12" class="f4"/><rect x="16" y="60" width="12" height="4" class="f4"/><rect x="84" y="60" width="12" height="4" class="f4"/><rect x="72" y="16" width="4" height="12" class="f4"/><rect x="72" y="84" width="4" height="12" class="f4"/><rect x="16" y="72" width="12" height="4" class="f4"/><rect x="84" y="72" width="12" height="4" class="f4"/><rect x="28" y="28" width="56" height="56" class="f1 s5" stroke-width="2"/><rect x="27" y="27" width="2" height="2" class="f0"/><rect x="83" y="27" width="2" height="2" class="f0"/><rect x="27" y="83" width="2" height="2" class="f0"/><rect x="83" y="83" width="2" height="2" class="f0"/><rect x="40" y="40" width="32" height="32" class="f0 s3" stroke-width="2"/><line x1="46" y1="50" x2="58" y2="46" class="s2" stroke-width="2"/><line x1="46" y1="50" x2="58" y2="62" class="s2" stroke-width="2"/><line x1="46" y1="66" x2="58" y2="62" class="s2" stroke-width="2"/><line x1="58" y1="46" x2="68" y2="54" class="s2" stroke-width="2"/><line x1="58" y1="62" x2="68" y2="54" class="s2" stroke-width="2"/><line x1="58" y1="62" x2="68" y2="68" class="s2" stroke-width="2"/><rect x="44" y="48" width="4" height="4" class="f5"/><rect x="44" y="64" width="4" height="4" class="f5"/><rect x="56" y="44" width="4" height="4" class="f5"/><rect x="56" y="60" width="4" height="4" class="f5"/><rect x="66" y="52" width="4" height="4" class="fa4 parpadea"/><rect x="66" y="66" width="4" height="4" class="f5"/></svg>
       </div>
-      <span class="etiqueta">tomo-02, 9 niveles</span>
-      <h3>2. Inteligencia en el borde</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-02 · 9 niveles</span>
+        <h3><a href="temas/borde/index.html">Inteligencia en el borde</a></h3>
+      </div>
       <p>Del modelo entrenado al microcontrolador: memoria, el PIE por dentro, cámara, decisión, energía, audio y sensores.</p>
-    </a>
+    </article>
 
 
-    <a class="libro" href="temas/tinyml/index.html">
+    <article class="libro" data-curso="tinyml">
       <div class="lomo">
         <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true"><line x1="24" y1="56" x2="56" y2="36" class="s2" stroke-width="2"/><line x1="24" y1="56" x2="56" y2="76" class="s2" stroke-width="2"/><line x1="56" y1="36" x2="88" y2="56" class="s2" stroke-width="2"/><line x1="56" y1="76" x2="88" y2="56" class="s2" stroke-width="2"/><rect x="20" y="52" width="8" height="8" class="fa3"/><rect x="52" y="32" width="8" height="8" class="fb3"/><rect x="52" y="72" width="8" height="8" class="fb3"/><rect x="84" y="52" width="8" height="8" class="fc3"/></svg>
       </div>
-      <span class="etiqueta">tomo-03, 4 niveles</span>
-      <h3>3. Redes neuronales en el micro</h3>
+      <div class="libro-cab">
+        <span class="etiqueta">tomo-03 · 4 niveles</span>
+        <h3><a href="temas/tinyml/index.html">Redes neuronales en el micro</a></h3>
+      </div>
       <p>Qué es una red, cuántas cuentas hace, cómo se encoge, cómo llega al micro y qué hardware la acelera.</p>
-    </a>
+    </article>
   </div>
+  </section>
 
-  <div class="seccion-titulo" style="margin-top:3rem">laboratorios/</div>
+  <section class="hoja" aria-labelledby="laboratorios">
+    <header class="hoja-cab">
+      <div class="hoja-titulo">
+        <h2 id="laboratorios">Laboratorios</h2>
+        <p>Escenas animadas sueltas del motor de figuras, fuera de los tomos.</p>
+      </div>
+      <dl class="hoja-datos">
+        <div><dt>ruta</dt><dd>laboratorios/</dd></div>
+        <div><dt>contenido</dt><dd>2 escenas</dd></div>
+      </dl>
+    </header>
   <div class="estante">
-    <a class="libro" href="temas/laboratorio.html">
-      <span class="etiqueta">laboratorio</span>
-      <h3>Fenómenos eléctricos</h3>
+    <article class="libro">
+      <div class="libro-cab">
+        <span class="etiqueta">laboratorio</span>
+        <h3><a href="temas/laboratorio.html">Fenómenos eléctricos</a></h3>
+      </div>
       <p>Corriente, campos y señales animados con el motor de píxeles.</p>
-    </a>
-    <a class="libro" href="temas/laboratorio-micro.html">
-      <span class="etiqueta">laboratorio</span>
-      <h3>Micros por dentro</h3>
+    </article>
+    <article class="libro">
+      <div class="libro-cab">
+        <span class="etiqueta">laboratorio</span>
+        <h3><a href="temas/laboratorio-micro.html">Micros por dentro</a></h3>
+      </div>
       <p>Buses, memoria y periféricos de un microcontrolador en movimiento.</p>
-    </a>
+    </article>
   </div>
+  </section>
 </main>
 
 <footer class="pie pie-portada">
-  <canvas class="ascii-fondo" data-ascii data-escena="bordes" data-fijo aria-hidden="true"></canvas>
   <div class="pie-grilla">
     <section class="pie-autor" aria-label="Autor">
       <pre class="pie-foto" role="img" aria-label="Foto de perfil de Gabriel Molteni, en ASCII">                                        
@@ -158,6 +299,9 @@
         <p class="pie-enlaces"><a href="https://github.com/fgmolteni" rel="author">github.com/fgmolteni</a> <a href="https://github.com/fgmolteni/learning-in-8-bit">Código del sitio</a></p>
       </div>
     </section>
+    <div class="pie-placa">
+      <canvas class="ascii-fondo" data-ascii aria-hidden="true"></canvas>
+    </div>
     <section class="pie-aviso" aria-label="Aviso">
       <h2>Aviso</h2>
       <p>Proyecto personal de aprendizaje, no material oficial. Investigado y redactado con ayuda de IA a partir de fuentes públicas y revisado, pero <strong>puede tener errores</strong>: para diseñar, consultá la documentación oficial que cita cada página. Cifras "del orden de" aproximadas; animaciones didácticas, no a escala. Sin relación con Espressif, Google u otras marcas mencionadas.</p>

@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.50";
+const VERSION = "0.1.51";
 
 const CURSOS = {
   micro: {
@@ -184,7 +184,8 @@ function montarBarra() {
   const raiz = b.raiz || "./";
   const curso = CURSOS[b.curso];
   const sep = '<span class="sep">/</span>';
-  let migas = `<a href="${raiz}index.html">~/biblioteca</a>`;
+  // en la portada la miga es el lugar actual, no un enlace a sí misma
+  let migas = b.raiz === "./" && !curso ? '<span aria-current="page">~/biblioteca</span>' : `<a href="${raiz}index.html">~/biblioteca</a>`;
   if (curso) migas += `${sep}<a href="index.html">${b.curso}</a>`;
   if (b.nivel) migas += `${sep}nivel-${b.nivel}`;
   const barra = document.createElement("nav");
@@ -254,16 +255,54 @@ function montarTemario() {
   if (total) total.textContent = `${n} / ${CURSOS[id].niveles.length}`;
 }
 
-// ---- portada: avance de cada tomo en su tarjeta (solo si ya hay niveles completados) ----
-function montarAvancePortada() {
-  document.querySelectorAll("a.libro[href^='temas/']").forEach((a) => {
-    const id = a.getAttribute("href").split("/")[1], curso = CURSOS[id];
+// ---- visitas: el último nivel abierto y los niveles vistos de cada tomo (para "seguí leyendo" y el avance) ----
+const vistos = (c) => "vistos:" + c;
+function registrarVisita() {
+  const b = document.body.dataset, curso = CURSOS[b.curso];
+  if (!curso) return;
+  const n = curso.niveles[nivelDeLaPagina(b).i];
+  if (!n) return;
+  LS.set("ultimo", { c: b.curso, f: n.f });
+  const v = LS.get(vistos(b.curso), []);
+  if (!v.includes(n.f)) LS.set(vistos(b.curso), [...v, n.f]);
+}
+
+// número del tomo dentro de su sección (Tomo 1, 2…), como en las referencias entre niveles
+const numTomo = (id) => Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === CURSOS[id].seccion).indexOf(id) + 1;
+
+// ---- portada: índice de niveles y avance de cada tomo en su tarjeta ----
+function montarIndicePortada() {
+  document.querySelectorAll("article.libro[data-curso]").forEach((art) => {
+    const id = art.dataset.curso, curso = CURSOS[id];
     if (!curso) return;
-    const hechos = LS.get(clave(id), []), n = curso.niveles.filter((x) => hechos.includes(x.f)).length;
-    if (!n) return;
-    a.insertAdjacentHTML("beforeend", `<span class="avance"><span aria-hidden="true">${curso.niveles.map((x) =>
-      `<i${hechos.includes(x.f) ? ' class="si"' : ""}></i>`).join("")}</span>${n} / ${curso.niveles.length} completados</span>`);
+    const hechos = LS.get(clave(id), []), vistosT = LS.get(vistos(id), []);
+    const n = curso.niveles.filter((x) => hechos.includes(x.f)).length;
+    const empezado = n || curso.niveles.some((x) => vistosT.includes(x.f));
+    // en móvil el índice arranca plegado: la portada sería una tira de listas
+    art.insertAdjacentHTML("beforeend", `<details class="libro-indice"${matchMedia("(max-width: 640px)").matches ? "" : " open"}>
+      <summary>índice · ${curso.niveles.length} niveles</summary><ol class="libro-niveles" aria-label="Niveles del tomo">${curso.niveles.map((x, i) =>
+      `<li><a href="temas/${id}/${x.f}"><span>${String(i + 1).padStart(2, "0")}</span>${x.t}${hechos.includes(x.f) ? '<i>✓<span class="oculto"> completado</span></i>' : ""}</a></li>`).join("")}</ol></details>`);
+    if (!empezado) return;
+    const estado = n === curso.niveles.length ? "[✓] tomo completo" : `${n} / ${curso.niveles.length} completados`;
+    art.classList.toggle("completo", n === curso.niveles.length);
+    art.insertAdjacentHTML("beforeend", `<p class="avance"><span aria-hidden="true">${curso.niveles.map((x) =>
+      `<i${hechos.includes(x.f) ? ' class="si"' : vistosT.includes(x.f) ? ' class="visto"' : ""}></i>`).join("")}</span>${estado}</p>`);
   });
+}
+
+// ---- portada: "seguí leyendo" con el último nivel abierto (o el siguiente, si ese ya está completo) ----
+function montarSeguir() {
+  const caja = document.querySelector("[data-seguir]"), u = LS.get("ultimo", null);
+  const curso = u && CURSOS[u.c];
+  if (!caja || !curso) return;
+  let i = curso.niveles.findIndex((x) => x.f === u.f);
+  if (i < 0) return;
+  const avanza = LS.get(clave(u.c), []).includes(u.f) && !!curso.niveles[i + 1];
+  if (avanza) i++;
+  const n = curso.niveles[i];
+  caja.innerHTML = `
+    <a class="btn" href="temas/${u.c}/${n.f}">${avanza ? "seguí con" : "volvé a"} ${n.t} <kbd>→</kbd></a>
+    <span class="seguir-donde">${SECCIONES[curso.seccion]}, Tomo ${numTomo(u.c)}, nivel ${i + 1}</span>`;
 }
 
 // data-nivel "3" es la página de concepto del nivel 3; "3b" es su página de componentes (campo opcional c en CURSOS)
@@ -441,13 +480,26 @@ function pausarFueraDePantalla() {
 function montarVersion() {
   const pie = document.querySelector("footer.pie");
   if (pie) (pie.querySelector(".pie-base span") || pie).append(`, v${VERSION}`);
+  // cuadro de rótulo de la portada: revisión y contenido salen de VERSION y CURSOS, no se escriben a mano
+  const rev = document.querySelector("[data-doc-rev]"), cont = document.querySelector("[data-doc-contenido]");
+  if (rev) rev.textContent = VERSION;
+  if (cont) {
+    const ids = Object.keys(CURSOS), niveles = ids.reduce((s, k) => s + CURSOS[k].niveles.length, 0);
+    cont.textContent = `${ids.length} tomos · ${niveles} niveles`;
+  }
+  document.querySelectorAll("[data-contenido-seccion]").forEach((dd) => {
+    const ids = Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === dd.dataset.contenidoSeccion);
+    dd.textContent = `${ids.length} tomos · ${ids.reduce((s, k) => s + CURSOS[k].niveles.length, 0)} niveles`;
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   montarVersion();
   montarBarra();
   montarTemario();
-  montarAvancePortada();
+  registrarVisita();
+  montarIndicePortada();
+  montarSeguir();
   montarSidebar();
   montarNavLeccion();
   montarQuiz();

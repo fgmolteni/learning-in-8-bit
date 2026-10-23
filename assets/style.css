@@ -56,6 +56,8 @@
   --ancho-codigo: 60ch;   /* bloques de código: 60 caracteres por línea como máximo */
   --sb-w: 16rem;   /* ancho de la sidebar de niveles (ver más abajo) */
   --nota-w: 16rem; /* ancho de las notas al margen (ver más abajo) */
+  --canal: clamp(1rem, 3vw, 3rem);   /* margen lateral de la portada a todo el ancho */
+  --barra: 34px;   /* alto de la barra superior; 44 px en pantallas táctiles (ver al final) */
   color-scheme: dark;
 }
 
@@ -322,7 +324,7 @@ a:hover { text-decoration-color: var(--a3); }
 .topbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: stretch;
-  height: 34px;
+  height: var(--barra);
   background: var(--fondo);
   border-bottom: 1px solid var(--linea-fuerte);
   font-family: var(--f-mono); font-size: .8rem;
@@ -376,7 +378,7 @@ a:hover { text-decoration-color: var(--a3); }
 /* ---------- Sidebar de los niveles (site.js): niveles del tomo y secciones del nivel abierto ----------
    1100 px o más: fija a la izquierda y la hoja se corre. Más angosto: panel que abre el botón "índice". */
 .sidebar {
-  position: fixed; top: 34px; bottom: 0; left: 0; z-index: 15; width: var(--sb-w); overflow-y: auto;
+  position: fixed; top: var(--barra); bottom: 0; left: 0; z-index: 15; width: var(--sb-w); overflow-y: auto;
   padding: 1.4rem 1rem 1.5rem; background: var(--fondo); border-right: 1px solid var(--linea-fuerte);
   font-size: .9375rem; line-height: 1.47;
 }
@@ -469,48 +471,156 @@ a:hover { text-decoration-color: var(--a3); }
 /* línea de comando de la 404 */
 .prompt { margin-top: 1.5rem; font-family: var(--f-mono); font-size: .85rem; line-height: 1.6; color: var(--texto-suave); }
 .prompt b { color: var(--a3); font-weight: 500; }
-/* hero de la portada con fondo ASCII (ascii.js): ocupa todo el ancho y el canvas va detrás; el texto queda
-   alineado a la izquierda de la columna de 1100 px, igual que las tarjetas y el pie */
-.hero.hero-ascii {
-  position: relative; isolation: isolate; max-width: none; padding: 2.4rem max(2rem, calc((100% - 1100px) / 2 + 2rem));
-  border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea);
+/* hero de la portada: banda de plano (canal b, azul) con cuadro de rótulo, título grande y la fig. 1 del micro.
+   El campo y su grilla salen de --azul*: en cada tema es su azul */
+.hero.hero-plano {
+  max-width: none; padding: 0 var(--canal) var(--e5);
+  border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea-fuerte);
+  background-color: var(--azul1);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px; background-position: -1px -1px;
 }
-.hero-ascii h1 { margin: .5rem 0 .7rem; }
-.hero-ascii p { max-width: 40ch; }
+/* cuadro de rótulo de un plano: campos chicos en mono, valores en tinta */
+.rotulo {
+  display: grid; grid-template-columns: 2fr 1fr 1.5fr .8fr; margin: 0 0 var(--e5);
+  border: var(--marco); border-top: 0; background: var(--fondo);
+  font-family: var(--f-mono);
+}
+.rotulo > div { padding: .45rem .75rem .5rem; border-left: 1px solid var(--linea-fuerte); }
+.rotulo > div:first-child { border-left: 0; }
+.rotulo dt { font-size: .6875rem; line-height: 1.4; color: var(--texto-suave); }
+.rotulo dd { margin: 0; font-size: .875rem; font-weight: 500; color: var(--tinta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero-cuerpo { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(2rem, 4vw, 4rem); align-items: center; }
+/* título grande: Geist 600 apretado, la última frase en el acento */
+.hero-plano h1 {
+  margin: 0 0 var(--e3); font-family: var(--f-cuerpo); font-weight: 600;
+  font-size: clamp(2.75rem, 4.4vw, 5.5rem); line-height: .95; letter-spacing: -.04em; color: var(--tinta); text-wrap: balance;
+}
+.hero-plano h1 em { font-style: normal; color: var(--a3); }
+.hero-plano p { max-width: 44ch; font-size: 1.125rem; text-wrap: pretty; }
+/* fig. 1: marco de plano sobre el campo, con regla numerada arriba; los bloques son enlaces a los tomos */
+.plano { margin: 0; padding: 0 1rem 1rem; background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja); }
+.plano-regla { display: grid; grid-template-columns: repeat(8, 1fr); margin: 0 -1rem .75rem; border-bottom: 1px solid var(--linea-fuerte); }
+.plano-regla span { padding: .15rem 0; text-align: center; font-family: var(--f-mono); font-size: .6875rem; color: var(--texto-suave); border-left: 1px solid var(--linea); }
+.plano-regla span:first-child { border-left: 0; }
+/* la fig. 1 llena su columna: es un plano, no una figura de lección a 640 px */
+.plano svg { display: block; width: 100%; height: auto; }
+.plano svg a { cursor: pointer; text-decoration: none; }
+.plano svg a:hover .bloque, .plano svg a:focus-visible .bloque { stroke-width: 4; }
+.plano svg a:focus-visible { outline: none; }
+.plano svg a:focus-visible .bloque { stroke: var(--n6); }
+.plano figcaption { margin-top: .75rem; padding-top: .6rem; border-top: 1px solid var(--linea-fuerte); font-size: .9375rem; line-height: 1.5; color: var(--texto); }
+.plano figcaption b { font-family: var(--f-mono); font-weight: 500; font-size: .8125rem; color: var(--a3); margin-right: .5rem; }
+/* leyenda de los callouts, como el despiece de un manual: número en caja + tomo */
+.plano-leyenda { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0 1rem; font-size: .9375rem; }
+.plano-leyenda a { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; color: var(--texto); text-decoration: none; }
+.plano-leyenda a:hover { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--a3); }
+.plano-leyenda span { flex: none; display: grid; place-items: center; width: 1.4rem; height: 1.4rem; background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.1rem; line-height: 1; }
+@media (max-width: 1000px) {
+  .hero-cuerpo { grid-template-columns: 1fr; }
+  .hero-plano p { max-width: 60ch; }
+}
+@media (max-width: 640px) {
+  .hero.hero-plano { padding-bottom: var(--e4); }
+  .rotulo { grid-template-columns: 1fr 1fr; margin-bottom: var(--e4); }
+  .rotulo > div:nth-child(3) { border-left: 0; }
+  .rotulo > div:nth-child(n+3) { border-top: 1px solid var(--linea-fuerte); }
+  .plano { padding: 0 .5rem .75rem; }
+  .plano-regla { margin: 0 -.5rem .5rem; }
+}
+/* placa ASCII que gira (ascii.js), en el pie junto al autor; su rótulo y la pausa van abajo a la derecha del recuadro */
 .ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.pie-placa { position: relative; isolation: isolate; order: 3; min-height: 200px; padding: 0; }
 .ascii-pie {
-  position: absolute; right: max(1rem, calc((100% - 1100px) / 2 + 1rem)); bottom: .8rem; display: flex; align-items: center; gap: .6rem;
+  position: absolute; right: .5rem; bottom: .4rem; display: flex; align-items: center; gap: .6rem;
   font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap;
 }
 .ascii-pie span { background: var(--fondo); padding: 0 .3rem; }
 .ascii-pie button { font: inherit; color: inherit; background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .15rem .55rem; cursor: pointer; }
 .ascii-pie button:hover { color: var(--tinta); border-color: var(--a3); }
-@media (max-width: 640px) { .hero.hero-ascii { padding: 2rem 1rem 3.2rem; } .ascii-pie span { display: none; } }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
-.seccion-titulo {
-  font-family: var(--f-mono); font-size: .875rem; color: var(--a3);
-  display: flex; align-items: center; gap: .8rem; margin: 2rem 0 1rem;
+/* "seguí leyendo" o "empezá por el Tomo 1" (site.js la cambia según el último nivel abierto) */
+.hero-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: var(--e4); }
+.seguir-donde { font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave); }
+
+/* ---------- Portada como plano: todo sobre el campo azul del hero; cada sección es una hoja enmarcada ----------
+   con su cuadro de rótulo (título grande + ruta y contenido en mono), como la fig. 1 */
+body.portada {
+  background-color: var(--azul1);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px; background-position: -1px -1px;
 }
-.seccion-titulo::after { content: ""; flex: 1; border-top: 1px solid var(--linea-fuerte); }
+body.portada .hero.hero-plano { background: none; border-bottom: 0; }
+body.portada { --marco: 2px solid var(--tinta); --sombra-hoja: 6px 6px 0 var(--azul2); }
+body.portada main.contenedor { max-width: none; background: none; border: 0; padding: 0 var(--canal) var(--e2); }
+.hoja { margin: 0 0 var(--e5); background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja); overflow: clip; }
+.hoja-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid var(--linea-fuerte); }
+.hoja-titulo { padding: var(--e3) var(--e3) var(--e2); }
+.hoja-titulo h2 {
+  margin: 0 0 .4rem; font-family: var(--f-cuerpo); font-weight: 600; font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1; letter-spacing: -.025em; color: var(--tinta); text-wrap: balance;
+}
+.hoja-titulo p { max-width: 60ch; margin: 0; color: var(--texto); text-wrap: pretty; }
+.hoja-datos { display: grid; grid-auto-rows: 1fr; margin: 0; min-width: 14rem; border-left: 1px solid var(--linea-fuerte); font-family: var(--f-mono); }
+.hoja-datos > div { padding: .45rem .75rem .5rem; }
+.hoja-datos > div + div { border-top: 1px solid var(--linea-fuerte); }
+.hoja-datos dt { font-size: .6875rem; line-height: 1.4; color: var(--texto-suave); }
+.hoja-datos dd { margin: 0; font-size: .875rem; font-weight: 500; color: var(--tinta); overflow-wrap: anywhere; }
+/* las celdas pisan el marco de la hoja con su borde: un solo trazo alrededor */
+.hoja .estante { margin: 0 -1px -1px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.hoja .libro { background: var(--fondo); border-color: var(--linea-fuerte); }
+.hoja .libro.bloqueado { background: transparent; }
+/* número de la fig. 1 en la tarjeta: la misma caja que el callout del plano */
+.callout {
+  position: absolute; top: -1px; right: -1px; display: grid; place-items: center; width: 1.6rem; height: 1.6rem;
+  background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.2rem; line-height: 1;
+}
 
 .estante {
   display: grid; gap: 0;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  margin: 0 0 4rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  margin: 0 0 var(--e4);
 }
+/* tarjeta de tomo: lomo de 72 px y rótulo arriba; abajo, la bajada y el índice de niveles (site.js) */
 .libro {
-  display: flex; flex-direction: column; gap: .7rem;
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); align-content: start; gap: .9rem 1rem;
   margin: 0 -1px -1px 0; /* bordes completos que se superponen: sin bordes abiertos en las celdas vacías */
-  padding: 1.4rem; text-decoration: none; color: var(--texto);
+  padding: 1.4rem; color: var(--texto);
 }
-a.libro:hover { background: var(--n2); color: var(--texto); }
-a.libro:hover .lomo { border-color: var(--a3); }
-.libro .lomo { height: 150px; display: grid; place-items: center; border: 1px solid var(--linea-fuerte); background: var(--fondo); }
-.libro h3 { font-family: var(--f-serif); font-weight: 400; font-size: 1.6rem; margin: 0; line-height: 1.15; color: var(--tinta); text-transform: none; letter-spacing: 0; }
-.libro p { margin: 0; font-size: 1rem; color: var(--texto); line-height: 1.55; }
-.libro.bloqueado { color: var(--texto-suave); }
-.libro.bloqueado h3 { color: var(--texto-suave); }
+.libro > p, .libro-indice { grid-column: 1 / -1; }
+/* el rótulo del índice solo hace falta en móvil, donde arranca plegado */
+.libro-indice > summary { list-style: none; cursor: pointer; padding: .5rem 0; border-top: 1px solid var(--linea); font-family: var(--f-mono); font-size: .8125rem; color: var(--a3); }
+.libro-indice > summary::-webkit-details-marker { display: none; }
+.libro-indice > summary::before { content: "[+] "; white-space: pre; }
+.libro-indice[open] > summary::before { content: "[−] "; }
+@media (min-width: 641px) { .libro-indice > summary { display: none; } }
+.libro-cab { display: flex; flex-direction: column; gap: .5rem; align-self: center; }
+.libro:not(:has(.lomo)) .libro-cab { grid-column: 1 / -1; }
+/* lomo: el dibujo de 112 va a la mitad (56 px), así los píxeles de 4 quedan en 2 y siguen nítidos */
+.libro .lomo { width: 72px; height: 72px; display: grid; place-items: center; border: 1px solid var(--linea-fuerte); background: var(--fondo); }
+.libro .lomo svg { width: 56px; height: 56px; }
+.libro:has(h3 a:hover) .lomo { border-color: var(--a3); }
+.libro h3 { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.3rem; margin: 0; line-height: 1.2; color: var(--tinta); text-transform: none; letter-spacing: -.015em; text-wrap: balance; }
+.libro h3 a { color: inherit; text-decoration: none; }
+.libro h3 a:hover { text-decoration: underline; text-decoration-color: var(--a3); }
+.libro h3 a::after { content: " →" / ""; font-family: var(--f-mono); font-size: 1rem; color: var(--a3); }
+.libro p { margin: 0; font-size: 1rem; color: var(--texto); line-height: 1.55; text-wrap: pretty; }
+.libro.bloqueado { color: var(--texto-suave); background: transparent; border-style: dashed; }
+.libro.bloqueado h3, .libro.bloqueado p { color: var(--texto-suave); }
+.libro.bloqueado .lomo { border-style: dashed; }
+/* índice de niveles de la tarjeta: número mono + título, ✓ a la derecha como en la sidebar */
+.libro-niveles { list-style: none; margin: 0; padding: .5rem 0 0; border-top: 1px solid var(--linea); font-size: .9375rem; line-height: 1.4; }
+.libro-niveles a { display: flex; gap: .6rem; padding: .3rem .4rem; margin: 0 -.4rem; color: var(--texto); text-decoration: none; }
+.libro-niveles a:hover { background: var(--n2); color: var(--tinta); }
+.libro-niveles a > span { flex: none; font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave); padding-top: .1rem; }
+.libro-niveles i { margin-left: auto; padding-left: .4rem; font-style: normal; font-family: var(--f-mono); color: var(--a3); }
+.libro.completo .etiqueta { background: var(--relleno); }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .etiqueta {
   align-self: flex-start;
   font-family: var(--f-mono); font-size: .875rem;
@@ -519,12 +629,13 @@ a.libro:hover .lomo { border-color: var(--a3); }
 }
 .etiqueta.pronto { border-color: var(--linea-fuerte); color: var(--texto-suave); border-style: dashed; }
 /* avance del tomo en su tarjeta (site.js; solo con niveles completados) */
-.avance {
-  margin-top: auto; display: flex; align-items: center; gap: .6rem;
+.libro .avance {
+  grid-column: 1 / -1; margin: 0; display: flex; align-items: center; gap: .6rem;
   font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave);
 }
 .avance > span { display: flex; gap: 3px; }
 .avance i { width: 10px; height: 10px; border: 1px solid var(--linea-fuerte); }
+.avance i.visto { border-color: var(--a3); }
 .avance i.si { background: var(--a3); border-color: var(--a3); }
 
 /* ---------- Temario ---------- */
@@ -817,16 +928,15 @@ svg:has(.sv-lbl, .sv-tit, .sv-tag) { font-size: 20px; }
 }
 
 /* ---------- Portada: pie con autor y aviso (solo index.html) ----------
-   Banda a todo el ancho como el hero; detrás, el canvas (escena bordes de ascii.js) pone caracteres sueltos y
-   tenues contra los costados. El contenido va en la columna de 1100 px */
+   Rótulo final del plano: una hoja con tres celdas (autor, aviso, placa ASCII que gira) y la base en mono */
 footer.pie.pie-portada {
-  position: relative; isolation: isolate;
-  max-width: none; border-left: 0; border-right: 0; border-top: 1px solid var(--linea-fuerte);
-  padding: 1.8rem max(2rem, calc((100% - 1100px) / 2 + 2rem)) 1rem;
+  max-width: none; margin: 0 0 var(--e5); padding: 0 var(--canal); border: 0; background: none;
   font-family: var(--f-cuerpo); font-size: .95rem; letter-spacing: 0; color: var(--texto);
 }
-.pie-grilla { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3rem; align-items: center; }
-.pie-portada h2 { font-family: var(--f-serif); font-weight: 400; font-size: 1.7rem; line-height: 1.1; color: var(--tinta); margin: 0 0 .5rem; }
+.pie-grilla { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(320px, 1fr); background: var(--fondo); border: var(--marco); }
+.pie-grilla > * { padding: var(--e3); }
+.pie-grilla > * + * { border-left: 1px solid var(--linea-fuerte); }
+.pie-portada h2 { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.4rem; line-height: 1.15; letter-spacing: -.015em; color: var(--tinta); margin: 0 0 .5rem; }
 .pie-autor { display: flex; gap: 1.2rem; align-items: center; }
 /* foto de perfil en ASCII (40 × 20, generada de la foto de GitHub): fósforo del acento sobre una pantalla
    oscura con líneas de barrido, como un monitor de los 80. En claro la pantalla sigue oscura (n6) */
@@ -841,16 +951,39 @@ footer.pie.pie-portada {
   background: repeating-linear-gradient(transparent 0 2px, color-mix(in srgb, var(--pantalla) 35%, transparent) 2px 3px);
 }
 .pie-enlaces { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; font-size: .9rem; }
-.pie-aviso h2 { font-family: var(--f-cuerpo); font-size: .95rem; font-weight: 600; margin-bottom: .4rem; }
-.pie-aviso p { margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; }
+.pie-portada .pie-aviso h2 { font-size: 1rem; margin-bottom: .4rem; }
+.pie-aviso p { max-width: 70ch; margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; text-wrap: pretty; }
 .pie-base {
   display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
-  margin-top: 1.4rem; padding-top: .8rem; border-top: 1px solid var(--linea);
+  padding: .5rem .75rem; background: var(--fondo); border: var(--marco); border-top: 0; box-shadow: var(--sombra-hoja);
   font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
 }
-@media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; gap: 1.4rem; } }
-@media (max-width: 640px) { footer.pie.pie-portada { padding: 1.6rem 1rem 1rem; } }
+@media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; } .pie-grilla > * + * { border-left: 0; border-top: 1px solid var(--linea-fuerte); } }
+@media (max-width: 640px) { .pie-grilla > * { padding: var(--e2) 1rem; } }
 /* objetivos táctiles de 40 px en móvil */
 @media (max-width: 700px) {
+  :root { --barra: 44px; }
+  .libro-indice > summary { min-height: 44px; display: flex; align-items: center; }
   .controles button, .controles select, .btn { min-height: 40px; }
+  .topbar .logo, .btn-ajustes { min-width: 44px; justify-content: center; }
+  .ascii-pie button { min-height: 44px; padding: 0 .8rem; }
+  .pie-enlaces a, .libro-niveles a { display: flex; align-items: center; min-height: 44px; }
+  .libro-niveles a > span { padding-top: 0; }
+}
+/* con poco ancho los datos de la hoja bajan debajo del título, en una fila */
+@media (max-width: 760px) {
+  .hoja-cab { grid-template-columns: 1fr; }
+  .hoja-datos { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; min-width: 0; border-left: 0; border-top: 1px solid var(--linea-fuerte); }
+  .hoja-datos > div + div { border-top: 0; border-left: 1px solid var(--linea-fuerte); }
+}
+/* portada en móvil: la fig. 1 no baja de 560 px (se desplaza de costado) y los datos de la hoja van en columna */
+@media (max-width: 640px) {
+  .plano { overflow-x: auto; }
+  .plano svg { min-width: 560px; }
+  .hoja-datos { grid-template-columns: 1fr; }
+  .hoja-datos > div + div { border-left: 0; border-top: 1px solid var(--linea-fuerte); }
+  .hoja-titulo { padding: var(--e2) 1rem; }
+  .libro { padding: 1.2rem 1rem; }
+  .libro-indice[open] > summary { border-bottom: 0; }
+  .libro-indice .libro-niveles { border-top: 0; padding-top: 0; }
 }
