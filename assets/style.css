@@ -962,6 +962,7 @@ svg:has(.sv-lbl, .sv-tit, .sv-tag) { font-size: 20px; }
   figure.diagrama::before { position: sticky; top: auto; left: 0; display: block; margin: -1rem 0 .6rem; background: none; padding: 0; }
   figure.diagrama > svg, figure.diagrama > canvas { min-width: 560px; }
   figure.diagrama figcaption { position: sticky; left: 0; max-width: calc(100vw - 3rem); }
+  figure.diagrama[data-desborda]::before { content: attr(data-titulo) " · desplazá →"; }
 }
 
 /* ---------- Portada: pie con autor y aviso (solo index.html) ----------

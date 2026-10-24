@@ -505,18 +505,28 @@ function widgetFamilia(cv) {
     rotulo(g, c.radio, 160, 324, R(6));
   }
 
+  // lectura para el lector de pantalla: solo cambia al elegir, no con la rotación automática
+  const voz = document.createElement("p");
+  voz.className = "oculto"; voz.setAttribute("aria-live", "polite");
+  cv.after(voz);
+  function anunciar() {
+    const c = CHIPS[sel];
+    voz.textContent = `${c.n} (${c.a}): ${c.nuc}, ${c.mhz} MHz, ${c.sram} KB de SRAM, ` +
+      `PSRAM: ${["no", "sí", "sí, octal", "sí, rápida"][c.psram]}, radio: ${c.radio}. ${c.nota}`;
+  }
+
   cv.style.cursor = "pointer";
   cv.addEventListener("click", (e) => {
     const [x, y] = puntero(cv, e);
-    if (y < 120) { const i = Math.floor((x - MG) / celda); if (i >= 0 && i < CHIPS.length) { sel = i; auto = false; dibujar(); } }
+    if (y < 120) { const i = Math.floor((x - MG) / celda); if (i >= 0 && i < CHIPS.length) { sel = i; auto = false; dibujar(); anunciar(); } }
   });
   cv.tabIndex = 0;
-  cv.setAttribute("aria-label", "Selector de chips ESP: usar flechas izquierda y derecha");
+  cv.setAttribute("aria-label", "Selector de variantes ESP: usar flechas izquierda y derecha");
   cv.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight") sel = (sel + 1) % CHIPS.length;
     else if (e.key === "ArrowLeft") sel = (sel + CHIPS.length - 1) % CHIPS.length;
     else return;
-    auto = false; e.preventDefault(); dibujar();
+    auto = false; e.preventDefault(); dibujar(); anunciar();
   });
   document.addEventListener("redibujar", dibujar);
   cada(cv, () => { t++; if (auto && t % 8 === 0) sel = (sel + 1) % CHIPS.length; dibujar(); }, 400);

@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.57";
+const VERSION = "0.1.58";
 
 const CURSOS = {
   micro: {
@@ -568,6 +568,15 @@ function montarVersion() {
   });
 }
 
+// ---- figuras que no entran (móvil: el dibujo no baja de 560 px): el título avisa que se desplaza ----
+function montarDesborde() {
+  const figs = document.querySelectorAll("figure.diagrama");
+  if (!figs.length) return;
+  const medir = () => figs.forEach((f) => f.toggleAttribute("data-desborda", f.scrollWidth > f.clientWidth + 1));
+  addEventListener("resize", medir);
+  medir();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   montarVersion();
   montarBarra();
@@ -581,5 +590,6 @@ document.addEventListener("DOMContentLoaded", () => {
   montarNavLeccion();
   montarQuiz();
   montarNotas();
+  montarDesborde();
   pausarFueraDePantalla();
 });
