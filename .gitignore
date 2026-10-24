@@ -17,3 +17,9 @@ DESIGN.md
 .impeccable/
 # archivos de trabajo de la skill design-taste-frontend
 .taste-skill/
+
+# Configuración local de agentes
+/.agents/
+/.claude/
+/.grok/
+/skills-lock.json
