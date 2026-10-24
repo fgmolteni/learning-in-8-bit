@@ -1015,3 +1015,59 @@ footer.pie.pie-portada {
   .libro-indice[open] > summary { border-bottom: 0; }
   .libro-indice .libro-niveles { border-top: 0; padding-top: 0; }
 }
+
+/* ---------- Lecciones como plano (body.plano; hoy el Tomo 1): el lenguaje de la portada ----------
+   campo azul con grilla, la lección y la sidebar como hojas enmarcadas, cabecera con cuadro de rótulo.
+   La hoja ocupa el espacio libre; el texto corrido queda a 70ch y figuras, tablas, cajas y quiz usan todo el ancho
+   (los dibujos siguen a 640 px, 1:1) */
+body.plano {
+  --marco: 2px solid var(--tinta); --sombra-hoja: 6px 6px 0 var(--azul2); --canal: clamp(1rem, 3vw, 3rem);
+  --ancho-lectura: 70ch;
+  background-color: var(--azul1);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--azul2) 35%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px; background-position: -1px -1px;
+}
+body.plano .topbar { padding: 0 var(--canal); background: var(--azul1); border-bottom: 0; }
+body.plano .topbar::before {
+  content: ""; position: absolute; inset: 0 var(--canal); z-index: -1; pointer-events: none;
+  background: var(--fondo); border: var(--marco); border-bottom: 1px solid var(--linea-fuerte);
+}
+body.plano main.leccion {
+  width: auto; max-width: 1180px; margin: var(--e4) var(--canal) var(--e5); padding: 0 var(--e5) var(--e6);
+  background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja);
+}
+body.plano .leccion > :is(p, ul, ol:not(.mapa), h2, h3) { max-width: var(--ancho-lectura); }
+body.plano .nivel h3 { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.35rem; letter-spacing: -.015em; }
+body.plano .leccion > header.hoja-cab { margin: 0 calc(-1 * var(--e5)) var(--e4); }
+body.plano .hoja-titulo { padding: var(--e4) var(--e5) var(--e3); }
+body.plano .leccion h1 {
+  margin: 0 0 var(--e2); font-family: var(--f-cuerpo); font-weight: 600;
+  font-size: clamp(2.25rem, 5vw, 3rem); line-height: 1; letter-spacing: -.03em;
+}
+body.plano .leccion .bajada { max-width: 60ch; margin: 0; font-size: 1.125rem; color: var(--texto); }
+body.plano .hoja-datos { min-width: 11rem; }
+body.plano .leccion h2 { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.75rem; line-height: 1.15; letter-spacing: -.02em; }
+body.plano figure.diagrama { margin-inline: 0; outline: 1px solid var(--linea-fuerte); outline-offset: -1px; }
+body.plano footer.pie { background: none; border: 0; }
+@media (min-width: 1100px) {
+  body.plano.con-sidebar { padding-left: calc(var(--sb-w) + var(--canal)); }
+  body.plano.con-sidebar .topbar { margin-left: calc(-1 * (var(--sb-w) + var(--canal))); }
+  body.plano .sidebar {
+    top: calc(var(--barra) + var(--e4)); bottom: auto; max-height: calc(100vh - var(--barra) - var(--e5));
+    left: var(--canal); border: var(--marco); box-shadow: var(--sombra-hoja);
+  }
+  body.plano .sidebar .sb-tomo { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.15rem; letter-spacing: -.01em; }
+}
+@media (min-width: 1500px) { body.plano main.leccion { margin-inline: auto; } }
+@media (max-width: 640px) {
+  body.plano { --canal: 0px; }   /* en el teléfono la hoja va de borde a borde: el ancho es para el texto */
+  body.plano main.leccion { padding-inline: 1rem; }
+  body.plano .leccion > header.hoja-cab { grid-template-columns: 1fr; margin-inline: -1rem; }
+  body.plano .hoja-titulo { padding: var(--e3) 1rem var(--e2); }
+  body.plano .hoja-datos { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; border-left: 0; border-top: 1px solid var(--linea-fuerte); }
+  body.plano .hoja-datos > div + div { border-top: 1px solid var(--linea-fuerte); }
+  body.plano .hoja-datos > div:nth-child(-n+2) { border-top: 0; }
+  body.plano .hoja-datos > div:nth-child(even) { border-left: 1px solid var(--linea-fuerte); }
+}
