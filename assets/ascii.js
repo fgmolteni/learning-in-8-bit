@@ -381,7 +381,10 @@
     // ---- pie: nombre de la escena y pausa (accesibilidad) ----
     const pie = document.createElement("div"), rotulo = document.createElement("span"), btn = document.createElement("button");
     pie.className = "ascii-pie"; btn.type = "button";
-    const estado = () => { btn.textContent = corriendo ? "❚❚ pausa" : "▶ animar"; };
+    const estado = () => {
+      btn.textContent = corriendo ? "pausa" : "animar";
+      btn.setAttribute("aria-label", corriendo ? "Pausar la animación de la placa" : "Animar la placa");
+    };
     estado();
     btn.onclick = () => {
       corriendo = !corriendo; estado();

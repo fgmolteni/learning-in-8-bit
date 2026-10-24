@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.50";
+const VERSION = "0.1.57";
 
 const CURSOS = {
   micro: {
@@ -184,7 +184,8 @@ function montarBarra() {
   const raiz = b.raiz || "./";
   const curso = CURSOS[b.curso];
   const sep = '<span class="sep">/</span>';
-  let migas = `<a href="${raiz}index.html">~/biblioteca</a>`;
+  // en la portada la miga es el lugar actual, no un enlace a sí misma
+  let migas = b.raiz === "./" && !curso ? '<span aria-current="page">~/biblioteca</span>' : `<a href="${raiz}index.html">~/biblioteca</a>`;
   if (curso) migas += `${sep}<a href="index.html">${b.curso}</a>`;
   if (b.nivel) migas += `${sep}nivel-${b.nivel}`;
   const barra = document.createElement("nav");
@@ -193,7 +194,7 @@ function montarBarra() {
   barra.innerHTML = `
     <a class="logo" href="${raiz}index.html">▚ <span>apuntes.bin</span></a>
     <div class="migas">${migas}</div>
-    <button class="btn-ajustes" type="button" popovertarget="ajustes" aria-label="Ajustes de color">⚙︎<span> ajustes</span></button>
+    <button class="btn-ajustes" type="button" popovertarget="ajustes" aria-label="Ajustes de color">ajustes</button>
     <div class="ajustes" id="ajustes" popover role="dialog" aria-label="Ajustes de color">${htmlAjustes()}</div>
     <div class="progreso-lectura" aria-hidden="true"></div>`;
   document.body.prepend(barra);
@@ -254,16 +255,54 @@ function montarTemario() {
   if (total) total.textContent = `${n} / ${CURSOS[id].niveles.length}`;
 }
 
-// ---- portada: avance de cada tomo en su tarjeta (solo si ya hay niveles completados) ----
-function montarAvancePortada() {
-  document.querySelectorAll("a.libro[href^='temas/']").forEach((a) => {
-    const id = a.getAttribute("href").split("/")[1], curso = CURSOS[id];
+// ---- visitas: el último nivel abierto y los niveles vistos de cada tomo (para "seguí leyendo" y el avance) ----
+const vistos = (c) => "vistos:" + c;
+function registrarVisita() {
+  const b = document.body.dataset, curso = CURSOS[b.curso];
+  if (!curso) return;
+  const n = curso.niveles[nivelDeLaPagina(b).i];
+  if (!n) return;
+  LS.set("ultimo", { c: b.curso, f: n.f });
+  const v = LS.get(vistos(b.curso), []);
+  if (!v.includes(n.f)) LS.set(vistos(b.curso), [...v, n.f]);
+}
+
+// número del tomo dentro de su sección (Tomo 1, 2…), como en las referencias entre niveles
+const numTomo = (id) => Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === CURSOS[id].seccion).indexOf(id) + 1;
+
+// ---- portada: índice de niveles y avance de cada tomo en su tarjeta ----
+function montarIndicePortada() {
+  document.querySelectorAll("article.libro[data-curso]").forEach((art) => {
+    const id = art.dataset.curso, curso = CURSOS[id];
     if (!curso) return;
-    const hechos = LS.get(clave(id), []), n = curso.niveles.filter((x) => hechos.includes(x.f)).length;
-    if (!n) return;
-    a.insertAdjacentHTML("beforeend", `<span class="avance"><span aria-hidden="true">${curso.niveles.map((x) =>
-      `<i${hechos.includes(x.f) ? ' class="si"' : ""}></i>`).join("")}</span>${n} / ${curso.niveles.length} completados</span>`);
+    const hechos = LS.get(clave(id), []), vistosT = LS.get(vistos(id), []);
+    const n = curso.niveles.filter((x) => hechos.includes(x.f)).length;
+    const empezado = n || curso.niveles.some((x) => vistosT.includes(x.f));
+    // en móvil el índice arranca plegado: la portada sería una tira de listas
+    art.insertAdjacentHTML("beforeend", `<details class="libro-indice"${matchMedia("(max-width: 640px)").matches ? "" : " open"}>
+      <summary>índice · ${curso.niveles.length} niveles</summary><ol class="libro-niveles" aria-label="Niveles del tomo">${curso.niveles.map((x, i) =>
+      `<li><a href="temas/${id}/${x.f}"><span>${String(i + 1).padStart(2, "0")}</span>${x.t}${hechos.includes(x.f) ? '<i>✓<span class="oculto"> completado</span></i>' : ""}</a></li>`).join("")}</ol></details>`);
+    if (!empezado) return;
+    const estado = n === curso.niveles.length ? "[✓] tomo completo" : `${n} / ${curso.niveles.length} completados`;
+    art.classList.toggle("completo", n === curso.niveles.length);
+    art.insertAdjacentHTML("beforeend", `<p class="avance"><span aria-hidden="true">${curso.niveles.map((x) =>
+      `<i${hechos.includes(x.f) ? ' class="si"' : vistosT.includes(x.f) ? ' class="visto"' : ""}></i>`).join("")}</span>${estado}</p>`);
   });
+}
+
+// ---- portada: "seguí leyendo" con el último nivel abierto (o el siguiente, si ese ya está completo) ----
+function montarSeguir() {
+  const caja = document.querySelector("[data-seguir]"), u = LS.get("ultimo", null);
+  const curso = u && CURSOS[u.c];
+  if (!caja || !curso) return;
+  let i = curso.niveles.findIndex((x) => x.f === u.f);
+  if (i < 0) return;
+  const avanza = LS.get(clave(u.c), []).includes(u.f) && !!curso.niveles[i + 1];
+  if (avanza) i++;
+  const n = curso.niveles[i];
+  caja.innerHTML = `
+    <a class="btn" href="temas/${u.c}/${n.f}">${avanza ? "seguí con" : "volvé a"} ${n.t} <kbd>→</kbd></a>
+    <span class="seguir-donde">${SECCIONES[curso.seccion]}, Tomo ${numTomo(u.c)}, nivel ${i + 1}</span>`;
 }
 
 // data-nivel "3" es la página de concepto del nivel 3; "3b" es su página de componentes (campo opcional c en CURSOS)
@@ -438,16 +477,106 @@ function pausarFueraDePantalla() {
   svgs.forEach((s) => io.observe(s));
 }
 
+// ---- portada, fig. 1: por dónde viaja un dato. Al pasar por un bloque (o sola, si nadie la toca) un cuadrito del
+// canal a recorre el camino por el bus y el texto lo cuenta. Coordenadas del dibujo: el corte ancho va corrido (32, 28)
+const RUTAS = {
+  "temas/procesador/index.html": { t: "La CPU busca un dato en la memoria: baja al bus del sistema y vuelve con él.",
+    ancha: [[156, 128], [156, 220], [368, 220], [368, 128]], alta: [[110, 104], [110, 168], [110, 232]] },
+  "temas/buses/index.html": { t: "La memoria le entrega a la CPU lo que pidió, por el mismo bus.",
+    ancha: [[368, 128], [368, 220], [156, 220], [156, 128]], alta: [[250, 232], [250, 168], [250, 104]] },
+  "temas/mundo/index.html": { t: "Una muestra del ADC llega a la SRAM por DMA, sin pasar por la CPU.",
+    ancha: [[156, 302], [156, 220], [368, 220], [368, 128]], alta: [[110, 396], [110, 316], [110, 232]] },
+  "temas/datos/index.html": { t: "Un byte que entra por la UART cruza el bus hasta la CPU.",
+    ancha: [[368, 302], [368, 220], [156, 220], [156, 128]], alta: [[250, 516], [250, 316], [250, 104]] },
+  "#fig2": { t: "La CPU le pasa 16 bytes al PIE, que hace 16 multiplicaciones de una vez.",
+    ancha: [[110, 122], [110, 166]], alta: [[110, 100], [110, 138]] },
+};
+function montarPlano() {
+  const fig = document.querySelector("#fig1"), txt = fig?.querySelector("[data-ruta]");
+  if (!fig || !txt) return;
+  const reposo = txt.textContent, quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  // un cuadrito por corte, dentro del grupo que lleva las coordenadas del dibujo
+  const dato = [...fig.querySelectorAll("svg")].map((svg) => {
+    const g = svg.querySelector("g") || svg, r = document.createElementNS(NS, "rect");
+    r.setAttribute("width", 10); r.setAttribute("height", 10); r.setAttribute("class", "fa4 dato");
+    r.style.display = "none"; r.style.pointerEvents = "none"; g.append(r);
+    return { svg, r, corte: svg.classList.contains("fig-alta") ? "alta" : "ancha" };
+  });
+  let ruta = null, t0 = 0, auto = 0;
+  const pos = (pts, u) => {   // punto a la fracción u (0..1) del recorrido
+    const seg = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+    let d = u * seg.reduce((a, b) => a + b, 0), i = 0;
+    while (i < seg.length - 1 && d > seg[i]) d -= seg[i++];
+    const k = seg[i] ? d / seg[i] : 0, a = pts[i], b = pts[i + 1];
+    return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+  };
+  const mostrar = (href) => {
+    ruta = RUTAS[href] || null; t0 = performance.now();
+    txt.textContent = ruta ? ruta.t : reposo;
+    fig.querySelectorAll("svg a").forEach((a) => a.classList.toggle("activo", !!ruta && a.getAttribute("href") === href));
+    dato.forEach((d) => (d.r.style.display = ruta ? "" : "none"));
+    if (ruta && quieto) dato.forEach((d) => { const [x, y] = ruta[d.corte].at(-1); d.r.setAttribute("x", x - 5); d.r.setAttribute("y", y - 5); });
+  };
+  fig.querySelectorAll("svg a, .plano-leyenda a").forEach((a) => {
+    const href = a.getAttribute("href");
+    a.addEventListener("mouseenter", () => { auto = -1; mostrar(href); });
+    a.addEventListener("focus", () => { auto = -1; mostrar(href); });
+  });
+  fig.addEventListener("mouseleave", () => { auto = 0; mostrar(null); });
+  if (quieto) return;
+  // sin mouse (teléfono) recorre las rutas sola, una cada 3,2 s, mientras la figura está en pantalla
+  const claves = Object.keys(RUTAS);
+  let enPantalla = false;   // como cada() de diagramas.js, que la portada no carga
+  new IntersectionObserver((es) => (enPantalla = es.at(-1).isIntersecting)).observe(fig);
+  setInterval(() => enPantalla && paso(), 30);
+  function paso() {
+    if (auto >= 0) { const n = Math.floor(performance.now() / 3200) % claves.length; if (auto !== n + 1 || !ruta) { auto = n + 1; mostrar(claves[n]); } }
+    if (!ruta) return;
+    const u = Math.min(1, ((performance.now() - t0) % 1600) / 1200);
+    dato.forEach((d) => { const [x, y] = pos(ruta[d.corte], u); d.r.setAttribute("x", (x - 5).toFixed(1)); d.r.setAttribute("y", (y - 5).toFixed(1)); });
+  }
+}
+
+// ---- portada: cada hoja y sus tarjetas entran una vez al llegar a pantalla (sin script o con movimiento
+// reducido, todo está visible desde el principio)
+function montarEntradas() {
+  if (!document.body.classList.contains("portada") || matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".hoja-titulo, .hoja-figura, .plano-hoja, .hoja .libro").forEach((el, i) => {
+    el.classList.add("entra");
+    if (el.matches(".libro")) el.style.transitionDelay = `${([...el.parentElement.children].indexOf(el) % 3) * 80}ms`;
+    io.observe(el);
+  });
+}
+
 function montarVersion() {
   const pie = document.querySelector("footer.pie");
   if (pie) (pie.querySelector(".pie-base span") || pie).append(`, v${VERSION}`);
+  // cuadro de rótulo de la portada: revisión y contenido salen de VERSION y CURSOS, no se escriben a mano
+  const rev = document.querySelector("[data-doc-rev]"), cont = document.querySelector("[data-doc-contenido]");
+  if (rev) rev.textContent = VERSION;
+  if (cont) {
+    const ids = Object.keys(CURSOS), niveles = ids.reduce((s, k) => s + CURSOS[k].niveles.length, 0);
+    cont.textContent = `${ids.length} tomos · ${niveles} niveles`;
+  }
+  document.querySelectorAll("[data-contenido-seccion]").forEach((dd) => {
+    const ids = Object.keys(CURSOS).filter((k) => CURSOS[k].seccion === dd.dataset.contenidoSeccion);
+    dd.textContent = `${ids.length} tomos · ${ids.reduce((s, k) => s + CURSOS[k].niveles.length, 0)} niveles`;
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   montarVersion();
   montarBarra();
   montarTemario();
-  montarAvancePortada();
+  registrarVisita();
+  montarIndicePortada();
+  montarPlano();
+  montarEntradas();
+  montarSeguir();
   montarSidebar();
   montarNavLeccion();
   montarQuiz();
