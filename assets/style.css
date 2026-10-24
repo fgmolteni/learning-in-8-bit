@@ -475,7 +475,7 @@ a:hover { text-decoration-color: var(--a3); }
 /* hero de la portada: banda de plano (canal b, azul) con cuadro de rótulo, título grande y la fig. 1 del micro.
    El campo y su grilla salen de --azul*: en cada tema es su azul */
 .hero.hero-plano {
-  max-width: none; padding: 0 var(--canal) var(--e5);
+  max-width: none; padding: 0 var(--canal) var(--e3);
   border-left: 0; border-right: 0; border-bottom: 1px solid var(--linea-fuerte);
   background-color: var(--azul1);
   background-image:
@@ -485,13 +485,13 @@ a:hover { text-decoration-color: var(--a3); }
 }
 /* cuadro de rótulo de un plano: campos chicos en mono, valores en tinta */
 .rotulo {
-  display: grid; grid-template-columns: 1.4fr 1.4fr 1.3fr 1.3fr .6fr; margin: 0 0 var(--e5);
+  display: grid; grid-template-columns: 1.4fr 1.4fr 1.3fr 1.3fr .6fr; margin: 0 0 var(--e3);
   border: var(--marco); border-top: 0; background: var(--fondo);
   font-family: var(--f-mono);
 }
-.rotulo > div { padding: .45rem .75rem .5rem; border-left: 1px solid var(--linea-fuerte); }
+.rotulo > div { min-width: 0; padding: .45rem .75rem .5rem; border-left: 1px solid var(--linea-fuerte); }
 .rotulo > div:first-child { border-left: 0; }
-.rotulo dt { font-size: .6875rem; line-height: 1.4; color: var(--texto-suave); }
+.rotulo dt { font-size: .8125rem; line-height: 1.4; color: var(--texto-suave); }
 .rotulo dd { margin: 0; font-size: .875rem; font-weight: 500; color: var(--tinta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero-cuerpo { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(2rem, 4vw, 4rem); align-items: center; }
 /* título grande: Geist 600 apretado, la última frase en el acento */
@@ -509,14 +509,27 @@ a:hover { text-decoration-color: var(--a3); }
 .plano .fig-alta { display: none; max-width: 360px; margin-inline: auto; }
 .plano svg a { cursor: pointer; text-decoration: none; }
 .plano svg a:hover .bloque, .plano svg a:focus-visible .bloque { stroke-width: 4; }
+.hero-plano .plano-ruta { max-width: none; }
+.plano svg a.activo .bloque { stroke-width: 4; }
+.plano-ruta { margin: .5rem 0 0; min-height: 1.5em; font-size: .9375rem; color: var(--tinta); }
+.plano-ruta::before { content: "→ "; color: var(--a3); }
+.plano svg .dato { transition: none; }
 .plano figcaption { margin-top: .75rem; padding-top: .6rem; border-top: 1px solid var(--linea-fuerte); font-size: .9375rem; line-height: 1.5; color: var(--texto); }
 .plano figcaption b { font-family: var(--f-mono); font-weight: 500; font-size: .8125rem; color: var(--a3); margin-right: .5rem; }
 /* leyenda de los callouts, como el despiece de un manual: número en caja + tomo */
-.plano-leyenda { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0 1.5rem; font-size: .9375rem; }
+.plano-leyenda { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0 1.5rem; font-size: .9375rem; }
+/* el hero entra en una pantalla: la fig. 1 toma el alto que dejan la barra, el rótulo, el pie de figura y la leyenda
+   (unos 27rem), con un piso de 320 px; el dibujo queda centrado dentro de su caja */
+@media (min-width: 1001px) {
+  .hero-plano .plano .fig-ancha { max-height: max(270px, calc(100svh - 27rem)); }
+  .hero-plano .plano-leyenda { grid-template-columns: 1fr 1fr; }
+  .hero-plano .plano-leyenda a, .hero-plano .plano-leyenda li.pronto { padding: .15rem 0; }
+  .hero-plano .plano figcaption { margin-top: .5rem; padding-top: .4rem; }
+}
 .plano-leyenda a, .plano-leyenda li.pronto { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; color: var(--texto); text-decoration: none; }
 .plano-leyenda a:hover { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--a3); }
 .plano-leyenda li.pronto { color: var(--texto-suave); }
-.plano-leyenda small { margin-left: auto; padding-left: .5rem; font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap; }
+.plano-leyenda small { margin-left: auto; padding-left: .5rem; font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave); white-space: nowrap; }
 .plano-leyenda .num, .callout {
   flex: none; display: grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 .2rem;
   background: var(--n6); color: var(--n0); font-family: var(--f-pixel); font-size: 1.1rem; line-height: 1;
@@ -537,20 +550,11 @@ a:hover { text-decoration-color: var(--a3); }
   .rotulo { grid-template-columns: 1fr 1fr; margin-bottom: var(--e4); }
   .rotulo > div:nth-child(odd) { border-left: 0; }
   .rotulo > div:last-child { grid-column: 1 / -1; }
+  .rotulo dd { white-space: normal; overflow-wrap: anywhere; }
   .rotulo > div:nth-child(n+3) { border-top: 1px solid var(--linea-fuerte); }
   .plano { padding: 0 .5rem .75rem; }
   .plano-regla { margin: 0 -.5rem .5rem; }
 }
-/* placa ASCII que gira (ascii.js), en el pie junto al autor; su rótulo y la pausa van abajo a la derecha del recuadro */
-.ascii-fondo { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-.pie-placa { position: relative; isolation: isolate; order: 3; min-height: 200px; padding: 0; }
-.ascii-pie {
-  position: absolute; right: .5rem; bottom: .4rem; display: flex; align-items: center; gap: .6rem;
-  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); white-space: nowrap;
-}
-.ascii-pie span { background: var(--fondo); padding: 0 .3rem; }
-.ascii-pie button { font: inherit; color: inherit; background: var(--fondo); border: 1px solid var(--linea-fuerte); padding: .15rem .55rem; cursor: pointer; }
-.ascii-pie button:hover { color: var(--tinta); border-color: var(--a3); }
 .cursor { display: inline-block; width: .42em; height: .72em; margin-left: .12em; background: var(--a3); box-shadow: var(--brillo); vertical-align: baseline; animation: parpadeo 1s steps(1) infinite; }
 
 /* "seguí leyendo" o "empezá por el Tomo 1" (site.js la cambia según el último nivel abierto) */
@@ -567,10 +571,34 @@ body.portada {
   background-size: 16px 16px; background-position: -1px -1px;
 }
 body.portada .hero.hero-plano { background: none; border-bottom: 0; }
+.entra { opacity: 0; transform: translateY(24px); transition: opacity .6s cubic-bezier(.2, .7, .2, 1), transform .6s cubic-bezier(.2, .7, .2, 1); }
+.entra.visible { opacity: 1; transform: none; }
 body.portada { --marco: 2px solid var(--tinta); --sombra-hoja: 6px 6px 0 var(--azul2); }
+body.portada .topbar { padding: 0 var(--canal); background: var(--azul1); border-bottom: 0; }
+body.portada .topbar::before {
+  content: ""; position: absolute; inset: 0 var(--canal); z-index: -1; pointer-events: none;
+  background: var(--fondo); border: var(--marco); border-bottom: 1px solid var(--linea-fuerte);
+}
+body.portada .topbar .logo { margin-left: 2px; }
+body.portada .topbar .btn-ajustes { margin-right: 2px; border-left-color: var(--linea-fuerte); }
+body.portada .progreso-lectura { left: var(--canal); max-width: calc(100% - 2 * var(--canal)); }
 body.portada main.contenedor { max-width: none; background: none; border: 0; padding: 0 var(--canal) var(--e2); }
 .hoja { margin: 0 0 var(--e5); background: var(--fondo); border: var(--marco); box-shadow: var(--sombra-hoja); overflow: clip; }
-.hoja-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-bottom: 1px solid var(--linea-fuerte); }
+.hoja-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; border-bottom: 1px solid var(--linea-fuerte); }
+/* figura en despiece de la hoja (herramientas/anatomia/figuras.mjs, assets/anatomia.js): el objeto, su título y la
+   leyenda de los callouts; abajo, una línea que dice qué se ve */
+.hoja-figura { display: flex; flex-direction: column; justify-content: center; width: clamp(20rem, 32vw, 30rem); padding: var(--e1) var(--e2) var(--e2); border-left: 1px solid var(--linea-fuerte); }
+.hoja-figura svg.despiece { display: block; width: 100%; max-width: 26rem; height: auto; margin-inline: auto; overflow: visible; }
+.despiece-titulo { margin: .25rem 0 0; font-size: .9375rem; color: var(--texto); }
+.despiece-titulo b { font-family: var(--f-mono); font-weight: 500; font-size: .8125rem; color: var(--a3); margin-right: .5rem; }
+.despiece-leyenda { margin-top: .25rem; grid-template-columns: 1fr; gap: 0; font-size: .875rem; }
+.despiece-leyenda li { display: flex; align-items: center; gap: .6rem; padding: .1rem 0; color: var(--texto); }
+.fig-lectura { margin: .4rem 0 0; min-height: 2.6em; font-size: .875rem; color: var(--tinta); }
+.fig-lectura::before { content: "→ "; color: var(--a3); }
+/* cápsula del LED: epoxi transparente (deja ver el chip); armado, el chip y la cápsula se prenden */
+.led-epoxi { fill: var(--naranja1); fill-opacity: .55; }
+.despiece.prendido .led-epoxi { fill: var(--naranja2); fill-opacity: .5; }
+.despiece.prendido .led-chip path:not(.fn) { fill: var(--naranja4); }
 .hoja-titulo { padding: var(--e3) var(--e3) var(--e2); }
 .hoja-titulo h2 {
   margin: 0 0 .4rem; font-family: var(--f-cuerpo); font-weight: 600; font-size: clamp(1.75rem, 3vw, 2.25rem);
@@ -580,7 +608,7 @@ body.portada main.contenedor { max-width: none; background: none; border: 0; pad
 .hoja-datos { display: grid; grid-auto-rows: 1fr; margin: 0; min-width: 14rem; border-left: 1px solid var(--linea-fuerte); font-family: var(--f-mono); }
 .hoja-datos > div { padding: .45rem .75rem .5rem; }
 .hoja-datos > div + div { border-top: 1px solid var(--linea-fuerte); }
-.hoja-datos dt { font-size: .6875rem; line-height: 1.4; color: var(--texto-suave); }
+.hoja-datos dt { font-size: .8125rem; line-height: 1.4; color: var(--texto-suave); }
 .hoja-datos dd { margin: 0; font-size: .875rem; font-weight: 500; color: var(--tinta); overflow-wrap: anywhere; }
 /* las celdas pisan el marco de la hoja con su borde: un solo trazo alrededor */
 .hoja .estante { margin: 0 -1px -1px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
@@ -589,7 +617,7 @@ body.portada main.contenedor { max-width: none; background: none; border: 0; pad
 /* número de la fig. 1 en la tarjeta: la misma caja que el callout del plano */
 .libro .callout { position: absolute; top: -1px; right: -1px; min-width: 1.6rem; height: 1.6rem; font-size: 1.2rem; }
 /* zona de la tarjeta en su figura ("fig. 1 · B2"): en móvil las figuras van en corte alto, sin zonas, y se oculta */
-.libro .zona { font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave); }
+.libro .zona { font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave); }
 
 .estante {
   display: grid; gap: 0;
@@ -884,7 +912,6 @@ footer.pie { max-width: 1100px; margin: 0 auto; padding: 2rem; color: var(--text
   .hero { padding: 3rem 1rem 2rem; }
   .topbar .logo span { display: none; }
   .btn-ajustes { padding: 0 .7rem; }
-  .btn-ajustes span { display: none; }
   figure.diagrama { margin: var(--e5) 0; padding: 1.4rem .75rem .9rem; }
   .nivel .num { flex-basis: 48px; font-size: .9rem; }
   .nav-niveles { grid-template-columns: 1fr; }
@@ -943,30 +970,18 @@ footer.pie.pie-portada {
   max-width: none; margin: 0 0 var(--e5); padding: 0 var(--canal); border: 0; background: none;
   font-family: var(--f-cuerpo); font-size: .95rem; letter-spacing: 0; color: var(--texto);
 }
-.pie-grilla { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(320px, 1fr); background: var(--fondo); border: var(--marco); }
+.pie-grilla { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); background: var(--fondo); border: var(--marco); }
 .pie-grilla > * { padding: var(--e3); }
 .pie-grilla > * + * { border-left: 1px solid var(--linea-fuerte); }
 .pie-portada h2 { font-family: var(--f-cuerpo); font-weight: 600; font-size: 1.4rem; line-height: 1.15; letter-spacing: -.015em; color: var(--tinta); margin: 0 0 .5rem; }
 .pie-autor { display: flex; gap: 1.2rem; align-items: center; }
-/* foto de perfil en ASCII (40 × 20, generada de la foto de GitHub): fósforo del acento sobre una pantalla
-   oscura con líneas de barrido, como un monitor de los 80. En claro la pantalla sigue oscura (n6) */
-.pie-foto {
-  position: relative; flex: none; margin: 0; padding: 5px; overflow: hidden;
-  font: 5.4px/6.48px var(--f-mono); letter-spacing: 0; white-space: pre;
-  color: var(--a4); background: var(--pantalla); text-shadow: var(--brillo);
-  border: 1px solid var(--linea-fuerte);
-}
-.pie-foto::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(transparent 0 2px, color-mix(in srgb, var(--pantalla) 35%, transparent) 2px 3px);
-}
 .pie-enlaces { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; font-size: .9rem; }
 .pie-portada .pie-aviso h2 { font-size: 1rem; margin-bottom: .4rem; }
 .pie-aviso p { max-width: 70ch; margin: 0; color: var(--texto-suave); font-size: .9rem; line-height: 1.6; text-wrap: pretty; }
 .pie-base {
   display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
   padding: .5rem .75rem; background: var(--fondo); border: var(--marco); border-top: 0; box-shadow: var(--sombra-hoja);
-  font-family: var(--f-mono); font-size: .75rem; color: var(--texto-suave);
+  font-family: var(--f-mono); font-size: .8125rem; color: var(--texto-suave);
 }
 @media (max-width: 900px) { .pie-grilla { grid-template-columns: 1fr; } .pie-grilla > * + * { border-left: 0; border-top: 1px solid var(--linea-fuerte); } }
 @media (max-width: 640px) { .pie-grilla > * { padding: var(--e2) 1rem; } }
@@ -976,13 +991,13 @@ footer.pie.pie-portada {
   .libro-indice > summary { min-height: 44px; display: flex; align-items: center; }
   .controles button, .controles select, .btn { min-height: 40px; }
   .topbar .logo, .btn-ajustes { min-width: 44px; justify-content: center; }
-  .ascii-pie button { min-height: 44px; padding: 0 .8rem; }
   .pie-enlaces a, .libro-niveles a { display: flex; align-items: center; min-height: 44px; }
   .libro-niveles a > span { padding-top: 0; }
 }
 /* con poco ancho los datos de la hoja bajan debajo del título, en una fila */
 @media (max-width: 760px) {
   .hoja-cab { grid-template-columns: 1fr; }
+  .hoja-figura { width: auto; border-left: 0; border-top: 1px solid var(--linea-fuerte); }
   .hoja-datos { grid-template-columns: 1fr 1fr; grid-auto-rows: auto; min-width: 0; border-left: 0; border-top: 1px solid var(--linea-fuerte); }
   .hoja-datos > div + div { border-top: 0; border-left: 1px solid var(--linea-fuerte); }
 }

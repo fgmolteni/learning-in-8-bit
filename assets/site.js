@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.53";
+const VERSION = "0.1.57";
 
 const CURSOS = {
   micro: {
@@ -194,7 +194,7 @@ function montarBarra() {
   barra.innerHTML = `
     <a class="logo" href="${raiz}index.html">▚ <span>apuntes.bin</span></a>
     <div class="migas">${migas}</div>
-    <button class="btn-ajustes" type="button" popovertarget="ajustes" aria-label="Ajustes de color">⚙︎<span> ajustes</span></button>
+    <button class="btn-ajustes" type="button" popovertarget="ajustes" aria-label="Ajustes de color">ajustes</button>
     <div class="ajustes" id="ajustes" popover role="dialog" aria-label="Ajustes de color">${htmlAjustes()}</div>
     <div class="progreso-lectura" aria-hidden="true"></div>`;
   document.body.prepend(barra);
@@ -477,6 +477,81 @@ function pausarFueraDePantalla() {
   svgs.forEach((s) => io.observe(s));
 }
 
+// ---- portada, fig. 1: por dónde viaja un dato. Al pasar por un bloque (o sola, si nadie la toca) un cuadrito del
+// canal a recorre el camino por el bus y el texto lo cuenta. Coordenadas del dibujo: el corte ancho va corrido (32, 28)
+const RUTAS = {
+  "temas/procesador/index.html": { t: "La CPU busca un dato en la memoria: baja al bus del sistema y vuelve con él.",
+    ancha: [[156, 128], [156, 220], [368, 220], [368, 128]], alta: [[110, 104], [110, 168], [110, 232]] },
+  "temas/buses/index.html": { t: "La memoria le entrega a la CPU lo que pidió, por el mismo bus.",
+    ancha: [[368, 128], [368, 220], [156, 220], [156, 128]], alta: [[250, 232], [250, 168], [250, 104]] },
+  "temas/mundo/index.html": { t: "Una muestra del ADC llega a la SRAM por DMA, sin pasar por la CPU.",
+    ancha: [[156, 302], [156, 220], [368, 220], [368, 128]], alta: [[110, 396], [110, 316], [110, 232]] },
+  "temas/datos/index.html": { t: "Un byte que entra por la UART cruza el bus hasta la CPU.",
+    ancha: [[368, 302], [368, 220], [156, 220], [156, 128]], alta: [[250, 516], [250, 316], [250, 104]] },
+  "#fig2": { t: "La CPU le pasa 16 bytes al PIE, que hace 16 multiplicaciones de una vez.",
+    ancha: [[110, 122], [110, 166]], alta: [[110, 100], [110, 138]] },
+};
+function montarPlano() {
+  const fig = document.querySelector("#fig1"), txt = fig?.querySelector("[data-ruta]");
+  if (!fig || !txt) return;
+  const reposo = txt.textContent, quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  // un cuadrito por corte, dentro del grupo que lleva las coordenadas del dibujo
+  const dato = [...fig.querySelectorAll("svg")].map((svg) => {
+    const g = svg.querySelector("g") || svg, r = document.createElementNS(NS, "rect");
+    r.setAttribute("width", 10); r.setAttribute("height", 10); r.setAttribute("class", "fa4 dato");
+    r.style.display = "none"; r.style.pointerEvents = "none"; g.append(r);
+    return { svg, r, corte: svg.classList.contains("fig-alta") ? "alta" : "ancha" };
+  });
+  let ruta = null, t0 = 0, auto = 0;
+  const pos = (pts, u) => {   // punto a la fracción u (0..1) del recorrido
+    const seg = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+    let d = u * seg.reduce((a, b) => a + b, 0), i = 0;
+    while (i < seg.length - 1 && d > seg[i]) d -= seg[i++];
+    const k = seg[i] ? d / seg[i] : 0, a = pts[i], b = pts[i + 1];
+    return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+  };
+  const mostrar = (href) => {
+    ruta = RUTAS[href] || null; t0 = performance.now();
+    txt.textContent = ruta ? ruta.t : reposo;
+    fig.querySelectorAll("svg a").forEach((a) => a.classList.toggle("activo", !!ruta && a.getAttribute("href") === href));
+    dato.forEach((d) => (d.r.style.display = ruta ? "" : "none"));
+    if (ruta && quieto) dato.forEach((d) => { const [x, y] = ruta[d.corte].at(-1); d.r.setAttribute("x", x - 5); d.r.setAttribute("y", y - 5); });
+  };
+  fig.querySelectorAll("svg a, .plano-leyenda a").forEach((a) => {
+    const href = a.getAttribute("href");
+    a.addEventListener("mouseenter", () => { auto = -1; mostrar(href); });
+    a.addEventListener("focus", () => { auto = -1; mostrar(href); });
+  });
+  fig.addEventListener("mouseleave", () => { auto = 0; mostrar(null); });
+  if (quieto) return;
+  // sin mouse (teléfono) recorre las rutas sola, una cada 3,2 s, mientras la figura está en pantalla
+  const claves = Object.keys(RUTAS);
+  let enPantalla = false;   // como cada() de diagramas.js, que la portada no carga
+  new IntersectionObserver((es) => (enPantalla = es.at(-1).isIntersecting)).observe(fig);
+  setInterval(() => enPantalla && paso(), 30);
+  function paso() {
+    if (auto >= 0) { const n = Math.floor(performance.now() / 3200) % claves.length; if (auto !== n + 1 || !ruta) { auto = n + 1; mostrar(claves[n]); } }
+    if (!ruta) return;
+    const u = Math.min(1, ((performance.now() - t0) % 1600) / 1200);
+    dato.forEach((d) => { const [x, y] = pos(ruta[d.corte], u); d.r.setAttribute("x", (x - 5).toFixed(1)); d.r.setAttribute("y", (y - 5).toFixed(1)); });
+  }
+}
+
+// ---- portada: cada hoja y sus tarjetas entran una vez al llegar a pantalla (sin script o con movimiento
+// reducido, todo está visible desde el principio)
+function montarEntradas() {
+  if (!document.body.classList.contains("portada") || matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); }
+  }), { rootMargin: "0px 0px -10% 0px" });
+  document.querySelectorAll(".hoja-titulo, .hoja-figura, .plano-hoja, .hoja .libro").forEach((el, i) => {
+    el.classList.add("entra");
+    if (el.matches(".libro")) el.style.transitionDelay = `${([...el.parentElement.children].indexOf(el) % 3) * 80}ms`;
+    io.observe(el);
+  });
+}
+
 function montarVersion() {
   const pie = document.querySelector("footer.pie");
   if (pie) (pie.querySelector(".pie-base span") || pie).append(`, v${VERSION}`);
@@ -499,6 +574,8 @@ document.addEventListener("DOMContentLoaded", () => {
   montarTemario();
   registrarVisita();
   montarIndicePortada();
+  montarPlano();
+  montarEntradas();
   montarSeguir();
   montarSidebar();
   montarNavLeccion();
