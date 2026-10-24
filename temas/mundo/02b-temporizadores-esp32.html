@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="2b">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="2b">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="02b">nivel 02, componentes, 10 min de lectura</span>
-  <h1>Los temporizadores y el PWM del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="02-temporizadores-pwm.html">«Contar el tiempo»</a>: cuántos temporizadores tienen, de cuántos bits, qué PWM de propósito general y de control de motores ofrecen, y cómo resuelven el registro sombra y el tiempo muerto. Todo viene de sus manuales.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>Los temporizadores y el PWM del ESP32, del ESP32-S3 y del RP2040</h1>
+    <p class="bajada">Cómo aplican tres micros lo que explica <a href="02-temporizadores-pwm.html">«Contar el tiempo»</a>: cuántos temporizadores tienen, de cuántos bits, qué PWM de propósito general y de control de motores ofrecen, y cómo resuelven el registro sombra y el tiempo muerto. Todo viene de sus manuales.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>02b, componentes</dd></div>
+    <div><dt>lectura</dt><dd>10 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>0 · 3</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar esta página vas a poder…</h4>
+  <h3>al terminar esta página vas a poder…</h3>
   <ul>
     <li>Comparar los temporizadores de tres micros por cantidad, ancho del contador y prescaler.</li>
     <li>Calcular el divisor fraccionario que pide un PWM de una frecuencia y resolución dadas.</li>
@@ -101,7 +108,7 @@
 <p>Las características que lista el datasheet no incluyen un generador de tiempo muerto ni un módulo de fallas. Para un puente en H con el RP2040, el tiempo muerto tiene que venir de otra parte: del programa, de una lógica externa o de un circuito de excitación que lo agregue.</p>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Querés un PWM de 5 kHz con 10 bits en el ESP32-S3 desde un reloj de 80 MHz. ¿Qué divisor hace falta?</p>
   <div class="opciones">
     <button type="button" data-por-que="Con 16 la frecuencia sale 80 MHz / (16 · 1024) = 4,883 kHz, un error de 2,3 %. El divisor fraccionario permite un valor exacto.">16, un divisor entero.</button>
@@ -112,7 +119,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Los temporizadores del ESP32 son de 64 bits y los del ESP32-S3 de 54, con prescaler de 16 bits; el del RP2040 es un contador de 64 bits fijo a 1 µs.</li>
     <li>El LEDC es el PWM de propósito general: varios canales sobre pocos timers, con fade por hardware. El del S3 llega a 14 bits y el del ESP32 a 20.</li>

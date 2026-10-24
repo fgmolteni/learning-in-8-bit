@@ -145,7 +145,7 @@ PM.escena("per-sar", {
   descripcion: "Conversión SAR de 12 bits: en cada paso el ADC prueba un valor en su DAC interno, lo compara con la tensión de entrada y conserva o descarta el bit, del más significativo al menos significativo. Los 12 pasos arman el resultado en el registro.",
   dibujar(m, t) {
     ST.sar.m = m; fondo(m);
-    const code = Math.min(4095, Math.round((ST.sar.vin / 100) * 4095));
+    const code = Math.min(4095, Math.floor((ST.sar.vin / 100) * 4096));   // 12 bits: 4096 escalones, código máximo 4095
     // búsqueda binaria completa
     const pasos = []; let acc = 0;
     for (let b = N_BITS - 1; b >= 0; b--) { const prueba = acc | (1 << b), keep = code >= prueba; if (keep) acc = prueba; pasos.push({ b, prueba, keep, acc }); }
@@ -191,7 +191,7 @@ PM.escena("per-sar", {
       txt(m, "RESULTADO", X1, 58, "n4"); txt(m, String(pasos[N_BITS - 1].acc), X1, 68, "a3");
       txt(m, "12 PASOS,", X1, 84, "n4"); txt(m, "1 POR BIT", X1, 94, "n4");
     }
-    txt(m, "LSB = 1/4095", X1, 116, "n4"); txt(m, "DEL FONDO", X1, 126, "n4"); txt(m, "DE ESCALA", X1, 136, "n4");
+    txt(m, "LSB = 1/4096", X1, 116, "n4"); txt(m, "DEL FONDO", X1, 126, "n4"); txt(m, "DE ESCALA", X1, 136, "n4");
   },
 });
 

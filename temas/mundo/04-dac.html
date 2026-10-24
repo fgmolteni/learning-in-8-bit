@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="4">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="4">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="04">nivel 04, 21 min de lectura</span>
-  <h1>De número a tensión</h1>
-  <p class="bajada">Un DAC hace lo inverso del ADC: de un código saca una tensión. Lo que sale es una escalera, y una escalera trae imágenes de frecuencia que hay que filtrar.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>De número a tensión</h1>
+    <p class="bajada">Un DAC hace lo inverso del ADC: de un código saca una tensión. Lo que sale es una escalera, y una escalera trae imágenes de frecuencia que hay que filtrar.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>04 de 05</dd></div>
+    <div><dt>lectura</dt><dd>21 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>4 · 6</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar este nivel vas a poder…</h4>
+  <h3>al terminar este nivel vas a poder…</h3>
   <ul>
     <li>Explicar por qué la salida de un DAC es una escalera y calcular cuánto atenúa su envolvente en la frecuencia de Nyquist.</li>
     <li>Calcular cuánta exactitud necesita el bit más significativo para que un DAC no retroceda, y usarlo para comparar las estructuras.</li>
@@ -165,7 +172,7 @@
 </div>
 
 <div class="caja quiz" data-ok="0">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Un DAC binario ponderado de 12 bits, ¿qué error relativo máximo puede tener su MSB para seguir siendo monótono?</p>
   <div class="opciones">
     <button type="button" data-por-que="El MSB pesa 2048 LSB y se le tolera 1 LSB de error: 1/2048 ≈ 0,049 %.">Alrededor del 0,05 %.</button>
@@ -256,7 +263,7 @@
 <p>Un ejemplo con valores supuestos: una red con 10 kΩ de impedancia de salida sobre una carga de 100 kΩ pierde 10 / (10 + 100) ≈ 9 % de la tensión. Con 8 bits eso son unos 23 LSB. Por eso los DAC integrados llevan un amplificador seguidor en la salida: esconde la impedancia de la red y entrega la tensión con una impedancia baja.</p>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Querés generar una senoide de audio con un PWM de 8 bits a 100 kHz y un filtro RC que mantiene el rizado por debajo de 1 LSB. ¿Qué problema vas a tener?</p>
   <div class="opciones">
     <button type="button" data-por-que="El PWM sí puede llegar a 8 bits de resolución; el problema es otro: el filtro necesario es lento.">El PWM no puede tener 8 bits de resolución.</button>
@@ -267,7 +274,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>La salida de un DAC es una escalera: trae imágenes en <var>f</var><sub>c</sub> ± <var>f</var> y una envolvente que atenúa 3,92 dB en Nyquist. El filtro anti-imágenes es el antialiasing al revés.</li>
     <li>El MSB pesa 2<sup><var>N</var>−1</sup> LSB y tolera un error de 1 LSB: 0,78 % con 8 bits y 0,049 % con 12. De ahí salen todas las estructuras.</li>

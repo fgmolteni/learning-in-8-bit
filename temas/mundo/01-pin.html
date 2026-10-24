@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="1">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="1">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="01">nivel 01, 19 min de lectura</span>
-  <h1>La frontera del micro</h1>
-  <p class="bajada">Un pin es el punto donde la lógica interna se encuentra con el mundo exterior. Cada pieza de su celda resuelve un problema de esa frontera: niveles, sentido, ruido, velocidad y protección.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>La frontera del micro</h1>
+    <p class="bajada">Un pin es el punto donde la lógica interna se encuentra con el mundo exterior. Cada pieza de su celda resuelve un problema de esa frontera: niveles, sentido, ruido, velocidad y protección.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>01 de 05</dd></div>
+    <div><dt>lectura</dt><dd>19 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>5 · 5</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar este nivel vas a poder…</h4>
+  <h3>al terminar este nivel vas a poder…</h3>
   <ul>
     <li>Calcular el margen de ruido entre una salida y una entrada a partir de VOH, VIH, VIL y VOL.</li>
     <li>Distinguir push-pull, open-drain y alta impedancia, y decir cuándo conviene cada una.</li>
@@ -121,11 +128,11 @@
   <svg viewBox="0 0 640 232" role="img" aria-label="Cuatro estados de la salida: push-pull en 1 (conduce el transistor de arriba), push-pull en 0 (conduce el de abajo), open-drain en 1 (ninguno conduce y sube la resistencia externa) y alta impedancia (ninguno conduce)">
     <text x="86" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">push-pull, 1</text><line x1="24" y1="40" x2="148" y2="40" class="s5" stroke-width="2"/><text x="24" y="56" class="sv-lbl f4" text-anchor="start" font-size="16">VDD</text><line x1="24" y1="200" x2="148" y2="200" class="s5" stroke-width="2"/><text x="24" y="220" class="sv-lbl f4" text-anchor="start" font-size="16">GND</text><rect x="44" y="64" width="48" height="36" class="fc1 sc3" stroke-width="2"/><rect x="43" y="63" width="2" height="2" class="f0"/><rect x="91" y="63" width="2" height="2" class="f0"/><rect x="43" y="99" width="2" height="2" class="f0"/><rect x="91" y="99" width="2" height="2" class="f0"/><text x="68" y="88" class="sv-tit f6" text-anchor="middle">P</text><rect x="44" y="140" width="48" height="36" class="f1 sc3" stroke-width="2"/><rect x="43" y="139" width="2" height="2" class="f0"/><rect x="91" y="139" width="2" height="2" class="f0"/><rect x="43" y="175" width="2" height="2" class="f0"/><rect x="91" y="175" width="2" height="2" class="f0"/><text x="68" y="164" class="sv-tit fc3" text-anchor="middle">N</text><line x1="68" y1="40" x2="68" y2="64" class="s4" stroke-width="2"/><line x1="68" y1="100" x2="68" y2="140" class="s4" stroke-width="2"/><line x1="68" y1="176" x2="68" y2="200" class="s4" stroke-width="2"/><line x1="68" y1="120" x2="134" y2="120" class="sa3" stroke-width="2"/><rect x="134" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><line x1="76" y1="108" x2="110" y2="108" class="sa3" stroke-width="2"/><rect x="110" y="100" width="2" height="16" class="fa3"/><rect x="112" y="102" width="2" height="12" class="fa3"/><rect x="114" y="104" width="2" height="8" class="fa3"/><rect x="116" y="106" width="2" height="4" class="fa3"/><rect x="118" y="107" width="2" height="2" class="fa3"/><text x="242" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">push-pull, 0</text><line x1="180" y1="40" x2="304" y2="40" class="s5" stroke-width="2"/><text x="180" y="56" class="sv-lbl f4" text-anchor="start" font-size="16">VDD</text><line x1="180" y1="200" x2="304" y2="200" class="s5" stroke-width="2"/><text x="180" y="220" class="sv-lbl f4" text-anchor="start" font-size="16">GND</text><rect x="200" y="64" width="48" height="36" class="f1 sc3" stroke-width="2"/><rect x="199" y="63" width="2" height="2" class="f0"/><rect x="247" y="63" width="2" height="2" class="f0"/><rect x="199" y="99" width="2" height="2" class="f0"/><rect x="247" y="99" width="2" height="2" class="f0"/><text x="224" y="88" class="sv-tit fc3" text-anchor="middle">P</text><rect x="200" y="140" width="48" height="36" class="fc1 sc3" stroke-width="2"/><rect x="199" y="139" width="2" height="2" class="f0"/><rect x="247" y="139" width="2" height="2" class="f0"/><rect x="199" y="175" width="2" height="2" class="f0"/><rect x="247" y="175" width="2" height="2" class="f0"/><text x="224" y="164" class="sv-tit f6" text-anchor="middle">N</text><line x1="224" y1="40" x2="224" y2="64" class="s4" stroke-width="2"/><line x1="224" y1="100" x2="224" y2="140" class="s4" stroke-width="2"/><line x1="224" y1="176" x2="224" y2="200" class="s4" stroke-width="2"/><line x1="224" y1="120" x2="290" y2="120" class="sa3" stroke-width="2"/><rect x="290" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><line x1="276" y1="132" x2="242" y2="132" class="sa3" stroke-width="2"/><rect x="240" y="124" width="2" height="16" class="fa3"/><rect x="238" y="126" width="2" height="12" class="fa3"/><rect x="236" y="128" width="2" height="8" class="fa3"/><rect x="234" y="130" width="2" height="4" class="fa3"/><rect x="232" y="131" width="2" height="2" class="fa3"/><text x="398" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">open-drain, 1</text><line x1="336" y1="40" x2="460" y2="40" class="s5" stroke-width="2"/><text x="336" y="56" class="sv-lbl f4" text-anchor="start" font-size="16">VDD</text><line x1="336" y1="200" x2="460" y2="200" class="s5" stroke-width="2"/><text x="336" y="220" class="sv-lbl f4" text-anchor="start" font-size="16">GND</text><rect x="356" y="64" width="48" height="36" class="f1 s2" stroke-width="2" stroke-dasharray="4 4"/><rect x="355" y="63" width="2" height="2" class="f0"/><rect x="403" y="63" width="2" height="2" class="f0"/><rect x="355" y="99" width="2" height="2" class="f0"/><rect x="403" y="99" width="2" height="2" class="f0"/><text x="380" y="79" class="sv-tit f4" text-anchor="middle" font-size="16">no</text><text x="380" y="97" class="sv-lbl f4" text-anchor="middle" font-size="16">está</text><rect x="356" y="140" width="48" height="36" class="f1 sc3" stroke-width="2"/><rect x="355" y="139" width="2" height="2" class="f0"/><rect x="403" y="139" width="2" height="2" class="f0"/><rect x="355" y="175" width="2" height="2" class="f0"/><rect x="403" y="175" width="2" height="2" class="f0"/><text x="380" y="164" class="sv-tit fc3" text-anchor="middle">N</text><line x1="380" y1="40" x2="380" y2="64" class="s4" stroke-width="2"/><line x1="380" y1="100" x2="380" y2="140" class="s4" stroke-width="2"/><line x1="380" y1="176" x2="380" y2="200" class="s4" stroke-width="2"/><line x1="380" y1="120" x2="446" y2="120" class="sa3" stroke-width="2"/><rect x="446" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/><rect x="436" y="48" width="12" height="40" class="f1 sc3" stroke-width="2"/><line x1="442" y1="40" x2="442" y2="48" class="sc3" stroke-width="2"/><line x1="442" y1="88" x2="442" y2="112" class="sc3" stroke-width="2"/><text x="468" y="82" class="sv-lbl fc3" text-anchor="start" font-size="16">R ext</text><line x1="454" y1="92" x2="454" y2="98" class="sc3" stroke-width="2"/><rect x="446" y="98" width="16" height="2" class="fc3"/><rect x="448" y="100" width="12" height="2" class="fc3"/><rect x="450" y="102" width="8" height="2" class="fc3"/><rect x="452" y="104" width="4" height="2" class="fc3"/><rect x="453" y="106" width="2" height="2" class="fc3"/><text x="554" y="24" class="sv-tit f6" text-anchor="middle" font-size="20">alta Z</text><line x1="492" y1="40" x2="616" y2="40" class="s5" stroke-width="2"/><text x="492" y="56" class="sv-lbl f4" text-anchor="start" font-size="16">VDD</text><line x1="492" y1="200" x2="616" y2="200" class="s5" stroke-width="2"/><text x="492" y="220" class="sv-lbl f4" text-anchor="start" font-size="16">GND</text><rect x="512" y="64" width="48" height="36" class="f1 sc3" stroke-width="2"/><rect x="511" y="63" width="2" height="2" class="f0"/><rect x="559" y="63" width="2" height="2" class="f0"/><rect x="511" y="99" width="2" height="2" class="f0"/><rect x="559" y="99" width="2" height="2" class="f0"/><text x="536" y="88" class="sv-tit fc3" text-anchor="middle">P</text><rect x="512" y="140" width="48" height="36" class="f1 sc3" stroke-width="2"/><rect x="511" y="139" width="2" height="2" class="f0"/><rect x="559" y="139" width="2" height="2" class="f0"/><rect x="511" y="175" width="2" height="2" class="f0"/><rect x="559" y="175" width="2" height="2" class="f0"/><text x="536" y="164" class="sv-tit fc3" text-anchor="middle">N</text><line x1="536" y1="40" x2="536" y2="64" class="s4" stroke-width="2"/><line x1="536" y1="100" x2="536" y2="140" class="s4" stroke-width="2"/><line x1="536" y1="176" x2="536" y2="200" class="s4" stroke-width="2"/><line x1="536" y1="120" x2="602" y2="120" class="sa3" stroke-width="2"/><rect x="602" y="112" width="16" height="16" class="fa1 sa3" stroke-width="2"/>
   </svg>
-  <figcaption><b>fig 1.3</b>Los cuatro estados de una salida. En push-pull siempre conduce uno de los dos transistores (en acento) y la corriente sale o entra por el pin. En open-drain el de arriba no existe: el 1 lo pone una resistencia externa. En alta impedancia no conduce ninguno y el pin queda libre para que otro lo maneje.</figcaption>
+  <figcaption><b>fig 1.3</b>Los cuatro estados de una salida. En push-pull siempre conduce uno de los dos transistores (en naranja) y la corriente sale o entra por el pin. En open-drain el de arriba no existe: el 1 lo pone una resistencia externa. En alta impedancia no conduce ninguno y el pin queda libre para que otro lo maneje.</figcaption>
 </figure>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Tres dispositivos open-drain comparten un cable con una resistencia a V<sub>DD</sub>. Uno baja la línea y los otros dos la sueltan. ¿Qué lee un cuarto dispositivo que escucha?</p>
   <div class="opciones">
     <button type="button" data-por-que="Para que la línea valga 1 tendrían que soltarla todos. Basta con que uno baje para que la resistencia pierda: la línea va a 0.">Un 1, porque la mayoría la soltó.</button>
@@ -201,7 +208,7 @@
 <p>La conclusión es de diseño: las resistencias de pull internas fijan niveles de reposo. Para una línea que debe subir en cientos de nanosegundos hace falta una resistencia externa de un valor mucho menor, porque <var>τ</var> = <var>R</var> · <var>C</var> baja con <var>R</var>, y el open-drain la usa.</p>
 
 <div class="caja quiz" data-ok="2">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Querés usar el pull-up interno de 45 kΩ en un I2C a 400 kHz, con unos 100 pF de cable. ¿Qué pasa?</p>
   <div class="opciones">
     <button type="button" data-por-que="El pull-up interno es una resistencia como cualquier otra, pero muy alta. Con 100 pF su constante de tiempo es de 4,5 µs, mucho más que un semiperíodo de 1,25 µs.">Funciona igual: el pull-up interno es una resistencia como cualquier otra.</button>
@@ -236,7 +243,7 @@
 <p>Esa corriente se suma a la de la alimentación de 3,3 V, que no está hecha para absorberla. Además puede disparar el <strong>latch-up</strong>: un <span class="ref" data-nota="tiristor">tiristor parásito</span> que forman los transistores del CMOS entre <var>V</var><sub>DD</sub> y masa.<span class="nota-margen" popover id="nota-tiristor"><b>tiristor · SCR</b>Estructura de cuatro capas p-n-p-n que, una vez disparada, conduce hasta que se corta la corriente.</span> Weste y Harris explican que los pads de E/S son especialmente susceptibles, porque las tensiones externas pueden caer por debajo de masa o subir por encima de <var>V</var><sub>DD</sub> (sección 7.3.6). Una vez disparado, cortocircuita la alimentación hasta que se corta. Los datasheets de los tres micros (ESP32, ESP32-S3 y RP2040) fijan la tensión máxima en un pin en <var>V</var><sub>DD</sub> más una fracción de volt: <var>V</var><sub>DD</sub> + 0,3 V como máximo de <var>V</var><sub>IH</sub> en los de Espressif y <var>V</var><sub>DD</sub> + 0,5 V como máximo absoluto en el RP2040. Para 5 V hace falta un divisor o un traductor de nivel.</p>
 
 <div class="caja quiz" data-ok="2">
-  <h4>repaso</h4>
+  <h3>repaso</h3>
   <p class="pregunta">Conectás la salida de 5 V de un sensor directo a un pin de entrada de 3,3 V, y al rato el micro se calienta y se reinicia. ¿Qué pasa?</p>
   <div class="opciones">
     <button type="button" data-por-que="Las resistencias de pull valen decenas de kiloohms: no conducen corrientes grandes. El problema está en los diodos de protección.">El pull-up interno de 45 kΩ no aguanta 5 V y se quema.</button>
@@ -247,7 +254,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Una salida garantiza un mínimo para el 1 y un máximo para el 0, y una entrada exige umbrales: la diferencia es el margen de ruido, <var>NM</var><sub>H</sub> = <var>V</var><sub>OH</sub> − <var>V</var><sub>IH</sub> y <var>NM</var><sub>L</sub> = <var>V</var><sub>IL</sub> − <var>V</var><sub>OL</sub>.</li>
     <li>Push-pull empuja y tira; open-drain solo tira y permite compartir el cable; alta impedancia suelta la línea.</li>

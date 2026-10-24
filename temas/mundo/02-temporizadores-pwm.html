@@ -19,17 +19,24 @@
 <script src="../../assets/pixelmicro.js" defer></script>
 <script src="../../assets/escenas-perifericos.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="2">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="2">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="02">nivel 02, 21 min de lectura</span>
-  <h1>Contar el tiempo</h1>
-  <p class="bajada">Un temporizador cuenta flancos de un reloj. Todo lo que sale de él, un período, un PWM, un puente en H, hereda la exactitud y los límites de esa cuenta.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>Contar el tiempo</h1>
+    <p class="bajada">Un temporizador cuenta flancos de un reloj. Todo lo que sale de él, un período, un PWM, un puente en H, hereda la exactitud y los límites de esa cuenta.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>02 de 05</dd></div>
+    <div><dt>lectura</dt><dd>21 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>5 · 6</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar este nivel vas a poder…</h4>
+  <h3>al terminar este nivel vas a poder…</h3>
   <ul>
     <li>Describir el prescaler, el contador, el comparador y la recarga de un temporizador, y calcular cuándo desborda.</li>
     <li>Explicar por qué un contador asíncrono no sirve a alta frecuencia y calcular su límite.</li>
@@ -51,7 +58,7 @@
   <svg viewBox="0 0 640 200" role="img" aria-label="Diagrama de bloques de un temporizador: el reloj base entra a un prescaler que lo divide, el contador avanza con cada tick, un comparador lo compara con el valor de alarma y dispara un evento; la recarga automática vuelve el contador a cero">
     <rect x="16" y="40" width="96" height="56" class="f0 sb3" stroke-width="2"/><rect x="15" y="39" width="2" height="2" class="f0"/><rect x="111" y="39" width="2" height="2" class="f0"/><rect x="15" y="95" width="2" height="2" class="f0"/><rect x="111" y="95" width="2" height="2" class="f0"/><text x="64" y="65" class="sv-tit f6" text-anchor="middle">Reloj</text><text x="64" y="83" class="sv-lbl fb3" text-anchor="middle">80 MHz</text><line x1="112" y1="68" x2="134" y2="68" class="sb3" stroke-width="2"/><rect x="134" y="60" width="2" height="16" class="fb3"/><rect x="136" y="62" width="2" height="12" class="fb3"/><rect x="138" y="64" width="2" height="8" class="fb3"/><rect x="140" y="66" width="2" height="4" class="fb3"/><rect x="142" y="67" width="2" height="2" class="fb3"/><rect x="144" y="40" width="112" height="56" class="f1 sb3" stroke-width="2"/><rect x="143" y="39" width="2" height="2" class="f0"/><rect x="255" y="39" width="2" height="2" class="f0"/><rect x="143" y="95" width="2" height="2" class="f0"/><rect x="255" y="95" width="2" height="2" class="f0"/><text x="200" y="65" class="sv-tit f6" text-anchor="middle">Prescaler</text><text x="200" y="83" class="sv-lbl fb3" text-anchor="middle">÷ DIV</text><line x1="256" y1="68" x2="278" y2="68" class="sb3" stroke-width="2"/><rect x="278" y="60" width="2" height="16" class="fb3"/><rect x="280" y="62" width="2" height="12" class="fb3"/><rect x="282" y="64" width="2" height="8" class="fb3"/><rect x="284" y="66" width="2" height="4" class="fb3"/><rect x="286" y="67" width="2" height="2" class="fb3"/><text x="272" y="58" class="sv-lbl fb3" text-anchor="middle" font-size="16">tick</text><rect x="288" y="40" width="112" height="56" class="f1 sb3" stroke-width="2"/><rect x="287" y="39" width="2" height="2" class="f0"/><rect x="399" y="39" width="2" height="2" class="f0"/><rect x="287" y="95" width="2" height="2" class="f0"/><rect x="399" y="95" width="2" height="2" class="f0"/><text x="344" y="65" class="sv-tit f6" text-anchor="middle">Contador</text><text x="344" y="83" class="sv-lbl fb3" text-anchor="middle">N bits</text><line x1="400" y1="68" x2="422" y2="68" class="sb3" stroke-width="2"/><rect x="422" y="60" width="2" height="16" class="fb3"/><rect x="424" y="62" width="2" height="12" class="fb3"/><rect x="426" y="64" width="2" height="8" class="fb3"/><rect x="428" y="66" width="2" height="4" class="fb3"/><rect x="430" y="67" width="2" height="2" class="fb3"/><rect x="432" y="40" width="112" height="56" class="fd1 sd3" stroke-width="2"/><rect x="431" y="39" width="2" height="2" class="f0"/><rect x="543" y="39" width="2" height="2" class="f0"/><rect x="431" y="95" width="2" height="2" class="f0"/><rect x="543" y="95" width="2" height="2" class="f0"/><text x="488" y="65" class="sv-tit f6" text-anchor="middle">Comparador</text><text x="488" y="83" class="sv-lbl fd3" text-anchor="middle">¿= alarma?</text><line x1="544" y1="68" x2="606" y2="68" class="sd3" stroke-width="2"/><rect x="606" y="60" width="2" height="16" class="fd3"/><rect x="608" y="62" width="2" height="12" class="fd3"/><rect x="610" y="64" width="2" height="8" class="fd3"/><rect x="612" y="66" width="2" height="4" class="fd3"/><rect x="614" y="67" width="2" height="2" class="fd3"/><text x="580" y="58" class="sv-lbl fd3" text-anchor="middle" font-size="16">evento</text><rect x="432" y="128" width="112" height="40" class="f1 sd3" stroke-width="2"/><rect x="431" y="127" width="2" height="2" class="f0"/><rect x="543" y="127" width="2" height="2" class="f0"/><rect x="431" y="167" width="2" height="2" class="f0"/><rect x="543" y="167" width="2" height="2" class="f0"/><text x="488" y="154" class="sv-tit f4" text-anchor="middle">Alarma</text><line x1="488" y1="128" x2="488" y2="106" class="sd3" stroke-width="2"/><rect x="480" y="104" width="16" height="2" class="fd3"/><rect x="482" y="102" width="12" height="2" class="fd3"/><rect x="484" y="100" width="8" height="2" class="fd3"/><rect x="486" y="98" width="4" height="2" class="fd3"/><rect x="487" y="96" width="2" height="2" class="fd3"/><polyline points="560,68 560,184 344,184 344,106" class="fn sc3" stroke-width="2"/><rect x="336" y="104" width="16" height="2" class="fc3"/><rect x="338" y="102" width="12" height="2" class="fc3"/><rect x="340" y="100" width="8" height="2" class="fc3"/><rect x="342" y="98" width="4" height="2" class="fc3"/><rect x="343" y="96" width="2" height="2" class="fc3"/><text x="452" y="200" class="sv-lbl fc3" text-anchor="middle" font-size="16">recarga automática: vuelve a 0 sin esperar a la CPU</text>
   </svg>
-  <figcaption><b>fig 2.1</b>Un temporizador de hardware tiene cuatro bloques. El prescaler baja la frecuencia del reloj, el contador acumula ticks, el comparador vigila el valor de alarma y, al coincidir, dispara un evento. La recarga automática (en acento) reinicia la cuenta en el mismo ciclo, sin depender de cuánto tarde la CPU en atender.</figcaption>
+  <figcaption><b>fig 2.1</b>Un temporizador de hardware tiene cuatro bloques. El prescaler baja la frecuencia del reloj, el contador acumula ticks, el comparador vigila el valor de alarma y, al coincidir, dispara un evento. La recarga automática (en verde) reinicia la cuenta en el mismo ciclo, sin depender de cuánto tarde la CPU en atender.</figcaption>
 </figure>
 
 <p>La recarga automática importa por una razón concreta. Si la reinicializara la CPU al atender la interrupción, la latencia de la interrupción cambiaría el período de una vez a otra. Con la recarga en el mismo ciclo del comparador, el período es exactamente el del hardware.</p>
@@ -89,7 +96,7 @@
 <p>La tabla ordena una decisión de diseño. Para un temporizador de 16 bits hace falta atender el desborde cada 65 ms, o bajar la frecuencia del tick y perder resolución. Un contador de 54 o 64 bits no desborda en la práctica, y se paga con más flip-flops.</p>
 
 <div class="caja quiz" data-ok="0">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Un contador de 16 bits cuenta pulsos de 1 MHz. ¿Cada cuánto da la vuelta a cero?</p>
   <div class="opciones">
     <button type="button" data-por-que="2^16 = 65 536 ticks, y cada tick dura 1 µs: 65 536 µs ≈ 65,5 ms.">Cada 65,5 ms.</button>
@@ -194,7 +201,7 @@
 </figure>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Con un reloj de 80 MHz y sin divisor, querés un PWM de al menos 40 kHz. ¿Cuántos bits de resolución te quedan?</p>
   <div class="opciones">
     <button type="button" data-por-que="Con 11 bits la frecuencia es 80 MHz / 2048 ≈ 39,06 kHz, que no llega a 40 kHz.">11 bits.</button>
@@ -227,7 +234,7 @@
   <svg viewBox="0 0 640 264" role="img" aria-label="Medio puente H con un transistor alto y uno bajo; cronograma de sus compuertas con intervalos de tiempo muerto en los que ambos están apagados">
     <line x1="40" y1="24" x2="136" y2="24" class="s5" stroke-width="2"/><text x="40" y="18" class="sv-lbl f4" text-anchor="start" font-size="16">+V</text><line x1="40" y1="240" x2="136" y2="240" class="s5" stroke-width="2"/><text x="40" y="258" class="sv-lbl f4" text-anchor="start" font-size="16">GND</text><rect x="64" y="48" width="48" height="48" class="f1 sa3" stroke-width="2"/><rect x="63" y="47" width="2" height="2" class="f0"/><rect x="111" y="47" width="2" height="2" class="f0"/><rect x="63" y="95" width="2" height="2" class="f0"/><rect x="111" y="95" width="2" height="2" class="f0"/><text x="88" y="69" class="sv-tit fa3" text-anchor="middle" font-size="20">A</text><text x="88" y="87" class="sv-lbl fa3" text-anchor="middle" font-size="16">alto</text><rect x="64" y="168" width="48" height="48" class="f1 sb3" stroke-width="2"/><rect x="63" y="167" width="2" height="2" class="f0"/><rect x="111" y="167" width="2" height="2" class="f0"/><rect x="63" y="215" width="2" height="2" class="f0"/><rect x="111" y="215" width="2" height="2" class="f0"/><text x="88" y="189" class="sv-tit fb3" text-anchor="middle" font-size="20">B</text><text x="88" y="207" class="sv-lbl fb3" text-anchor="middle" font-size="16">bajo</text><line x1="88" y1="24" x2="88" y2="48" class="s4" stroke-width="2"/><line x1="88" y1="96" x2="88" y2="168" class="s4" stroke-width="2"/><line x1="88" y1="216" x2="88" y2="240" class="s4" stroke-width="2"/><line x1="88" y1="132" x2="136" y2="132" class="s4" stroke-width="2"/><rect x="136" y="116" width="56" height="32" class="f0 s4" stroke-width="2"/><rect x="135" y="115" width="2" height="2" class="f0"/><rect x="191" y="115" width="2" height="2" class="f0"/><rect x="135" y="147" width="2" height="2" class="f0"/><rect x="191" y="147" width="2" height="2" class="f0"/><text x="164" y="138" class="sv-tit f6" text-anchor="middle" font-size="16">motor</text><text x="288" y="60" class="sv-tit fa3" text-anchor="end" font-size="16">PWM A</text><text x="288" y="140" class="sv-tit fb3" text-anchor="end" font-size="16">PWM B</text><polyline points="304,40 416,40 416,72 544,72 544,40 624,40" class="fn sa3" stroke-width="2"/><polyline points="304,152 440,152 440,120 520,120 520,152 624,152" class="fn sb3" stroke-width="2"/><rect x="416" y="24" width="24" height="180" class="fa1 sa3" stroke-width="2"/><rect x="520" y="24" width="24" height="180" class="f1 sb3" stroke-width="2"/><text x="428" y="196" class="sv-tag fa3" text-anchor="middle" font-size="16">TM</text><text x="532" y="196" class="sv-tag fb3" text-anchor="middle" font-size="16">TM</text><text x="464" y="236" class="sv-lbl fa3" text-anchor="middle" font-size="16">TM: los dos apagados, nunca conducen juntos</text>
   </svg>
-  <figcaption><b>fig 2.5</b>Un medio puente: el transistor A conecta la carga a +V y el B a masa. Si los dos conducen a la vez hay un cortocircuito de la fuente. Las franjas en acento son el tiempo muerto: después de apagar uno se espera antes de encender el otro, para que el primero termine de apagarse.</figcaption>
+  <figcaption><b>fig 2.5</b>Un medio puente: el transistor A conecta la carga a +V y el B a masa. Si los dos conducen a la vez hay un cortocircuito de la fuente. Las franjas son el tiempo muerto: después de apagar uno se espera antes de encender el otro, para que el primero termine de apagarse.</figcaption>
 </figure>
 
 <p>El problema es que un transistor no se apaga al instante. En un <span class="ref" data-nota="bipolar">bipolar</span>, las cargas acumuladas en la unión tienen que retirarse antes de que deje de conducir: ese es el tiempo de almacenamiento.<span class="nota-margen" popover id="nota-bipolar"><b>transistor bipolar</b>Transistor cuya corriente depende de la que circula por su base; conduce por electrones y huecos.</span> En los diodos de conmutación el tiempo total de recuperación va desde menos de un nanosegundo hasta algunos microsegundos en los de gran corriente, y el transistor bipolar tiene el mismo mecanismo (Taub y Schilling, secciones 1.18 y 1.20). En un <span class="ref" data-nota="mosfet">MOSFET</span> de potencia, hay que descargar la capacidad de la compuerta, y la carga de compuerta que el circuito de excitación entrega o retira define la velocidad (Texas Instruments, SLUA618A).<span class="nota-margen" popover id="nota-mosfet"><b>mosfet · metal-oxide-semiconductor FET</b>Transistor de efecto de campo con la compuerta aislada; se usa como interruptor de potencia.</span></p>
@@ -245,7 +252,7 @@
 <p>La tensión media que recibe la carga se desvía un 0,4 % de la tensión de alimentación, con un signo que depende del sentido de la corriente. Un tiempo muerto más largo es más seguro y distorsiona más; uno más corto distorsiona menos y se acerca al cortocircuito. El valor lo decide el transistor: su tiempo de apagado más un margen.</p>
 
 <div class="caja quiz" data-ok="2">
-  <h4>repaso</h4>
+  <h3>repaso</h3>
   <p class="pregunta">Un medio puente trabaja a 20 kHz con 500 ns de tiempo muerto. ¿Qué fracción de la tensión de alimentación se pierde en el valor medio de la salida, aproximadamente?</p>
   <div class="opciones">
     <button type="button" data-por-que="Eso sería con 50 ns (50 ns · 20 kHz = 0,1 %). Con 500 ns la fracción es diez veces mayor.">0,1 %.</button>
@@ -256,7 +263,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Un temporizador son un prescaler, un contador síncrono, un comparador y una recarga automática. Desborda a los 2<sup><var>N</var></sup> ticks: 65,5 ms con 16 bits a 1 MHz.</li>
     <li>Un contador asíncrono acumula el retardo de cada flip-flop (<var>f</var><sub>máx</sub> = 1 / (<var>N</var> · <var>t</var><sub>pd</sub> + <var>T</var><sub>s</sub>)): por eso los de los micros son síncronos.</li>

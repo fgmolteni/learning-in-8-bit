@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="4b">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="4b">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="04b">nivel 04, componentes, 11 min de lectura</span>
-  <h1>El DAC del ESP32 y las alternativas sin DAC</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="04-dac.html">«De número a tensión»</a>: un DAC de cadena con un generador de coseno, un modulador sigma-delta de segundo orden, y un micro que solo tiene PWM. Las cifras vienen de sus manuales.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>El DAC del ESP32 y las alternativas sin DAC</h1>
+    <p class="bajada">Cómo aplican tres micros lo que explica <a href="04-dac.html">«De número a tensión»</a>: un DAC de cadena con un generador de coseno, un modulador sigma-delta de segundo orden, y un micro que solo tiene PWM. Las cifras vienen de sus manuales.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>04b, componentes</dd></div>
+    <div><dt>lectura</dt><dd>11 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>1 · 4</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar esta página vas a poder…</h4>
+  <h3>al terminar esta página vas a poder…</h3>
   <ul>
     <li>Calcular el escalón del DAC del ESP32 y estimar el error que le mete el ruido de la alimentación.</li>
     <li>Calcular la frecuencia que genera el generador de coseno y su error de resolución.</li>
@@ -131,7 +138,7 @@
 <p>El RP2040 no tiene un DAC propio; tiene 16 canales PWM. Su datasheet, al describir lo que puede hacer el bloque <span class="ref" data-nota="pio">PIO</span>, menciona la salida de video <span class="ref" data-nota="vga">VGA</span> «mediante un DAC de resistencias»: un DAC armado afuera con resistencias, que es la forma de generar una tensión analógica de varios bits cuando solo se dispone de pines digitales.<span class="nota-margen" popover id="nota-pio"><b>pio · programmable I/O</b>Bloque del RP2040 con máquinas de estado propias para generar y leer señales.</span><span class="nota-margen" popover id="nota-vga"><b>vga · Video Graphics Array</b>Estándar de video analógico de IBM.</span> Es el mismo principio de la cadena y de la R-2R, con los pines del micro en el lugar de las llaves.</p>
 
 <div class="caja quiz" data-ok="2">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">En un ESP32-S3, el rizado de un PWM con filtro RC te obliga a un filtro muy lento. ¿Qué probás primero, sin agregar chips?</p>
   <div class="opciones">
     <button type="button" data-por-que="El S3 no tiene DAC: ni en su datasheet ni en su manual figura.">El DAC interno, en GPIO25.</button>
@@ -142,7 +149,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>El DAC del ESP32 es una cadena de 8 bits con búfer y referencia en la alimentación: 3,3 / 255 ≈ 12,9 mV por escalón, y el ruido de <var>V</var><sub>DD</sub> pasa a la salida.</li>
     <li>El generador de coseno da frecuencias de a pasos de 122 Hz; a 1 kHz el redondeo mete un error de −2,3 %.</li>

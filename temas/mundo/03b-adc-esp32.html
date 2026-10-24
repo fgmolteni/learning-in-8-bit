@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="3b">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="3b">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="03b">nivel 03, componentes, 21 min de lectura</span>
-  <h1>El ADC del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Acá se ve cómo tres micros aplican lo que explica <a href="03-adc.html">«Del voltaje al número»</a>, y dónde se apartan del ideal. Las cifras vienen de sus hojas de datos y manuales.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>El ADC del ESP32, del ESP32-S3 y del RP2040</h1>
+    <p class="bajada">Acá se ve cómo tres micros aplican lo que explica <a href="03-adc.html">«Del voltaje al número»</a>, y dónde se apartan del ideal. Las cifras vienen de sus hojas de datos y manuales.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>03b, componentes</dd></div>
+    <div><dt>lectura</dt><dd>21 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>2 · 10</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar esta página vas a poder…</h4>
+  <h3>al terminar esta página vas a poder…</h3>
   <ul>
     <li>Calcular cuánto vale un LSB en volts para cada atenuación del ESP32-S3 y cuántos LSB de error deja el datasheet.</li>
     <li>Explicar por qué la referencia interna obliga a calibrar cada micro.</li>
@@ -156,7 +163,7 @@
 <p>El S3 tiene además un problema propio. Según su manual, el controlador digital de ADC2 no funciona bien (hay una <span class="ref" data-nota="errata">errata</span>), así que ADC2 solo sirve para lecturas sueltas.<span class="nota-margen" popover id="nota-errata"><b>errata</b>Lista de fallos conocidos de un micro, publicada por el fabricante.</span></p>
 
 <div class="caja clave">
-  <h4>regla práctica</h4>
+  <h3>regla práctica</h3>
   <p>Con el Wi-Fi activo, todo lo analógico importante va a ADC1.</p>
 </div>
 
@@ -202,7 +209,7 @@
 <p>Cada offset corre la ventana 27,88 °C, unas 64 cuentas. El rango documentado cae dentro de la ventana de cada uno, con margen en los dos extremos. Que el manual no use la ventana entera sugiere que la respuesta del sensor se aparta de la recta cerca de los bordes, pero es una lectura nuestra: ni el datasheet ni el manual dan el error de medición.</p>
 
 <div class="caja ojo">
-  <h4>ojo: mide el silicio, no el ambiente</h4>
+  <h3>ojo: mide el silicio, no el ambiente</h3>
   <p>El sensor está dentro del micro, y el chip se calienta con su propio consumo. Sirve para vigilar la salud térmica del micro, por ejemplo para bajar la velocidad si se calienta, no para saber la temperatura de una habitación. En el ESP32 clásico, la documentación de Espressif eliminó el sensor de temperatura (así figura en el historial de revisiones del datasheet y del manual), por lo que no hay que contar con él.</p>
 </div>
 
@@ -247,7 +254,7 @@
 <p>Es lo que adelantó la página anterior: la exactitud de un SAR con DAC de capacitores depende de qué tan bien se parecen los capacitores entre sí. Los cuatro códigos son múltiplos impares de 512: en cada uno se enciende el bit de peso 512 y los de abajo pasan de unos a ceros. Que justo ahí caigan los picos sugiere un capacitor de ese peso fuera de escala, pero es una lectura mía; el datasheet solo habla de «algunos capacitores internos».</p>
 
 <div class="caja quiz" data-ok="0">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Con el ESP32-S3 a 12 dB, el datasheet da ±50 mV de error total y 1 LSB vale unos 1,07 mV. ¿Qué dice eso?</p>
   <div class="opciones">
     <button type="button" data-por-que="50 / 1,07 ≈ 47 LSB. Los 12 bits dan resolución (el ADC distingue pasos de 1,07 mV) pero la exactitud absoluta es la de un ADC de bastantes menos bits.">El error equivale a unos 47 LSB: los 12 bits son resolución, no exactitud.</button>
@@ -258,7 +265,7 @@
 </div>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Tu ESP32 usa Wi-Fi y tenés que leer un sensor analógico. ¿Dónde conectás el sensor?</p>
   <div class="opciones">
     <button type="button" data-por-que="ADC2 comparte su núcleo con la radio: con el Wi-Fi activo, la lectura puede fallar o devolver basura.">En un canal de ADC2, porque tiene más canales.</button>
@@ -269,7 +276,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Los tres micros usan un SAR de 12 bits, pero ninguno tiene 12 bits de exactitud: con 0 dB, el error calibrado del S3 equivale a un ADC de unos 7 bits.</li>
     <li>Atenuar suma rango y resta resolución: el LSB crece como 1/<var>k</var>.</li>

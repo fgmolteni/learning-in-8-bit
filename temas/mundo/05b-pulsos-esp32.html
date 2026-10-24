@@ -16,17 +16,24 @@
 <link rel="stylesheet" href="../../assets/style.css">
 <script src="../../assets/site.js"></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="5b">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="5b">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="05b">nivel 05, componentes, 9 min de lectura</span>
-  <h1>El RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="05-rmt-pcnt.html">«Pulsos con precisión de hardware»</a>: cuántos canales tienen, cuánta memoria, si tienen DMA, y cómo resuelve el RP2040 el mismo problema con otra arquitectura. Todo viene de sus manuales.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>El RMT, el PCNT y el táctil del ESP32, del ESP32-S3 y del RP2040</h1>
+    <p class="bajada">Cómo aplican tres micros lo que explica <a href="05-rmt-pcnt.html">«Pulsos con precisión de hardware»</a>: cuántos canales tienen, cuánta memoria, si tienen DMA, y cómo resuelve el RP2040 el mismo problema con otra arquitectura. Todo viene de sus manuales.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>05b, componentes</dd></div>
+    <div><dt>lectura</dt><dd>9 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>0 · 4</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar esta página vas a poder…</h4>
+  <h3>al terminar esta página vas a poder…</h3>
   <ul>
     <li>Comparar el RMT, el contador de pulsos y el sensor táctil de los dos micros de Espressif.</li>
     <li>Calcular cuántos LEDs WS2812 entran en la memoria del RMT y qué implica refrescarla.</li>
@@ -100,7 +107,7 @@
 <p>El compromiso se ve en este ejemplo. El RMT tiene que tener memoria para cada símbolo de la señal que no se pueda describir con un prescaler y una portadora; el PIO describe el protocolo una vez y después solo recibe datos. A cambio, hay que escribir un programa para cada protocolo, en lugar de configurar registros.</p>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Querés mandar una trama de 500 LEDs WS2812 desde un ESP32-S3 sin que la CPU tenga que recargar la memoria del RMT. ¿Qué usás?</p>
   <div class="opciones">
     <button type="button" data-por-que="La memoria del RMT del S3 es de 384 palabras: 16 LEDs. Con 500 LEDs hay que recargarla por interrupción, que es lo que se quiere evitar.">La memoria del RMT, con los 384 símbolos que tiene.</button>
@@ -111,7 +118,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>El ESP32 tiene 8 canales de RMT con 512 palabras compartidas; el S3, 4 de transmisión y 4 de recepción con 384, y DMA en dos canales.</li>
     <li>Una tira de 500 LEDs son 12 000 símbolos: con un bloque de 64 palabras la CPU recarga cada 80 µs. El DMA del S3 evita eso.</li>

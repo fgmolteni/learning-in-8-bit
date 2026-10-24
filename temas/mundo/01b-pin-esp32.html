@@ -19,17 +19,24 @@
 <script src="../../assets/pixelmicro.js" defer></script>
 <script src="../../assets/escenas-perifericos.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="1b">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="1b">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="01b">nivel 01, componentes, 16 min de lectura</span>
-  <h1>Los pines del ESP32, del ESP32-S3 y del RP2040</h1>
-  <p class="bajada">Cómo aplican tres micros lo que explica <a href="01-pin.html">«La frontera del micro»</a>: las cifras de sus pines, la matriz que conecta señales con pines, los pines que deciden el arranque y los que sobreviven al sueño profundo. Todo viene de sus hojas de datos y manuales.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>Los pines del ESP32, del ESP32-S3 y del RP2040</h1>
+    <p class="bajada">Cómo aplican tres micros lo que explica <a href="01-pin.html">«La frontera del micro»</a>: las cifras de sus pines, la matriz que conecta señales con pines, los pines que deciden el arranque y los que sobreviven al sueño profundo. Todo viene de sus hojas de datos y manuales.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>01b, componentes</dd></div>
+    <div><dt>lectura</dt><dd>16 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>2 · 6</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar esta página vas a poder…</h4>
+  <h3>al terminar esta página vas a poder…</h3>
   <ul>
     <li>Leer la tabla de características DC de un micro y calcular sus márgenes de ruido.</li>
     <li>Explicar qué agrega la matriz de GPIO frente al IO MUX y qué cuesta en tiempo.</li>
@@ -125,12 +132,12 @@
 <p>Hay además un requisito de tiempo en el ESP32: los niveles tienen que estar estables antes de que suba el reset (tiempo de preparación, o setup, mínimo de 0 ms) y mantenerse al menos 1 ms después, porque en ese lapso el micro lee los pines.</p>
 
 <div class="caja ojo">
-  <h4>ojo: el pin de la tensión de la flash</h4>
+  <h3>ojo: el pin de la tensión de la flash</h3>
   <p>Si un circuito externo deja GPIO45 del ESP32-S3, o MTDI del ESP32, en 1 durante el arranque, el micro elige 1,8 V para la flash en lugar de 3,3 V. Dejá esos pines libres durante el reset, o fijá la tensión por <span class="ref" data-nota="efuse">eFuse</span>, que las tablas de los datasheets contemplan como opción.<span class="nota-margen" popover id="nota-efuse"><b>efuse · electronic fuse</b>Memoria que se programa una sola vez; guarda datos de fábrica o de configuración.</span></p>
 </div>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">En una placa con un ESP32-S3 conectás un LED, con su resistencia, entre 3,3 V y GPIO45. Al soltar el reset el LED está encendido. ¿Qué decide el micro con ese pin?</p>
   <div class="opciones">
     <button type="button" data-por-que="El nivel de GPIO45 al soltar el reset no elige el modo de arranque (eso lo hacen GPIO0 y GPIO46), sino la tensión de la flash.">Que arranque en modo de descarga.</button>
@@ -157,7 +164,7 @@
 <p>El RP2040 tiene 30 GPIO. Cada uno elige su función con un campo de selección propio: cumple un papel parecido al de la función del IO MUX. Las cifras de su tabla muestran un perfil de márgenes distinto, con la histéresis especificada, y el fabricante publica además la corriente total que pueden entregar y absorber todos los pines juntos: 50 mA de cada lado.</p>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Los dos micros de Espressif tienen los mismos niveles lógicos, en porcentaje de <var>V</var><sub>DD</sub>: <var>NM</var><sub>H</sub> = 165 mV y <var>NM</var><sub>L</sub> = 495 mV. El RP2040 da 0,62 V y 0,30 V.</li>
     <li>La matriz de GPIO conecta cualquier señal con cualquier pin, a cambio de sincronizar con el reloj APB; el IO MUX es el camino directo. Dos ciclos de APB son 25 ns a 80 MHz.</li>

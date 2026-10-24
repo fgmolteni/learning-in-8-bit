@@ -19,17 +19,24 @@
 <script src="../../assets/pixelmicro.js" defer></script>
 <script src="../../assets/escenas-perifericos.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="5">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="5">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="05">nivel 05, 22 min de lectura</span>
-  <h1>Pulsos con precisión de hardware</h1>
-  <p class="bajada">Una señal de pulsos lleva su información en el instante de sus flancos. Para generarla o medirla con exactitud hay que sacar a la CPU del camino.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>Pulsos con precisión de hardware</h1>
+    <p class="bajada">Una señal de pulsos lleva su información en el instante de sus flancos. Para generarla o medirla con exactitud hay que sacar a la CPU del camino.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>05 de 05</dd></div>
+    <div><dt>lectura</dt><dd>22 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>6 · 6</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar este nivel vas a poder…</h4>
+  <h3>al terminar este nivel vas a poder…</h3>
   <ul>
     <li>Estimar cuánto cuesta contar o generar pulsos con interrupciones, y por qué el jitter de la latencia lo arruina.</li>
     <li>Describir un pulso como un par (nivel, duración) y calcular los símbolos de un protocolo como el del WS2812.</li>
@@ -125,7 +132,7 @@
 <p>Un error de 0,013 %, mucho menor que el que tolera la banda de paso del receptor.</p>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Un receptor infrarrojo entrega tramas de largo variable. ¿Cómo sabe el bloque que graba los pulsos que la trama terminó?</p>
   <div class="opciones">
     <button type="button" data-por-que="Estos protocolos no tienen una longitud fija: no se puede contar una cantidad de símbolos de antemano.">Cuenta una cantidad fija de símbolos configurada de antemano.</button>
@@ -178,7 +185,7 @@
 <p>Pasadas unas 13 vueltas el contador se desbordaría. Para eso están los comparadores: al llegar a un límite se produce una interrupción y el contador vuelve a cero, y el software suma esa vuelta a una cuenta propia de 32 o 64 bits. A 50 vueltas por segundo, la interrupción llega cada 0,27 s, en lugar de las 120 000 por segundo de la primera sección.</p>
 
 <div class="caja quiz" data-ok="2">
-  <h4>repaso</h4>
+  <h3>repaso</h3>
   <p class="pregunta">Un encoder de 1000 ranuras por vuelta se lee con los flancos de sus dos señales en un contador de 16 bits con signo. ¿Cuántas vueltas aguanta el contador antes de llegar al límite de 32 767?</p>
   <div class="opciones">
     <button type="button" data-por-que="32 767 / 1000 ≈ 33 vueltas sería con una cuenta por ranura. Con los flancos de las dos señales son cuatro cuentas por ranura.">Unas 33 vueltas.</button>
@@ -235,12 +242,12 @@
 <p>Los dos micros pueden despertar a la CPU desde el sueño profundo cuando se toca un pad, o dejar que el coprocesador <span class="ref" data-nota="ulp">ULP</span> recorra los pads sin despertarla.<span class="nota-margen" popover id="nota-ulp"><b>ulp · ultra-low-power</b>Coprocesador que corre mientras los núcleos principales duermen.</span></p>
 
 <div class="caja ojo">
-  <h4>ojo: el táctil de Espressif tiene un límite documentado</h4>
+  <h3>ojo: el táctil de Espressif tiene un límite documentado</h3>
   <p>Los manuales de los dos micros avisan que su sensor táctil todavía no pasó la prueba de susceptibilidad conducida (CS), y que por eso tiene escenarios de aplicación limitados. Un ruido que llega por los cables, como el de una fuente conmutada mal filtrada, puede dar toques falsos.</p>
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>En una señal de pulsos la información está en los flancos. Contarlos con interrupciones cuesta CPU (15 % con 120 000 cuentas/s) y la latencia variable arruina la exactitud.</li>
     <li>Un pulso es un par (nivel, duración en ticks). Con ticks de 25 ns, los bits del WS2812 son símbolos de 16 + 34 y 32 + 18 ticks; una trama de 300 LEDs son 9 ms.</li>

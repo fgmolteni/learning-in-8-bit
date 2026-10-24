@@ -2,7 +2,7 @@
 
 // Tomos agrupados por sección: la navegación "siguiente tomo" no cruza de una sección a otra.
 // versión del sitio: sube con cada cambio publicado (0.1.N) y se muestra en el pie de todas las páginas
-const VERSION = "0.1.59";
+const VERSION = "0.1.60";
 
 const CURSOS = {
   micro: {
@@ -377,7 +377,8 @@ function montarNavLeccion() {
   const { i, comp } = nivelDeLaPagina(b);
   if (!curso.niveles[i]) return;   // data-nivel fuera de CURSOS: que no corte el quiz ni lo que sigue
   // la página de componentes vuelve a su concepto y sigue con el nivel siguiente; no marca avance
-  const ant = comp ? curso.niveles[i] : curso.niveles[i - 1], sig = curso.niveles[i + 1];
+  // el concepto sigue con su página de componentes, si la tiene
+  const ant = comp ? curso.niveles[i] : curso.niveles[i - 1], sig = comp ? curso.niveles[i + 1] : curso.niveles[i].c || curso.niveles[i + 1];
   const f = curso.niveles[i].f;
   const hechos = LS.get(clave(b.curso), []);
   // último nivel: ofrece el primer nivel del tomo siguiente (misma profundidad de carpetas)
@@ -393,7 +394,7 @@ function montarNavLeccion() {
     </div>`}
     <nav class="nav-niveles" aria-label="Niveles">
       ${ant ? `<a href="${ant.f}"><small>${comp ? "← el concepto" : "← anterior"}</small><span>${ant.t}</span></a>` : `<a href="index.html"><small>← volver</small><span>Temario</span></a>`}
-      ${sig ? `<a href="${sig.f}"><small>siguiente →</small><span>${sig.t}</span></a>` : finTomo}
+      ${sig ? `<a href="${sig.f}"><small>${sig === curso.niveles[i].c ? "componentes →" : "siguiente →"}</small><span>${sig.t}</span></a>` : finTomo}
     </nav>`;
   const btnCompletar = cont.querySelector("[data-completar]");
   if (btnCompletar) btnCompletar.onclick = (e) => {
@@ -414,8 +415,8 @@ function montarQuiz() {
     const fb = q.querySelector(".feedback");
     q.querySelectorAll(".opciones button").forEach((btn, i) => {
       btn.onclick = () => {
-        q.querySelectorAll(".opciones button").forEach((x) => x.classList.remove("ok", "mal"));
-        btn.classList.add(i === ok ? "ok" : "mal");
+        q.querySelectorAll(".opciones button").forEach((x) => { x.classList.remove("ok", "mal"); x.setAttribute("aria-pressed", "false"); });
+        btn.classList.add(i === ok ? "ok" : "mal"); btn.setAttribute("aria-pressed", "true");
         fb.textContent = (i === ok ? "¡Correcto! " : "Casi. ") + (btn.dataset.porQue || "");
       };
     });

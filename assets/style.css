@@ -736,7 +736,7 @@ body.portada main.contenedor { max-width: none; background: none; border: 0; pad
 /* cajas: título "incrustado" en el borde superior, esquinas escalonadas */
 .caja { margin: var(--e4) 0; padding: var(--e3) var(--e3) var(--e2); clip-path: var(--esc-t); }
 .caja > :last-child { margin-bottom: 0; }
-.caja h4, .objetivos h4 {
+.caja h4, .objetivos h4, .caja > h3:first-child {
   position: absolute; top: -.72em; left: .9rem; margin: 0;
   padding: 0 .5rem; background: var(--fondo);
   font-family: var(--f-mono); font-weight: 500; font-size: .875rem;

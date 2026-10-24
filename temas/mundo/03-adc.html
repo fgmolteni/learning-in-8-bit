@@ -19,17 +19,24 @@
 <script src="../../assets/pixelmicro.js" defer></script>
 <script src="../../assets/escenas-perifericos.js" defer></script>
 </head>
-<body data-raiz="../../" data-curso="mundo" data-nivel="3">
+<body class="plano" data-raiz="../../" data-curso="mundo" data-nivel="3">
 
 <main class="leccion">
-<header>
-  <span class="nivel-chip" data-n="03">nivel 03, 34 min de lectura</span>
-  <h1>Del voltaje al número</h1>
-  <p class="bajada">Un ADC hace dos cortes sobre una señal continua, uno en el tiempo y otro en la amplitud. Cada corte tira información y fija un límite que ningún software recupera después.</p>
+<header class="hoja-cab">
+  <div class="hoja-titulo">
+    <h1>Del voltaje al número</h1>
+    <p class="bajada">Un ADC hace dos cortes sobre una señal continua, uno en el tiempo y otro en la amplitud. Cada corte tira información y fija un límite que ningún software recupera después.</p>
+  </div>
+  <dl class="hoja-datos">
+    <div><dt>tomo</dt><dd>2 de 5</dd></div>
+    <div><dt>nivel</dt><dd>03 de 05</dd></div>
+    <div><dt>lectura</dt><dd>34 min</dd></div>
+    <div><dt>figuras · fuentes</dt><dd>6 · 10</dd></div>
+  </dl>
 </header>
 
 <div class="caja objetivos">
-  <h4>al terminar este nivel vas a poder…</h4>
+  <h3>al terminar este nivel vas a poder…</h3>
   <ul>
     <li>Distinguir <strong>muestrear</strong> de <strong>cuantizar</strong> y decir qué límite fija cada corte.</li>
     <li>Calcular dónde cae un alias y explicar por qué el filtro <strong>antialiasing</strong> es analógico y va antes del convertidor.</li>
@@ -165,7 +172,7 @@
 
 <div class="tabla-scroll">
 <table>
-  <thead><tr><th>f<sub>s</sub></th><th>fin de la transición (f<sub>s</sub> − f<sub>a</sub>)</th><th>octavas disponibles</th><th>polos necesarios (10 ÷ octavas)</th></tr></thead>
+  <thead><tr><th>f<sub>s</sub></th><th>fin de la transición</th><th>octavas</th><th>polos</th></tr></thead>
   <tbody>
     <tr><td>2,5 kHz</td><td>1,5 kHz</td><td>0,58</td><td>18</td></tr>
     <tr><td>4 kHz</td><td>3 kHz</td><td>1,58</td><td>7</td></tr>
@@ -243,7 +250,7 @@
 <p>Si un ADC de 12 bits mide una SINAD de 62 dB, su ENOB es (62 − 1,76) / 6,02 = 10,0 bits. Los dos bits de abajo se pierden en ruido y distorsión. Esa es la diferencia entre los «12 bits» de la hoja de datos y la información real de las lecturas. La fórmula supone una señal de escala completa: con una señal más chica la SINAD baja y hay que corregirla.</p>
 
 <div class="caja quiz" data-ok="0">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Un ADC de 12 bits mide una SINAD de 62 dB con una senoide de escala completa. ¿Cuántos bits efectivos tiene?</p>
   <div class="opciones">
     <button type="button" data-por-que="ENOB = (62 − 1,76) / 6,02 = 10,0. Los dos bits menos significativos se pierden en el ruido y la distorsión del propio ADC.">Unos 10 bits.</button>
@@ -283,7 +290,7 @@
 <p>Hay un detalle fácil de pasar por alto: a la balanza hay que darle un desplazamiento de la mitad de la pesa más chica, o sea de ½ LSB. Sin ese desplazamiento, el error de cuantización sería de un LSB entero en lugar de ½ LSB, porque el código siempre redondea hacia abajo.</p>
 
 <div class="caja dato">
-  <h4>dato: una idea de 1556</h4>
+  <h3>dato: una idea de 1556</h3>
   <p>El algoritmo del SAR es el de un acertijo de pesadas que Tartaglia resolvió en 1556 (Kester, MT-021) con pesas de 1, 2, 4, 8, 16 y 32 libras: con una balanza de dos platillos se pesa cualquier número entero de libras hasta 63. Los primeros convertidores que lo usaban se llamaban «codificadores secuenciales» o «de realimentación»; el nombre SAR llegó en los años 70, cuando salieron los primeros circuitos integrados de registro de aproximaciones sucesivas.</p>
 </div>
 
@@ -378,7 +385,7 @@
 </ul>
 
 <div class="caja quiz" data-ok="0">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Medís una batería con un divisor de 100 kΩ + 100 kΩ y las lecturas dan de menos y cambian según el canal leído antes. ¿Qué hacés?</p>
   <div class="opciones">
     <button type="button" data-por-que="El divisor presenta 50 kΩ y el capacitor interno no llega a cargarse durante el muestreo. El capacitor externo le presta la carga al instante y el divisor lo repone entre muestras. Para señales rápidas, la alternativa es un seguidor con operacional.">Pongo un capacitor de 100 nF del pin a masa, pegado al micro.</button>
@@ -412,7 +419,7 @@
 </ul>
 
 <div class="caja ojo">
-  <h4>ojo: dos formas de trazar la recta de la INL</h4>
+  <h3>ojo: dos formas de trazar la recta de la INL</h3>
   <p>La recta de <strong>extremos</strong> va del origen al fondo de escala. La de <strong>mejor ajuste</strong> pasa por el medio de la curva y da, en general, solo el 50 % del valor (Kester, MT-010). La segunda produce hojas de datos más lindas pero sirve menos para presupuestar errores de medición. Antes de comparar dos ADC conviene ver qué método usó cada fabricante.</p>
 </div>
 
@@ -435,7 +442,7 @@
 <p>Un ADC puede dar siempre el mismo código y estar lejos del valor real (muy repetible, poco exacto), o acertar en promedio con mucha dispersión (exacto, poco repetible). La calibración arregla lo primero en parte, y promediar muestras arregla lo segundo, pero ninguna arregla la INL con una recta. Para eso hace falta una curva de corrección o una tabla.</p>
 
 <div class="caja quiz" data-ok="1">
-  <h4>repaso rápido</h4>
+  <h3>repaso rápido</h3>
   <p class="pregunta">Un ADC tiene una DNL de −1 LSB en uno de sus escalones. ¿Qué vas a observar?</p>
   <div class="opciones">
     <button type="button" data-por-que="Eso es un offset: la curva entera corrida. La DNL habla de un escalón en particular.">Todas las lecturas corridas un LSB hacia abajo.</button>
@@ -446,7 +453,7 @@
 </div>
 
 <div class="caja clave">
-  <h4>para llevar</h4>
+  <h3>para llevar</h3>
   <ul>
     <li>Un ADC hace dos cortes independientes: muestrear (tiempo) y cuantizar (amplitud). Cada uno tira información.</li>
     <li>Una frecuencia por encima de <var>f</var><sub>s</sub>/2 se disfraza de otra más baja. El filtro antialiasing es analógico y va antes del convertidor.</li>
